@@ -62,7 +62,7 @@ export function initSearch(ctx) {
       renderSuggest(); return;
     }
     const c = ctx.origin();
-    const local = localResolve(text, { city: ctx.state.city, origin: c }).map((p) => ({ kind: 'place', icon: p.kind === 'seller' ? 'bag' : 'pin', label: p.name, sub: [p.kind === 'seller' ? ctx.t('demo_seller') : '', p.address, distLabel(p.distance_m)].filter(Boolean).join(' · '), place: p }));
+    const local = localResolve(text, { city: ctx.state.city, origin: c, saved: ctx.saved?.data }).map((p) => ({ kind: 'place', icon: p.kind === 'seller' ? 'bag' : p.kind === 'saved' ? 'starfill' : 'pin', label: p.name, sub: [p.kind === 'seller' ? ctx.t('demo_seller') : p.kind === 'saved' ? ctx.t('offline_saved_places') : '', p.address, distLabel(p.distance_m)].filter(Boolean).join(' · '), place: p }));
     const cats = catMatches(text).slice(0, 3).map((cat) => ({ kind: 'cat', icon: cat.icon, label: catLabel(cat.id), sub: ctx.t('nearby'), cat: cat.id }));
     const recents = ctx.saved.recents().filter((r) => r.label.toLowerCase().includes(text.toLowerCase())).slice(0, 2).map((r) => ({ kind: 'recent', icon: 'clock', label: r.label, sub: '', recent: r }));
     const shop = isProductQuery(text) ? [{ kind: 'shop', icon: 'bag', label: ctx.tf('search_products', { q: text }), q: text }] : [];
@@ -117,7 +117,7 @@ export function initSearch(ctx) {
     const c = ctx.origin();
     ctx.views.show('results', { detent: 'half' });
     $('resTitle').textContent = text; $('resMeta').textContent = ctx.t('loading'); $('poiList').innerHTML = '';
-    const r = await geocode(text, { city: ctx.state.city, origin: c, lang: ctx.lang() });
+    const r = await geocode(text, { city: ctx.state.city, origin: c, lang: ctx.lang(), saved: ctx.saved?.data });
     if (!r.items.length) {
       $('resMeta').textContent = r.error ? serviceError(ctx, { message: r.error }, 'Nominatim') : ctx.tf('no_match', { q: text });
       if (isProductQuery(text)) $('poiList').innerHTML = `<li><button class="row-btn" data-shopq="${esc(text)}">${icon('bag')}<span>${esc(ctx.tf('search_products', { q: text }))}</span></button></li>`;
@@ -144,7 +144,7 @@ export function initSearch(ctx) {
     const b = map.getBounds();
     try {
       const from = ctx.myLoc && !center ? { lat: ctx.myLoc.lat, lng: ctx.myLoc.lng, real: true } : { ...c, real: false };
-      const res = await fetchPois(catId, from, { s: b.getSouth(), w: b.getWest(), n: b.getNorth(), e: b.getEast() });
+      const res = await fetchPois(catId, from, { s: b.getSouth(), w: b.getWest(), n: b.getNorth(), e: b.getEast() }, { maxKm: ctx.bw?.policy.overpassMaxKm ?? 8, limit: ctx.bw?.policy.poiLimit ?? 60 });
       if (ctx.views.current !== 'results' || lastCat !== catId) return;
       const list = res.items.slice(0, 60).map((p) => ({ ...p, icon: cat.icon, _from: from }));
       if (!list.length) { $('resMeta').textContent = ctx.tf('res_none', { cat: catLabel(catId).toLowerCase() }); $('poiList').innerHTML = ''; clearMarkers(); return; }

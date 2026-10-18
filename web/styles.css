@@ -75,7 +75,7 @@ a { color: var(--neel); }
 html:has(.sheet[data-detent=full]) .mapctl, html.navigating .mapctl, html.navigating .topfloat, html.navigating .cartfab, html.navigating .badge, html.navigating .search-area, html.navigating .maplibregl-ctrl-scale { opacity: 0; pointer-events: none; visibility: hidden; }
 
 /* ---------- bottom sheet ---------- */
-.sheet { position: fixed; z-index: 18; left: 0; right: 0; bottom: 0; height: 50vh; display: flex; flex-direction: column; background: var(--sheet); border-radius: var(--r-sheet) var(--r-sheet) 0 0; box-shadow: var(--sh-sheet); transition: height .28s cubic-bezier(.2, .8, .2, 1); padding-bottom: env(safe-area-inset-bottom); }
+.sheet { position: fixed; z-index: 18; left: 0; right: 0; bottom: 0; height: 50vh; display: flex; flex-direction: column; background: var(--sheet); border-radius: var(--r-sheet) var(--r-sheet) 0 0; box-shadow: var(--sh-sheet); transition: height .28s cubic-bezier(.05, .7, .1, 1); padding-bottom: env(safe-area-inset-bottom); }
 .sheet.dragging { transition: none; }
 .sheet-handle { flex: none; display: flex; align-items: center; justify-content: center; width: 100%; height: 28px; border: 0; background: transparent; cursor: grab; touch-action: none; border-radius: var(--r-sheet) var(--r-sheet) 0 0; }
 .sheet-handle span { width: 40px; height: 5px; border-radius: 3px; background: var(--ink3); opacity: .55; }
@@ -300,3 +300,40 @@ tr.off td { opacity: .5; }
 html.sheet-hidden .maplibregl-ctrl-bottom-right { bottom: 0 !important; }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { transition: none !important; animation: none !important; scroll-behavior: auto !important; } }
 @media (forced-colors: active) { .fab, .pill, .sheet, .btn, .chip { border: 1px solid CanvasText; } }
+
+/* ---------- v0.4 ---------- */
+/* Motion (docs/re/UI_UX_SPEC.md §12): controls fade 120 ms during gestures and return 600 ms after; content swap
+   180 ms crossfade + 8 dp slide; chip/button press 100 ms. All disabled by the prefers-reduced-motion rule above. */
+.mapctl.gesturing { opacity: 0; transition: opacity .12s linear; pointer-events: none; }
+.view:not([hidden]) { animation: bm-view-in .18s cubic-bezier(.2, 0, 0, 1); }
+@keyframes bm-view-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+.chip, .btn, .act, .fab, .route-opt { transition: transform .1s cubic-bezier(.2, 0, 0, 1), background-color .1s; }
+.chip:active, .btn:active, .act:active, .fab:active, .route-opt:active { transform: scale(.97); }
+#compassBtn.snap { box-shadow: 0 0 0 3px var(--neel); }
+.fab:disabled { opacity: .45; }
+/* transit itineraries */
+.route-opt.itin { grid-template-columns: 1fr; grid-template-areas: "time" "meta" "legs"; }
+.route-opt.itin .legs { grid-area: legs; }
+.legs { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; margin-top: 6px; }
+.legs .sep { color: var(--ink3); font-size: 12px; }
+.leg { display: inline-flex; align-items: center; gap: 3px; font-size: 12.5px; font-weight: 650; padding: 2px 8px; border-radius: 99px; }
+.leg.walk { background: var(--line); color: var(--ink2); }
+.leg.ride, .line-pill { background: var(--lc, var(--neel)); color: var(--on, #fff); }
+.line-pill { display: inline-block; padding: 1px 8px; border-radius: 6px; font-size: 13px; margin-right: 4px; }
+.itin-steps { list-style: none; padding: 0; margin: 10px 0; display: grid; gap: 10px; }
+.itin-steps li { display: grid; grid-template-columns: 24px 1fr; gap: 10px; align-items: start; }
+.itin-steps small { display: block; color: var(--ink2); margin-top: 2px; }
+/* tolls, avoid options */
+.avoid { gap: 14px; margin: 10px 0 4px; }
+.chk { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; font-weight: 550; }
+.chk input { width: 20px; height: 20px; accent-color: var(--neel); }
+.tolls h4 { display: flex; align-items: center; gap: 6px; margin: 8px 0 4px; }
+.toll-list { margin: 0; padding-left: 20px; } .toll-list li { margin: 2px 0; } .toll-list .row-btn { min-height: 44px; }
+/* EV / parking details */
+.kv { display: grid; grid-template-columns: auto 1fr; gap: 2px 12px; margin: 6px 0; }
+.kv dt { color: var(--ink2); } .kv dd { margin: 0; font-weight: 600; }
+.conn { list-style: none; padding: 0; margin: 4px 0; display: grid; gap: 4px; }
+.conn li { display: flex; align-items: center; gap: 6px; }
+/* downloads */
+#dlList progress { width: 100%; height: 6px; margin-top: 4px; accent-color: var(--harit); }
+#dlList .btn[disabled] { opacity: .5; }

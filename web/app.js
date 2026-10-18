@@ -5,11 +5,13 @@ import { store } from './shared/storage.js';
 import * as maplibregl from './vendor/maplibre-gl.mjs';
 import { LANGS, t as tr } from './shared/i18n.js';
 import { CITIES } from './shared/seed.js';
-import { mockApi, mockLogout } from './mock-api.js';
+// v0.4: the on-device demo backend and the admin dashboard are lazy-loaded (not needed for the map).
+const mockMod = () => import('./mock-api.js');
 import { priceOrder } from './shared/logistics.js';
 import { haversineKm } from './shared/geo.js';
 import { isNative, deviceNotify, ensureNotifyPermission } from './native.js';
-import { initAdmin, loadAdmin } from './admin.js';
+let adminMod = null;
+const adminLazy = () => adminMod || (adminMod = import('./admin.js').then((m) => { m.initAdmin({ api, apiBase, token: () => state.token, toast, root: $('#adminView'), isDemo: () => state.demo }); return m; }));
 import { createShell } from './shell.js';
 import { BUSINESSES } from './shared/seed.js';
 
@@ -41,7 +43,7 @@ async function detectMode() {
 }
 async function api(method, path, body) {
   if (state.demo) {
-    try { return await mockApi(method, path, body); } catch (e) { throw e; }
+    return (await mockMod()).mockApi(method, path, body);
   }
   let r;
   try {
@@ -71,6 +73,10 @@ const map = new maplibregl.Map({
   style: { version: 8, sources: {}, layers: [] },
   center: [CITIES[state.city].center.lng, CITIES[state.city].center.lat], zoom: 13, attributionControl: { compact: true },
   dragRotate: true, pitchWithRotate: true, maxPitch: 70,
+  // v0.4 gestures: two-finger tilt (touchPitch), two-finger rotate (touchZoomRotate), double-tap zoom and
+  // one-finger zoom (double-tap-and-drag, MapLibre's tap-drag-zoom handler) are on; pan keeps inertia, tuned here.
+  touchPitch: true, touchZoomRotate: true, doubleClickZoom: true, keyboard: true,
+  dragPan: { linearity: 0.3, easing: (t) => 1 - (1 - t) ** 3, deceleration: 2500, maxSpeed: 1400 },
 });
 map.addControl(new maplibregl.ScaleControl({ unit: 'metric' }), 'top-left');
 let dropMarker = null, riderMarker = null;
@@ -370,7 +376,7 @@ $('#sellerView').addEventListener('click', async (e) => {
 
 // ---------------- Auth ----------------
 function signOut() {
-  state.user = null; state.token = null; store.removeItem('mapos-token'); store.removeItem('mapos-user'); if (state.demo) mockLogout();
+  state.user = null; state.token = null; store.removeItem('mapos-token'); store.removeItem('mapos-user'); if (state.demo) mockMod().then((m) => m.mockLogout());
   clearInterval(state.notifTimer); $('#bellBtn').hidden = true; $('#adminTab').hidden = true;
   applyLang(); loadOrders(); $('#sellerView').innerHTML = '<p class="muted">Sign in as a seller to manage price, stock and orders.</p><button class="btn" id="demoSeller">Use demo seller (Vizag Digital World)</button>';
   if (!$('[data-pane=admin]').hidden) showTab('explore', { open: false });
@@ -404,7 +410,7 @@ function showTab(name, { open = true } = {}) {
   $$('.tabpane').forEach((p) => { p.hidden = p.dataset.pane !== name; });
   if (name === 'orders') loadOrders();
   if (name === 'seller') loadSeller();
-  if (name === 'admin') loadAdmin();
+  if (name === 'admin') adminLazy().then((m) => m.loadAdmin());
 }
 
 // ---------------- Notifications (server feed → device notifications) ----------------
@@ -494,7 +500,6 @@ async function openShop({ q, sellerId } = {}) {
     if (name === 'home') { clearMarkers(state.markers); clearMarkers(state.mobMarkers); }
     if (name === 'shop' && state.results.length) plotResults();
   });
-  initAdmin({ api, apiBase, token: () => state.token, toast, root: $('#adminView'), isDemo: () => state.demo });
   if ($('[name=pay][value=razorpay]')) $('[name=pay][value=razorpay]').closest('label').hidden = !state.config?.payments?.razorpay;
   if (state.config?.payments && !state.config.payments.upi_simulated) $('[name=pay][value=upi_simulated]').closest('label').hidden = true;
   updateBadge();

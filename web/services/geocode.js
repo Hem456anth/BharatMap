@@ -14,11 +14,25 @@ export const NOMINATIM = 'https://nominatim.openstreetmap.org';
 export const PHOTON = 'https://photon.komoot.io';
 const INDIA_BBOX = '68.0,6.4,97.5,37.6';
 
-/** Local resolver (offline): seed landmarks/localities, demo sellers, pincode, DIGIPIN. */
-export function localResolve(q, { city, origin, businesses = BUSINESSES } = {}) {
+/** Pure: saved places (Home, Work, every list) whose name or address matches — works fully offline (v0.4). */
+export function savedResolve(q, saved) {
+  const lq = String(q || '').trim().toLowerCase();
+  if (lq.length < 2 || !saved) return [];
+  const all = [saved.home && { ...saved.home, _sc: 'home' }, saved.work && { ...saved.work, _sc: 'work' }, ...(saved.lists || []).flatMap((l) => l.items || [])].filter(Boolean);
+  const seen = new Set(); const out = [];
+  for (const p of all) {
+    if (!Number.isFinite(p.lat) || seen.has(p.id)) continue;
+    const hay = `${p.name || ''} ${p.address || ''} ${p._sc || ''}`.toLowerCase();
+    if (hay.includes(lq)) { seen.add(p.id); out.push({ ...p, id: p.id || `saved:${p.lat},${p.lng}`, source: 'saved', kind: 'saved' }); }
+  }
+  return out;
+}
+
+/** Local resolver (offline): saved places, seed landmarks/localities, demo sellers, pincode, DIGIPIN. */
+export function localResolve(q, { city, origin, businesses = BUSINESSES, saved = null } = {}) {
   const s = String(q || '').trim();
   if (s.length < 2) return [];
-  const out = [];
+  const out = [...savedResolve(s, saved)];
   for (const p of searchPlaces(s, undefined)) {
     out.push({ id: `local:${p.kind}:${p.name}`, source: 'local', kind: p.kind, name: p.name, lat: p.lat, lng: p.lng, address: [p.pincode, p.city === 'vizag' ? 'Visakhapatnam' : 'Hyderabad'].filter(Boolean).join(' · '), city: p.city });
   }

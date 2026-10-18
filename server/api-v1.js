@@ -77,6 +77,6 @@ export function mountApiV1(app, { root, providers = createProviders(), transit =
   r.use((_req, res) => bad(res, 'not_found', 404));
   app.use('/api/v1', r);
   // Region files (PMTiles) with HTTP Range support for partial reads and resumable downloads.
-  app.use('/regions', express.static(regionsDir, { maxAge: '7d', acceptRanges: true, fallthrough: false, index: false }));
+  app.use('/regions', express.static(regionsDir, { maxAge: '7d', acceptRanges: true, index: false }), (_req, res) => res.status(404).json({ error: 'region_not_hosted' }));
   return { providers, transit };
 }

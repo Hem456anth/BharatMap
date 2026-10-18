@@ -123,7 +123,11 @@ function reconstruct(tt, labels, k, target, from, to, departSec, egressM) {
   const eSec = walkSec(egressM);
   legs.push({ type: 'walk', from: stopRef(tt, target), to: { name: 'destination', lat: to.lat, lng: to.lng }, distance_m: Math.round(egressM * DETOUR), duration_s: eSec, depart_s: last.arrive_s, arrive_s: last.arrive_s + eSec });
   const rides = legs.filter((x) => x.type === 'ride');
-  return { depart_s: departSec, arrive_s: legs[legs.length - 1].arrive_s, duration_s: legs[legs.length - 1].arrive_s - departSec, transfers: Math.max(0, rides.length - 1),
+  // Leave just in time for the first ride (no waiting at the stop): shift the access walk to end at boarding.
+  const first = legs[0]; const firstRide = rides[0];
+  if (first?.type === 'walk' && firstRide) { first.arrive_s = firstRide.depart_s; first.depart_s = firstRide.depart_s - first.duration_s; }
+  const leave = legs[0].depart_s; const arrive = legs[legs.length - 1].arrive_s;
+  return { depart_s: leave, wait_s: Math.max(0, leave - departSec), arrive_s: arrive, duration_s: arrive - leave, transfers: Math.max(0, rides.length - 1),
     walk_m: legs.filter((x) => x.type === 'walk').reduce((m, x) => m + x.distance_m, 0), legs, scheduled: true, feed: tt.id };
 }
 const stopRef = (tt, i) => ({ id: tt.stops[i].id, name: tt.stops[i].name, lat: tt.stops[i].lat, lng: tt.stops[i].lng, platform: tt.stops[i].platform || '' });

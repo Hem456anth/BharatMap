@@ -68,15 +68,31 @@ export function initControls(ctx) {
     const b = map.getBearing(), p = map.getPitch();
     compassBtn.style.setProperty('--rot', `${-b}deg`);
     compassBtn.hidden = Math.abs(b) < 0.5 && p < 1;
+    compassBtn.setAttribute('aria-label', ctx.tf('compass_label', { deg: Math.round(((b % 360) + 360) % 360) }));
+    if (ctx.bw?.policy.active) { tdBtn.disabled = true; tdBtn.setAttribute('aria-disabled', 'true'); } else { tdBtn.disabled = false; tdBtn.removeAttribute('aria-disabled'); }
     const three = p >= 20;
     tdBtn.textContent = three ? '2D' : '3D';
     tdBtn.setAttribute('aria-pressed', String(three));
     tdBtn.setAttribute('aria-label', ctx.t(three ? 'view_2d' : 'view_3d'));
   };
   map.on('rotate', updateCompass); map.on('pitch', updateCompass); map.on('load', updateCompass); updateCompass();
+  ctx.on('bandwidth', updateCompass);
+  // Compass feedback: after a two-finger rotate that ends within ±7° of north, snap to north with a light haptic tick.
+  let rotating = false;
+  map.on('rotatestart', (e) => { rotating = !!e.originalEvent; });
+  map.on('rotateend', () => {
+    if (!rotating) return; rotating = false;
+    const b = map.getBearing();
+    if (b !== 0 && Math.abs(b) < 7) { ctx.cam.ease({ bearing: 0, duration: 200 }); navigator.vibrate?.(10); compassBtn.classList.add('snap'); setTimeout(() => compassBtn.classList.remove('snap'), 300); }
+  });
+  // Controls fade during gestures (UI_UX_SPEC §12: 120 ms out, back 600 ms after the gesture; not with reduced motion).
+  let fadeT = null; const fabs = document.getElementById('mapctl');
+  map.on('movestart', (e) => { if (!e.originalEvent || ctx.cam.reduced?.()) return; clearTimeout(fadeT); fabs?.classList.add('gesturing'); });
+  map.on('moveend', () => { clearTimeout(fadeT); fadeT = setTimeout(() => fabs?.classList.remove('gesturing'), 600); });
   compassBtn.addEventListener('click', () => ctx.cam.ease({ bearing: 0, pitch: 0, duration: 500 }));
   tdBtn.addEventListener('click', () => {
     const to3d = map.getPitch() < 20;
+    if (to3d && ctx.bw?.policy.active) { ctx.toast(ctx.t('low_bw_on')); return; }
     if (to3d && !ctx.style.buildings3d) ctx.style.set3D(true);
     ctx.cam.ease({ pitch: to3d ? 55 : 0, bearing: to3d ? (map.getBearing() || -17) : map.getBearing(), duration: 800 });
   });

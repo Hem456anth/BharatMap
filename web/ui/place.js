@@ -10,6 +10,7 @@ import { POI_CATEGORIES } from '../services/overpass.js';
 import { icon } from './icons.js';
 import { esc, serviceError } from './search.js';
 import { shareLink } from '../native.js';
+import { parseOsmCharger, parseParking } from '../shared/ev.js';
 
 const CAT_FROM_TAGS = [
   ['fuel', (t) => t.amenity === 'fuel'], ['ev', (t) => t.amenity === 'charging_station'], ['atm', (t) => t.amenity === 'atm'],
@@ -17,6 +18,7 @@ const CAT_FROM_TAGS = [
   ['bus', (t) => t.highway === 'bus_stop' || t.amenity === 'bus_station'], ['hospital', (t) => t.amenity === 'hospital' || t.healthcare === 'hospital'],
   ['pharmacy', (t) => t.amenity === 'pharmacy'], ['restaurant', (t) => /restaurant|fast_food/.test(t.amenity || '')],
   ['grocery', (t) => /supermarket|convenience|grocery|general/.test(t.shop || '')], ['parking', (t) => t.amenity === 'parking'], ['toilets', (t) => t.amenity === 'toilets'],
+  ['airport', (t) => t.aeroway === 'aerodrome' || t.aeroway === 'terminal'],
 ];
 
 /** Demo seller that this place corresponds to (explicit id, or same spot within 60 m). */
@@ -53,6 +55,26 @@ export function initPlace(ctx) {
     return `<li class="detail">${icon('clock', { size: 20 })}<div><div>${line}</div><small class="mono">${esc(raw)}</small></div></li>`;
   }
 
+  const yn = (v) => (v === 'yes' ? ctx.t('val_yes') : v === 'no' ? ctx.t('val_no') : v || ctx.t('val_unknown'));
+  // v0.4: EV charging details (Open Charge Map via our server, or OSM socket:* tags) and parking details (OSM).
+  function evHtml(p) {
+    const ev = p.ev || parseOsmCharger(p.tags || {});
+    const conn = ev.connectors?.length
+      ? `<ul class="conn">${ev.connectors.map((c) => `<li>${icon('plug', { size: 16 })}<b>${esc(c.type)}</b>${c.count ? ` × ${esc(c.count)}` : ''}${c.power_kw ? ` · ${esc(c.power_kw)} kW` : ''}${c.current ? ` · ${esc(c.current)}` : ''}</li>`).join('')}</ul>`
+      : `<span class="muted">${esc(ctx.t('ev_none'))}</span>`;
+    const rows = [[ctx.t('ev_operator'), ev.operator || ev.network], [ctx.t('ev_power'), ev.max_power_kw ? `${ev.max_power_kw} kW` : ''], [ctx.t('ev_points'), ev.points], [ctx.t('parking_fee'), ev.fee ? yn(ev.fee) : ''], [ctx.t('ev_status'), ev.status?.title]].filter(([, v]) => v);
+    return `<li class="detail ev" id="pcEv">${icon('ev', { size: 20 })}<div><div><b>${esc(ctx.t('ev_details'))}</b></div>
+      <div><small>${esc(ctx.t('ev_connectors'))}</small>${conn}</div>
+      ${rows.length ? `<dl class="kv">${rows.map(([k, v]) => `<dt>${esc(k)}</dt><dd>${esc(v)}</dd>`).join('')}</dl>` : ''}
+      <small class="muted">${esc(ctx.tf('ev_source', { src: ev.source || 'OpenStreetMap' }))}</small></div></li>`;
+  }
+  function parkingHtml(p) {
+    const pk = p.parking || parseParking(p.tags || {});
+    const kinds = { surface: 'Surface', 'multi-storey': 'Multi-storey', underground: 'Underground', street_side: 'Street side', lane: 'On street', rooftop: 'Rooftop' };
+    const rows = [[ctx.t('parking_fee'), yn(pk.fee)], [ctx.t('parking_capacity'), pk.capacity ?? ctx.t('val_unknown')], [ctx.t('parking_type'), kinds[pk.kind] || pk.kind || ctx.t('val_unknown')]];
+    return `<li class="detail" id="pcParking">${icon('parking', { size: 20 })}<div><div><b>${esc(ctx.t('parking_details'))}</b></div><dl class="kv">${rows.map(([k, v]) => `<dt>${esc(k)}</dt><dd>${esc(v)}</dd>`).join('')}</dl><small class="muted">OpenStreetMap</small></div></li>`;
+  }
+
   function render(p) {
     const cat = categoryOf(p);
     const tags = p.tags || {};
@@ -76,6 +98,7 @@ export function initPlace(ctx) {
         ${seller ? `<button class="act shop" id="pcShop">${icon('bag')}<span>${esc(ctx.t('shop_here'))}</span></button>` : ''}
       </div>
       <ul class="details">
+        ${cat === 'ev' ? evHtml(p) : ''}${cat === 'parking' ? parkingHtml(p) : ''}
         ${hoursHtml(tags.opening_hours)}
         <li class="detail">${icon('pin', { size: 20 })}<div><div id="pcAddr">${p.address ? esc(p.address) : `<span class="muted">${esc(ctx.t('looking_up'))}</span>`}</div><small>${esc(ctx.t('address'))}</small></div><button class="icon-btn sm" data-copy="addr" aria-label="${esc(ctx.t('address'))}: copy">${icon('copy', { size: 18 })}</button></li>
         ${phone ? `<li class="detail">${icon('phone', { size: 20 })}<div><div><a href="tel:${esc(phone.split(';')[0].replace(/[^\d+]/g, ''))}">${esc(phone)}</a></div><small>${esc(ctx.t('phone'))}</small></div></li>` : ''}
@@ -84,7 +107,7 @@ export function initPlace(ctx) {
         <li class="detail">${icon('locate', { size: 20 })}<div><div class="mono">${esc(digipin || '')}</div><small>${esc(ctx.t('digipin'))} · ${p.lat.toFixed(5)}, ${p.lng.toFixed(5)}</small></div><button class="icon-btn sm" data-copy="digipin" aria-label="${esc(ctx.t('digipin'))}: copy">${icon('copy', { size: 18 })}</button></li>
       </ul>
       <div class="row wrap"><button class="link" id="pcHome">${esc(ctx.t('set_as_home'))}</button><button class="link" id="pcWork">${esc(ctx.t('set_as_work'))}</button></div>
-      <p class="small muted">${p.source === 'seller' || (seller && p.kind === 'seller') ? esc(ctx.t('demo_seller')) : esc(ctx.t('osm_credit'))}</p>`;
+      <p class="small muted">${p.source === 'seller' || (seller && p.kind === 'seller') ? esc(ctx.t('demo_seller')) : p.source === 'ocm' ? 'Open Charge Map (CC BY 4.0)' : esc(ctx.t('osm_credit'))}</p>`;
     $('pcDir').onclick = () => ctx.directions.open(p);
     $('pcSave').onclick = () => ctx.saved.openSaveDialog(p, () => render(current));
     $('pcShare').onclick = () => share(p);

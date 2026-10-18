@@ -129,6 +129,10 @@
           <label for="city" data-i18n="city">City</label>
           <select id="city"><option value="vizag">Visakhapatnam</option><option value="hyderabad">Hyderabad</option></select>
           <label class="switch"><input type="checkbox" id="voiceDefault" checked /><span data-i18n="voice">Voice guidance</span></label>
+          <label class="switch"><input type="checkbox" id="lowBwSet" /><span><b data-i18n="low_bw">Low-bandwidth mode</b><small id="lowBwNote" data-i18n="low_bw_note">Fewer map tiles, no 3D, smaller search area</small></span></label>
+          <label class="switch"><input type="checkbox" id="bgNavSet" /><span><b data-i18n="bg_setting">Navigate with the screen off</b><small data-i18n="bg_setting_note">Uses a foreground service with a notification during navigation</small></span></label>
+          <button id="bgAlways" class="btn" type="button" hidden><span data-i18n="bg_allow_always">Allow location all the time (optional)</span></button>
+          <p class="small muted" id="bgAlwaysNote" hidden data-i18n="bg_allow_note"></p>
           <h4 data-i18n="account">Account</h4>
           <div class="row"><button id="authBtn" class="btn" type="button">Sign in</button><button id="bellBtn" class="btn icon" type="button" hidden aria-label="Notifications"><span data-icon="bell"></span><span id="bellCount" class="count"></span></button><button id="setBtn" class="btn" type="button" data-i18n="server">Backend server</button></div>
           <h4 data-i18n="privacy">Privacy</h4>
@@ -272,6 +276,14 @@
       <label for="newListName" data-i18n="add_list">New list</label>
       <div class="row"><input id="newListName" maxlength="60" /><button type="button" class="btn" id="newListBtn" data-i18n="add_list">New list</button></div>
       <div class="row end"><button type="button" class="btn ghost" id="listDlgClose" data-i18n="done">Done</button></div>
+    </form>
+  </dialog>
+
+  <dialog id="bgDlg" aria-labelledby="bgTitle" aria-describedby="bgBody">
+    <form method="dialog" class="dlg">
+      <h2 id="bgTitle" data-i18n="bg_title">Keep navigating with the screen off?</h2>
+      <p id="bgBody" data-i18n="bg_body"></p>
+      <div class="row end"><button value="no" class="btn ghost" id="bgNo" data-i18n="bg_not_now">Not now</button><button value="yes" class="btn primary" id="bgYes" data-i18n="bg_continue">Continue</button></div>
     </form>
   </dialog>
 

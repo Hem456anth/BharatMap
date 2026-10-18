@@ -29,7 +29,7 @@ export async function fetchJSON(url, { method = 'GET', body = null, headers = {}
   if (hit && hit.exp > Date.now()) return hit.value;
   if (inflight.has(key)) return inflight.get(key);
   const p = (async () => {
-    const host = new URL(url).host;
+    const host = new URL(url, globalThis.location?.href || 'http://localhost/').host;
     const gap = HOST_SPACING_MS[host] || 0;
     if (gap) {
       const wait = (lastHit.get(host) || 0) + gap - Date.now();

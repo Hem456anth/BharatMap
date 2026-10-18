@@ -104,10 +104,12 @@ const V3 = {
   },
 };
 export const V3_KEYS = Object.keys(V3.en);
+import { V4, V4_KEYS, V4_NEEDS_REVIEW } from './i18n-v04.js';
 
 export const STRINGS = Object.fromEntries(
-  Object.entries(T).map(([lang, arr]) => [lang, { ...V3.en, ...(V3[lang] || {}), ...Object.fromEntries(K.map((k, i) => [k, arr[i]])) }])
+  Object.entries(T).map(([lang, arr]) => [lang, { ...V3.en, ...(V3[lang] || {}), ...V4.en, ...(V4[lang] || {}), ...Object.fromEntries(K.map((k, i) => [k, arr[i]])) }])
 );
+export { V4_KEYS, V4_NEEDS_REVIEW };
 /** Languages with complete (non-fallback) v0.3 strings. */
 export const V3_COMPLETE = Object.keys(V3);
 

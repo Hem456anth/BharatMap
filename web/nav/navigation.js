@@ -7,6 +7,7 @@ import { buildInstruction, spokenInstruction, maneuverIcon, formatDistance, find
 import { createVoice } from './voice.js';
 import { getRoutes } from '../services/routing.js';
 import { watchPosition } from '../native.js';
+import { prefetchCorridor } from '../map/prefetch.js';
 import { icon } from '../ui/icons.js';
 import { fmtDuration, clock } from '../ui/directions.js';
 
@@ -40,10 +41,22 @@ export function initNavigation(ctx) {
     say(ctx.t('nav_started'));
     ctx.style.setRoutes({ type: 'FeatureCollection', features: [{ type: 'Feature', geometry: route.geometry, properties: { selected: true, fallback: !!route.fallback } }] });
     if (opts.simulate) startSim(); else startGps();
+    // v0.4: on unmetered connections, cache the route corridor's tiles (z12–14) so the route survives a dropped network.
+    if (!opts.simulate && ctx.bw?.policy.prefetchRoute && !ctx.style.offline) {
+      prefetchCorridor(ctx.map, route.geometry.coordinates).then((n) => { if (n) ctx.toast(ctx.tf('prefetch_done', { n })); }).catch(() => {});
+    }
     ctx.emit('nav', { active: true, simulate: !!opts.simulate });
   }
 
-  function startGps() {
+  async function startGps() {
+    // Android: a foreground service keeps fixes coming with the screen off (after the one-time rationale).
+    if (ctx.bg?.supported()) {
+      const ok = await ctx.bg.ensureRationale();
+      if (ok && N.active && !N.opts.simulate) {
+        try { const stop = await ctx.bg.start({ dest: N.opts.dest?.label || '', onFix }); if (stop) { if (!N.active) { stop(); return; } N.stop = stop; return; } } catch { /* fall back to foreground GPS */ }
+      }
+      if (!N.active || N.opts.simulate) return;
+    }
     watchPosition(onFix, (e) => {
       if (!N.active || N.opts.simulate) return;
       ctx.toast(e.code === 'denied' ? ctx.t('gps_denied') : ctx.t('gps_wait'));

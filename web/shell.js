@@ -14,6 +14,10 @@ import { initSaved } from './ui/saved.js';
 import { initPanels } from './ui/panels.js';
 import { initNavigation } from './nav/navigation.js';
 import { onBackButton } from './native.js';
+import { readConnection, bandwidthPolicy } from './lib/bandwidth.js';
+import { createRegionManager } from './lib/region-manager.js';
+import { createBackgroundNav } from './nav/background.js';
+import { serverBase } from './services/server.js';
 
 export function createShell({ map, maplibregl, state, api, apiBase, toast, onShop }) {
   const listeners = new Map();
@@ -30,6 +34,25 @@ export function createShell({ map, maplibregl, state, api, apiBase, toast, onSho
     openShop: onShop,
   };
   hydrateIcons();
+  // v0.4 low-bandwidth mode: auto from navigator.connection (Save-Data / 2G / 3G) or manual (Settings, Layers).
+  const bw = { manual: store.getItem('bm-lowbw') || 'auto' };
+  bw.policy = bandwidthPolicy(readConnection(), bw.manual);
+  ctx.bw = {
+    get policy() { return bw.policy; }, get manual() { return bw.manual; },
+    set(manual) { bw.manual = manual; store.setItem('bm-lowbw', manual); this.refresh(); },
+    refresh() {
+      const prev = bw.policy.active; bw.policy = bandwidthPolicy(readConnection(), bw.manual);
+      if (map.loaded() || map.isStyleLoaded()) ctx.style?.applyBandwidth(bw.policy);
+      document.documentElement.classList.toggle('low-bw', bw.policy.active);
+      if (bw.policy.active !== prev) { ctx.emit('bandwidth', bw.policy); if (bw.policy.active && bw.policy.reason !== 'manual') ctx.toast(ctx.t('low_bw_auto')); }
+    },
+  };
+  navigator.connection?.addEventListener?.('change', () => ctx.bw.refresh());
+  // v0.4 downloadable offline regions (Cache Storage) and background navigation (Android foreground service).
+  const regionsBase = () => (window.__MAPOS_CONFIG__?.regionsBase || serverBase() || '').replace(/\/$/, '');
+  ctx.regions = createRegionManager({ storage: store, base: '' });
+  ctx.regionsBase = regionsBase;
+  ctx.bg = createBackgroundNav(ctx);
   ctx.sheet = createSheet(ctx);
   ctx.views = createViews(ctx);
   ctx.cam = createCamera(ctx);
@@ -41,6 +64,8 @@ export function createShell({ map, maplibregl, state, api, apiBase, toast, onSho
   ctx.directions = initDirections(ctx);
   ctx.nav = initNavigation(ctx);
   ctx.panels = initPanels(ctx);
+  map.on('style.load', () => ctx.style.applyBandwidth(ctx.bw.policy));
+  document.documentElement.classList.toggle('low-bw', ctx.bw.policy.active);
 
   // Theme: auto via prefers-color-scheme, or manual (Settings). boot-theme.js applied it before paint.
   const mq = window.matchMedia?.('(prefers-color-scheme: dark)');

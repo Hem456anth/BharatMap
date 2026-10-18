@@ -273,3 +273,99 @@ test('RAPTOR on the real HMRL feed: Miyapur → Uppal needs Red → Blue at Amee
   const back = unpackTimetable(JSON.parse(JSON.stringify(packTimetable(tt))));
   assert.deepEqual(back.patterns, tt.patterns); assert.deepEqual(back.stops, tt.stops);
 });
+
+// ---------- client-side pure modules ----------
+import { bandwidthPolicy, readConnection, corridorTiles, lngLatToTile } from '../web/lib/bandwidth.js';
+import { createRegionManager, CACHE_NAME } from '../web/lib/region-manager.js';
+import { savedResolve, localResolve } from '../web/services/geocode.js';
+import { getRoutes } from '../web/services/routing.js';
+import { planTransit } from '../web/services/transit.js';
+import { V4_KEYS, V4_NEEDS_REVIEW, STRINGS, LANGS } from '../shared/i18n.js';
+
+test('low-bandwidth policy: Save-Data / 2G / 3G auto-on, manual override, prefetch only when unmetered', () => {
+  assert.equal(bandwidthPolicy({ effectiveType: '4g' }).active, false);
+  for (const et of ['slow-2g', '2g', '3g']) assert.equal(bandwidthPolicy({ effectiveType: et }).reason, et);
+  const sd = bandwidthPolicy({ saveData: true, effectiveType: '4g' });
+  assert.deepEqual([sd.active, sd.reason, sd.allow3D, sd.prefetchZoomDelta, sd.overpassMaxKm < 8, sd.maxZoom <= 16], [true, 'save-data', false, 0, true, true]);
+  assert.equal(bandwidthPolicy({ effectiveType: '2g' }, 'off').active, false, 'manual off wins');
+  assert.equal(bandwidthPolicy({ effectiveType: '4g' }, 'on').reason, 'manual');
+  assert.equal(bandwidthPolicy({ type: 'wifi', effectiveType: '4g' }).prefetchRoute, true);
+  assert.equal(bandwidthPolicy({ type: 'cellular', effectiveType: '4g' }).prefetchRoute, false);
+  assert.equal(bandwidthPolicy({ saveData: true, type: 'wifi' }).prefetchRoute, false);
+  assert.deepEqual(readConnection({}), { saveData: false, effectiveType: '', type: '', downlink: null });
+  assert.equal(readConnection({ connection: { saveData: true, effectiveType: '3g' } }).effectiveType, '3g');
+});
+test('corridor tiles: correct slippy tile, contiguous coverage, buffer, cap', () => {
+  assert.deepEqual(lngLatToTile(83.305, 17.7289, 14), [14, 11983, 7371]);
+  const route = parseOsrm(fx('osrm-drive-dwarakanagar-anakapalli'), 'drive')[0].geometry.coordinates;
+  const t = corridorTiles(route, { zooms: [12], buffer: 0, max: 1000 });
+  assert.ok(t.length >= 4 && t.every(([z]) => z === 12));
+  const withBuf = corridorTiles(route, { zooms: [12], buffer: 1, max: 1000 });
+  assert.ok(withBuf.length > t.length);
+  assert.equal(corridorTiles(route, { zooms: [14], max: 50 }).length, 50);
+});
+function memStorage() { const m = new Map(); return { getItem: (k) => (m.has(k) ? m.get(k) : null), setItem: (k, v) => m.set(k, String(v)), removeItem: (k) => m.delete(k) }; }
+function memCaches() { const stores = new Map(); return { stores, open: async (n) => { if (!stores.has(n)) { const m = new Map(); stores.set(n, { put: async (k, r) => m.set(k, await r.arrayBuffer()), match: async (k) => (m.has(k) ? new Response(m.get(k)) : undefined), delete: async (k) => m.delete(k), m }); } return stores.get(n); } }; }
+test('region manager: download with progress → Cache Storage, list/covering/blob, delete, cancel, bad file, 404', async () => {
+  const bytes = fs.readFileSync(new URL('../web/offline/vizag.pmtiles', import.meta.url));
+  const stream = (buf, delay = 0) => new ReadableStream({ async start(c) { for (let i = 0; i < buf.length; i += 256 * 1024) { if (delay) await new Promise((r) => setTimeout(r, delay)); c.enqueue(new Uint8Array(buf.subarray(i, i + 256 * 1024))); } c.close(); } });
+  const caches = memCaches(); const storage = memStorage();
+  const fetchImpl = async (url, { signal } = {}) => {
+    if (url.includes('missing')) return new Response('nope', { status: 404 });
+    if (url.includes('html')) return new Response('<!doctype html>', { status: 200 });
+    const body = stream(bytes, url.includes('slow') ? 30 : 0);
+    signal?.addEventListener('abort', () => body.cancel().catch(() => {}));
+    return new Response(body, { headers: { 'content-length': String(bytes.length) } });
+  };
+  const rm = createRegionManager({ caches, fetchImpl, storage, base: 'https://regions.test' });
+  const seen = [];
+  const e = await rm.download({ id: 'visakhapatnam', name: 'Visakhapatnam', bbox: [83.1, 17.58, 83.45, 17.9], maxzoom: 15 }, { onProgress: (p) => seen.push(p.fraction) });
+  assert.equal(e.bytes, bytes.length); assert.equal(e.url, 'https://regions.test/regions/visakhapatnam.pmtiles');
+  assert.ok(seen.length > 3 && seen.at(-1) === 1 && seen.every((f, i) => i === 0 || f >= seen[i - 1]), 'monotonic progress to 100%');
+  assert.equal(rm.list().length, 1); assert.equal(rm.covering({ lat: 17.72, lng: 83.3 }).id, 'visakhapatnam'); assert.equal(rm.covering({ lat: 12.9, lng: 77.6 }), null);
+  assert.equal((await rm.blob('visakhapatnam')).size, bytes.length);
+  assert.ok(caches.stores.get(CACHE_NAME).m.size === 1);
+  await assert.rejects(rm.download({ id: 'missing', name: 'x', bbox: [0, 0, 1, 1] }), /region_not_hosted/);
+  await assert.rejects(rm.download({ id: 'html', name: 'x', bbox: [0, 0, 1, 1] }), /not_a_pmtiles_file/);
+  const p = rm.download({ id: 'slow', name: 'Slow', bbox: [0, 0, 1, 1] });
+  await new Promise((r) => setTimeout(r, 60)); assert.equal(rm.isDownloading('slow'), true); rm.cancel('slow');
+  await assert.rejects(p, /cancelled/); assert.equal(rm.isDownloaded('slow'), false);
+  assert.equal(await rm.remove('visakhapatnam'), true); assert.equal(rm.list().length, 0); assert.equal(caches.stores.get(CACHE_NAME).m.size, 0);
+  await assert.rejects(createRegionManager({ caches, fetchImpl, storage }).download({ id: 'x', name: 'x', bbox: [0, 0, 1, 1] }), /no_region_host/);
+});
+test('offline geocoding: saved places (home/work/lists) and bundled landmarks resolve without network', () => {
+  const saved = { home: { id: 'h', name: 'My flat', address: 'MVP Colony, Visakhapatnam', lat: 17.74, lng: 83.33 }, work: null, lists: [{ id: 'favorites', items: [{ id: 'k', name: 'Kailasagiri', lat: 17.749, lng: 83.342 }] }] };
+  assert.deepEqual(savedResolve('mvp', saved).map((x) => x.id), ['h']);
+  assert.deepEqual(savedResolve('home', saved).map((x) => x.id), ['h']);
+  const r = localResolve('Kailasagiri', { saved, city: 'vizag' });
+  assert.equal(r[0].source, 'saved');
+  assert.ok(localResolve('RK Beach', { saved: null }).some((x) => x.name === 'RK Beach'), 'bundled landmark');
+});
+test('client routing (no server): two-wheeler → FOSSGIS Valhalla motor_scooter (real, not estimate); fallback to OSRM estimate; drive → OSRM', async () => {
+  const calls = [];
+  const ok = (b) => ({ ok: true, status: 200, json: async () => b });
+  const both = async (u) => { calls.push(u); return /valhalla/.test(u) ? ok(fx('valhalla-two-dwarakanagar-rkbeach')) : ok(fx('osrm-drive-dwarakanagar-rkbeach')); };
+  const two = await getRoutes('two', VIZ, RKB, { fetchImpl: both });
+  assert.equal(two.engine, 'valhalla-fossgis'); assert.equal(two.estimate, false); assert.match(calls[0], /valhalla1.*motor_scooter/);
+  const noValhalla = async (u) => { if (/valhalla/.test(u)) throw new TypeError('down'); return ok(fx('osrm-drive-dwarakanagar-rkbeach')); };
+  const two2 = await getRoutes('two', { lat: 17.73, lng: 83.306 }, RKB, { fetchImpl: noValhalla });
+  assert.equal(two2.engine, 'osrm-fossgis'); assert.equal(two2.estimate, true);
+  const drive = await getRoutes('drive', { lat: 17.731, lng: 83.307 }, RKB, { fetchImpl: both });
+  assert.equal(drive.engine, 'osrm-fossgis');
+  const avoid = await getRoutes('drive', { lat: 17.732, lng: 83.308 }, RKB, { fetchImpl: noValhalla, avoidTolls: true });
+  assert.equal(avoid.avoid_applied, false, 'avoid not applied on OSRM is reported');
+});
+test('client transit (no server): bundled HMRL timetable planned on-device; Vizag has no feed', async () => {
+  const fetchImpl = async (u) => ({ ok: true, status: 200, json: async () => JSON.parse(fs.readFileSync(new URL(`../web/${u}`, import.meta.url))) });
+  const wed9 = new Date('2026-10-21T03:30:00Z'); // 09:00 IST
+  const r = await planTransit({ lat: 17.4966, lng: 78.3731 }, { lat: 17.4013, lng: 78.5602 }, { now: wed9, fetchImpl });
+  assert.equal(r.via, 'device'); assert.ok(r.itineraries.length >= 1); assert.match(r.attribution, /Hyderabad Metro Rail/);
+  assert.equal(r.itineraries[0].legs.filter((l) => l.type === 'ride').length, 2);
+  const v = await planTransit(VIZ, RKB, { now: wed9, fetchImpl });
+  assert.equal(v.itineraries.length, 0); assert.equal(v.reason, 'no_feed_covers_trip');
+});
+test('i18n v0.4: every language has every new key; 8 languages flagged for native review', () => {
+  for (const l of LANGS) for (const k of V4_KEYS) assert.ok(STRINGS[l.code][k], `${l.code}.${k}`);
+  for (const l of LANGS.filter((x) => x.code !== 'en')) assert.ok(V4_KEYS.filter((k) => STRINGS[l.code][k] === STRINGS.en[k]).length === 0, `${l.code} untranslated`);
+  assert.deepEqual(V4_NEEDS_REVIEW, ['ta', 'kn', 'ml', 'bn', 'mr', 'gu', 'pa', 'or']);
+});

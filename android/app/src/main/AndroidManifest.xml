@@ -25,6 +25,12 @@
 
         </activity>
 
+        <!-- v0.4 background navigation: location foreground service, started only during active navigation -->
+        <service
+            android:name=".NavLocationService"
+            android:exported="false"
+            android:foregroundServiceType="location" />
+
         <provider
             android:name="androidx.core.content.FileProvider"
             android:authorities="${applicationId}.fileprovider"
@@ -43,6 +49,11 @@
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
     <uses-feature android:name="android.hardware.location.gps" android:required="false" />
+    <!-- v0.4 background navigation: foreground service (type location) with a persistent notification -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_LOCATION" />
+    <!-- Optional "Allow all the time"; requested only when the user taps that button in Settings -->
+    <uses-permission android:name="android.permission.ACCESS_BACKGROUND_LOCATION" />
     <!-- Local notifications: order / payment / delivery updates (runtime prompt on Android 13+) -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <!-- v0.3 voice guidance: Android 11+ package visibility for the system text-to-speech engine -->

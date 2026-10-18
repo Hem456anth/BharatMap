@@ -13,7 +13,7 @@ const PALETTE = {
 export function createMapStyle(ctx) {
   const { map } = ctx;
   const S = {
-    offlineActive: false, auto: false, routes: EMPTY, pois: EMPTY, errors: [],
+    offlineActive: false, auto: false, routes: EMPTY, pois: EMPTY, legs: EMPTY, tolls: EMPTY, errors: [], lowBw: false,
     pref: store.getItem('bm-map-style') || 'auto', // auto | standard | dark
     buildings3d: store.getItem('bm-3d') !== '0',
     transit: store.getItem('bm-transit') === '1',
@@ -34,7 +34,8 @@ export function createMapStyle(ctx) {
     if (wantOffline) {
       try {
         const m = await import('../offline-map.js');
-        style = await m.offlineStyle(ctx.maplibregl, ctx.state.city, ctx.lang(), mapTheme());
+        const c = map.getCenter();
+        style = await m.offlineStyle(ctx.maplibregl, ctx.state.city, ctx.lang(), mapTheme(), { center: { lat: c.lat, lng: c.lng }, regions: ctx.regions });
         offline = true;
       } catch (e) { ctx.toast(`Offline map unavailable: ${e.message}`); }
     }
@@ -70,7 +71,7 @@ export function createMapStyle(ctx) {
     for (const l of map.getStyle().layers) if (l.type === 'fill-extrusion' && !l.id.startsWith('bm-')) map.setLayoutProperty(l.id, 'visibility', 'none');
     if (sc && !map.getLayer('bm-buildings-3d')) {
       map.addLayer({ id: 'bm-buildings-3d', type: 'fill-extrusion', source: sc.source, 'source-layer': sc.buildings, minzoom: 14,
-        layout: { visibility: S.buildings3d ? 'visible' : 'none' },
+        layout: { visibility: S.buildings3d && !S.lowBw ? 'visible' : 'none' },
         paint: { 'fill-extrusion-color': p.building, 'fill-extrusion-height': sc.height, 'fill-extrusion-base': sc.base, 'fill-extrusion-opacity': 0.82 } }, before);
     }
     if (sc && !map.getLayer('bm-transit')) {
@@ -87,6 +88,15 @@ export function createMapStyle(ctx) {
       map.addLayer({ id: 'bm-route', type: 'line', source: 'bm-routes', filter: sel, layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': p.route, 'line-width': 7 } });
       applyDash();
     }
+    // v0.4: transit itinerary legs (line colour from GTFS; walking dashed) and toll plazas on the route.
+    if (!map.getSource('bm-legs')) map.addSource('bm-legs', { type: 'geojson', data: S.legs });
+    if (!map.getLayer('bm-legs-ride')) {
+      map.addLayer({ id: 'bm-legs-ride-casing', type: 'line', source: 'bm-legs', filter: ['==', ['get', 'kind'], 'ride'], layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': p.routeCasing, 'line-width': 10 } });
+      map.addLayer({ id: 'bm-legs-ride', type: 'line', source: 'bm-legs', filter: ['==', ['get', 'kind'], 'ride'], layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': ['coalesce', ['get', 'color'], p.route], 'line-width': 6 } });
+      map.addLayer({ id: 'bm-legs-walk', type: 'line', source: 'bm-legs', filter: ['!=', ['get', 'kind'], 'ride'], layout: { 'line-cap': 'round' }, paint: { 'line-color': p.alt, 'line-width': 4, 'line-dasharray': [0.5, 1.8] } });
+    }
+    if (!map.getSource('bm-tolls')) map.addSource('bm-tolls', { type: 'geojson', data: S.tolls });
+    if (!map.getLayer('bm-tolls')) map.addLayer({ id: 'bm-tolls', type: 'circle', source: 'bm-tolls', paint: { 'circle-radius': 7, 'circle-color': '#B45309', 'circle-stroke-color': p.poiStroke, 'circle-stroke-width': 2.5 } });
     if (!map.getSource('bm-pois')) map.addSource('bm-pois', { type: 'geojson', data: S.pois });
     if (!map.getLayer('bm-pois')) map.addLayer({ id: 'bm-pois', type: 'circle', source: 'bm-pois', paint: { 'circle-radius': ['interpolate', ['linear'], ['zoom'], 11, 4, 16, 8], 'circle-color': ['coalesce', ['get', 'color'], p.poi], 'circle-stroke-color': p.poiStroke, 'circle-stroke-width': 2 } });
     ctx.emit('overlays');
@@ -138,10 +148,23 @@ export function createMapStyle(ctx) {
     get forceOffline() { return S.forceOffline; },
     setPref(v) { S.pref = v; store.setItem('bm-map-style', v); apply({ reason: 'pref' }); },
     setForceOffline(v) { S.forceOffline = !!v; store.setItem('mapos-offline', v ? '1' : '0'); if (!v) S.auto = false; apply({ reason: 'force' }); },
-    set3D(v) { S.buildings3d = !!v; store.setItem('bm-3d', v ? '1' : '0'); if (map.getLayer('bm-buildings-3d')) map.setLayoutProperty('bm-buildings-3d', 'visibility', v ? 'visible' : 'none'); },
+    set3D(v) { S.buildings3d = !!v; store.setItem('bm-3d', v ? '1' : '0'); if (map.getLayer('bm-buildings-3d')) map.setLayoutProperty('bm-buildings-3d', 'visibility', v && !S.lowBw ? 'visible' : 'none'); },
     setTransit(v) { S.transit = !!v; store.setItem('bm-transit', v ? '1' : '0'); if (map.getLayer('bm-transit')) map.setLayoutProperty('bm-transit', 'visibility', v ? 'visible' : 'none'); },
     setRoutes(fc) { S.routes = fc || EMPTY; map.getSource('bm-routes')?.setData(S.routes); applyDash(); },
     setPois(fc) { S.pois = fc || EMPTY; map.getSource('bm-pois')?.setData(S.pois); },
+    setLegs(fc) { S.legs = fc || EMPTY; map.getSource('bm-legs')?.setData(S.legs); },
+    setTolls(fc) { S.tolls = fc || EMPTY; map.getSource('bm-tolls')?.setData(S.tolls); },
+    get legs() { return S.legs; },
+    get tolls() { return S.tolls; },
+    get lowBandwidth() { return S.lowBw; },
+    /** Apply the low-bandwidth policy (web/lib/bandwidth.js): zoom cap, no low-zoom prefetch, no 3D. */
+    applyBandwidth(policy) {
+      S.lowBw = !!policy.active;
+      map.setMaxZoom(policy.maxZoom);
+      if (typeof map.setPrefetchZoomDelta === 'function') map.setPrefetchZoomDelta(policy.prefetchZoomDelta);
+      if (map.getLayer('bm-buildings-3d')) map.setLayoutProperty('bm-buildings-3d', 'visibility', policy.allow3D && S.buildings3d ? 'visible' : 'none');
+      if (!policy.allow3D && map.getPitch() > 0) ctx.cam?.ease?.({ pitch: 0, duration: 300 });
+    },
     themeChanged() { if (S.pref === 'auto') apply({ reason: 'theme' }); },
     mapTheme,
   };
