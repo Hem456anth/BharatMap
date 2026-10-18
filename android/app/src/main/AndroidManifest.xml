@@ -23,6 +23,9 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
 
+            <!-- v0.5 launcher shortcuts (Home, Work, Petrol nearby, Offline maps) -->
+            <meta-data android:name="android.app.shortcuts" android:resource="@xml/shortcuts" />
+
             <!-- v0.5 deep links: geo: URIs from other apps (RFC 5870 / geo:0,0?q=lat,lng(label)) -->
             <intent-filter>
                 <action android:name="android.intent.action.VIEW" />

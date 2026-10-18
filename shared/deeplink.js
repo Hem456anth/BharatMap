@@ -24,6 +24,10 @@ export function parseDeepLink(input) {
   const name = clean(p.get('name') || p.get('q') || '');
   if (p.get('list')) { const list = decodeList(p.get('list')); return list ? { kind: 'list', ...list } : null; }
   if (p.get('live') && /^[A-Za-z0-9_-]{6,32}$/.test(p.get('live'))) return { kind: 'live', id: p.get('live') };
+  // Launcher shortcuts (android/app/src/main/res/xml/shortcuts.xml)
+  if (u.protocol === 'bharatmap:' && host === 'saved' && ['home', 'work'].includes(p.get('which'))) return { kind: 'saved', which: p.get('which') };
+  if (u.protocol === 'bharatmap:' && host === 'category' && /^[a-z_]{2,20}$/.test(p.get('id') || '')) return { kind: 'category', id: p.get('id') };
+  if (u.protocol === 'bharatmap:' && host === 'offline') return { kind: 'offline' };
   if (host === 'list' && p.get('d')) { const list = decodeList(p.get('d')); return list ? { kind: 'list', ...list } : null; }
   if (host === 'live' && /^[A-Za-z0-9_-]{6,32}$/.test(p.get('id') || '')) return { kind: 'live', id: p.get('id') };
   if ((host === 'directions' || p.get('dir') === '1') && valid(lat, lng)) {

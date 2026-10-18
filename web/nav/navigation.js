@@ -18,6 +18,7 @@ import { isComplexJunction, junctionSvg } from './junction.js';
 import { projectOnRoute } from './tracker.js';
 import { navStyleFor } from '../shared/sun.js';
 import { store } from '../shared/storage.js';
+import { esc } from '../ui/search.js';
 import { landmarkNear, indexFor } from '../lib/offline-index.js';
 
 const SIM_SPEED_KMH = { drive: 32, two: 30, bike: 15, walk: 5 };
@@ -44,6 +45,7 @@ export function initNavigation(ctx) {
   function start(route, opts) {
     if (N.active) end({ silent: true });
     Object.assign(N, { active: true, route, opts, tracker: createTracker(route), lastStep: -1, nowSaid: -1, overview: false, rerouting: false, arrived: false, fixes: 0, last: null,
+      startedAt: Date.now(), travelledM: 0, maxKmh: 0,
       speedSegs: null, speedSource: null, overspeed: createOverspeedMonitor(), lastFixAt: Date.now(), gpsLost: false, prevFix: null, lanesAlong: null, approachCue: -1 });
     prepareRoute(route);
     applyNavTheme();
@@ -72,7 +74,7 @@ export function initNavigation(ctx) {
     renderLimit(null);
     if (!N.speedSegs && ['drive', 'two'].includes(N.opts.mode)) {
       const r0 = route;
-      getSpeedLimits(route, { mode: N.opts.mode }).then((res) => { if (N.active && N.route === r0 && res.segments) { N.speedSegs = res.segments; N.speedSource = res.source; ctx.emit('speed-limits', res); if (N.state) render(N.state); } }).catch(() => {});
+      getSpeedLimits(route, { mode: N.opts.mode }).then((res) => { if (N.active && N.route === r0 && res.segments) { N.speedSegs = res.segments; N.speedSource = res.source; ctx.emit('speed-limits', res); if (N.state && !N.arrived) render(N.state); } }).catch(() => {});
     }
     const loc = route.geometry.coordinates[0];
     indexFor({ lng: loc[0], lat: loc[1] }).then((ix) => { lmIndex = ix; }).catch(() => {});
@@ -93,6 +95,7 @@ export function initNavigation(ctx) {
     box.classList.toggle('over', !!o.over); $('navLimit').classList.toggle('over', !!o.over);
     if (o.chime) { sounds.play('overspeed'); $('navLive').textContent = ctx.tf('overspeed_live', { n: limit }); ctx.emit('overspeed', { speed: v, limit }); }
     N.speedNow = v; N.limitNow = limit; N.overNow = !!o.over;
+    if (Number.isFinite(v)) N.maxKmh = Math.max(N.maxKmh, v);
   }
   function renderLanes(st) {
     const el = $('navLanes');
@@ -163,6 +166,7 @@ export function initNavigation(ctx) {
     N.lastFixAt = Date.now();
     if (N.gpsLost) { N.gpsLost = false; $('navGps').hidden = true; sounds.play('gps_back'); $('navLive').textContent = ctx.t('gps_back'); }
     if (!fix.ts) fix.ts = Date.now();
+    if (N.last) { const dl = Math.hypot((fix.lng - N.last.lng) * 111320 * Math.cos((fix.lat * Math.PI) / 180), (fix.lat - N.last.lat) * 110574); if (dl < 500) N.travelledM += dl; }
     if (!Number.isFinite(fix.heading) && N.last) fix.heading = bearingDeg([N.last.lng, N.last.lat], [fix.lng, fix.lat]);
     N.last = fix;
     if (!fix.simulated) ctx.myLoc = fix;
@@ -233,7 +237,14 @@ export function initNavigation(ctx) {
     $('navNext').hidden = true;
     say(buildInstruction({ type: 'arrive' }, ctx.lang()), buildInstruction({ type: 'arrive' }, 'en'));
     $('navEnd').textContent = ctx.t('done');
-    ctx.emit('nav-arrived', {});
+    // v0.5 arrival summary: trip time, distance, average speed, and "report a problem on this trip" (OSM note).
+    const mins = Math.max(1, Math.round((Date.now() - N.startedAt) / 60000));
+    const km = N.travelledM / 1000; const avg = (Date.now() - N.startedAt) > 0 ? km / ((Date.now() - N.startedAt) / 3600000) : 0;
+    const dest = N.opts.dest;
+    $('navArrival').innerHTML = `<b>${esc(ctx.t('trip_summary'))}</b><span>${esc(ctx.tf('trip_stats', { min: mins, km: km.toFixed(1), avg: Math.round(avg) }))}${N.opts.simulate ? ` · ${esc(ctx.t('sim_badge'))}` : ''}</span><button class="link" id="navReport" type="button">${esc(ctx.t('trip_report'))}</button>`;
+    $('navArrival').hidden = false;
+    $('navReport').onclick = () => ctx.report.open({ lat: dest?.lat ?? N.last?.lat, lng: dest?.lng ?? N.last?.lng, name: dest?.label });
+    ctx.emit('nav-arrived', { minutes: mins, km, avgKmh: avg });
   }
   function stopSources() { clearInterval(N.sim); N.sim = null; clearInterval(N.watchdog); N.watchdog = null; N.stop?.(); N.stop = null; }
   function end({ silent = false } = {}) {
@@ -243,12 +254,12 @@ export function initNavigation(ctx) {
     document.documentElement.classList.remove('navigating');
     delete document.documentElement.dataset.navTheme;
     ctx.style.setDriving?.(null);
-    $('navLanes').hidden = true; $('navJunction').hidden = true; $('navGps').hidden = true; $('navLimit').hidden = true;
+    $('navLanes').hidden = true; $('navJunction').hidden = true; $('navGps').hidden = true; $('navLimit').hidden = true; $('navArrival').hidden = true;
     $('nav').hidden = true; ctx.sheet.hide(false);
     $('navEnd').textContent = ctx.t('nav_end');
     if (!N.last?.simulated && !ctx.myLoc) ctx.controls.hidePuck();
     if (N.opts?.simulate) ctx.controls.hidePuck();
-    ctx.cam.ease({ pitch: 0, bearing: 0, duration: 600, padding: ctx.cam.padding() });
+    ctx.cam.flatten({ duration: 600, padding: ctx.cam.padding() });
     if (!silent) { ctx.directions.redraw(); ctx.emit('nav', { active: false }); }
   }
 

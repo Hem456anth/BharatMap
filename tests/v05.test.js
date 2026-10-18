@@ -157,6 +157,13 @@ test('deep links: geo: URIs, bharatmap://, https share links, search, directions
   assert.equal(parseDeepLink('bharatmap://place?lat=17.7&lon=83.3&name=<b>x</b>').name, 'bx/b');
   assert.deepEqual(parseDeepLink('bharatmap://live?id=AbC123xyz'), { kind: 'live', id: 'AbC123xyz' });
   assert.equal(parseDeepLink('bharatmap://live?id=../../x'), null);
+  // launcher shortcuts
+  assert.deepEqual(parseDeepLink('bharatmap://saved?which=home'), { kind: 'saved', which: 'home' });
+  assert.deepEqual(parseDeepLink('bharatmap://category?id=fuel'), { kind: 'category', id: 'fuel' });
+  assert.deepEqual(parseDeepLink('bharatmap://offline'), { kind: 'offline' });
+  assert.equal(parseDeepLink('bharatmap://saved?which=mars'), null);
+  const sc = fs.readFileSync(new URL('../android/app/src/main/res/xml/shortcuts.xml', import.meta.url), 'utf8');
+  for (const m of sc.matchAll(/android:data="([^"]+)"/g)) assert.ok(parseDeepLink(m[1]), m[1]);
 });
 test('deep links: share links (geo + app + https) and list links round-trip (Unicode names)', () => {
   const s = buildShareLinks({ lat: 17.7140001, lng: 83.323, name: 'RK Beach' }, { webBase: 'https://bm.example.org/' });

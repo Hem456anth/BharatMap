@@ -1,4 +1,51 @@
-# Audit — Bharat Map v0.4 (19 Oct 2026) — final functionality audit
+# Audit — Bharat Map v0.5 (19 Oct 2026) — final functionality audit
+
+Legend: ✅ **Implemented** (working, tested) · 🟡 **Prototype** (works, but partial / simulated / estimate / not device-tested) ·
+🔌 **Needs external dependency** (code is in place; the named dependency must be supplied) · ⛔ Not built.
+Every feature from v0.1–v0.4 below keeps its status unless a v0.5 row changes it.
+
+### v0.5 features
+| Area | Feature | Status | Evidence · dependency |
+|---|---|---|---|
+| Navigation | **Lane guidance**: lanes parsed from OSRM `intersections[].lanes` (indications + valid) and Valhalla `maneuver.lanes` bitmasks; lane strip under the banner (valid lanes bright, others dimmed; original SVG arrows); shown for the next lane-tagged intersection within 350 m | ✅ | `shared/lanes.js`; unit (real Bengaluru fixture: 2 of 3 lanes valid at the Hosur Road fork) + E2E desktop/mobile; `v05-*-02-lanes.png`. Coverage depends on OSM `turn:lanes` tagging, which is sparse in India |
+| Navigation | **Speed-limit sign + overspeed**: GPS speed (or derived from fixes); limit from route annotations (self-hosted OSRM `OSRM_MAXSPEED=1`), else Valhalla `/trace_attributes` `edge.speed_limit`, else Overpass `maxspeed` tags along the corridor; sign only when a numeric limit is known; > 10 % over for 2 s → chime once + red speed badge, re-arms after 10 s at/below the limit | ✅ | `shared/maxspeed.js`, `web/services/speed.js`, `/api/v1/speed-limits`; unit (`"50"`, `"50 mph"`, `"IN:urban"` → unknown, lists, overspeed timing) + E2E (limit 80 shown, overspeed chime, hidden on the untagged stretch); `v05-*-01-speed-junction.png`. FOSSGIS OSRM rejects `annotations=maxspeed` |
+| Navigation | `IN:urban` / `IN:rural` implicit limits | ⛔ by design | No single national value (state- and vehicle-specific notifications); never converted into a number |
+| Navigation | **Sounds** (WebAudio, generated in code): approaching maneuver, reroute, arrival, overspeed, GPS lost / regained; honour the mute toggle | ✅ / 🟡 | `web/nav/sounds.js`; unit (cues, mute) + E2E (cue log). Audible output not verified on a device (headless has no audio) |
+| Navigation | **GPS lost / regained**: no fix for 12 s during GPS navigation → banner + sound; next fix → regained | ✅ / 🟡 | watchdog in `navigation.js`; not device-tested |
+| Navigation | **Day/night driving style**: dedicated high-contrast style (wider route with strong casing, amber route at night, POI symbols hidden), switched by NOAA sunrise/sunset at the user's position; override auto/day/night in Settings and the nav bar | ✅ | `shared/sun.js` (pure, unit-tested against published Hyderabad/Delhi times and polar cases) + E2E forced night; `v05-*-03-night-nav.png` |
+| Navigation | **Junction view**: enlarged schematic SVG for roundabouts, forks, ramps, merges, sharp/U-turns and 5+-way junctions, drawn heading-up from the route geometry + OSRM intersection bearings (no imagery) | ✅ / 🟡 | `web/nav/junction.js`; unit + E2E. Schematic only: lane-level geometry is not in OSM |
+| Navigation | **Arrival summary**: trip time, distance, average speed; "Report a problem on this trip" (OSM note) | ✅ | E2E `v05-desktop-15-arrival-summary.png` |
+| Privacy | **Permission explainers** before each OS prompt — location (precise/approximate), background location, notifications, microphone — shown only when the OS would prompt; denial dialog with "Open settings" (Android `ACTION_APPLICATION_DETAILS_SETTINGS` via `BackgroundNav.openAppSettings`) or browser guidance | ✅ / 🟡 | `web/ui/permissions.js`; E2E (rationale, "Not now" asks nothing, denial help); `v05-*-11/12`. Native prompts not device-tested |
+| Privacy | **Privacy dashboard** (DPDP Act 2023: notice, access, erasure): groups of on-device data with sizes, caches, permission states, what is sent to which service; export JSON (sign-in token excluded); delete all | ✅ | `web/ui/privacy.js`, `web/lib/privacy-model.js`; unit + E2E (download parsed, delete verified); `v05-desktop-10-privacy.png` |
+| Community | **Report a map problem** → anonymous OpenStreetMap note (`POST /api/0.6/notes`), categories wrong road / missing place / closed road / wrong name, confirmation with the note id, device rate limit (1/min, 3/h) | ✅ / 🔌 | `shared/community.js`, `web/ui/report.js`; unit (payload, rate limit) + E2E with the **OSM API mocked** (tests never create real notes). Live use posts to api.openstreetmap.org (public, anonymous) |
+| Community | **Incident reports** (pothole, waterlogging, closure, police check), 2-hour expiry, "still there" / "gone" votes → confidence low/medium/high, labelled "Community report, not verified", on the map | ✅ / 🔌 | Server: migration `004_community_live.sql`, `server/community.js`, `/api/v1/incidents` (API tests: expiry, votes, one vote per client, rate limit). Without a server: kept on the device only, labelled so (E2E). Shared reports **need a deployed Bharat Map server** |
+| Links | **Deep links**: `geo:` (incl. `geo:0,0?q=lat,lng(label)`), `bharatmap://place|directions|search|list|live|saved|category|offline`, web `?lat=&lon=&name=` / `?list=` / `?live=`; Android intent filters + Capacitor App `getLaunchUrl` / `appUrlOpen` | ✅ / 🟡 | `shared/deeplink.js` (unit), `web/ui/links.js` (E2E). Android intent delivery not device-tested |
+| Links | **Share a place** → geo: URI + bharatmap:// link (+ https link when the web app is hosted over https) | ✅ | unit (round-trip) |
+| Links | Verified https App Links (`autoVerify`) | 🔌 | **Needs a Bharat Map web domain** with `assetlinks.json` |
+| Android | **Launcher shortcuts**: Home, Work, Petrol nearby, Offline maps (static `shortcuts.xml`, original vector icons) | ✅ / 🟡 | links unit-tested; not device-tested |
+| Home | **Commute card**: Home/Work drive time from your location via routing, "Typical drive time … No live traffic" | ✅ | E2E `v05-desktop-08-commute.png`; live traffic 🔌 (licensed partner) |
+| Routing | **Multi-stop routes** (up to 5 stops; OSRM multi-coordinate, Valhalla multi-location, server `via=`), stop rows with remove, "Add stop" on place cards, waypoint instruction | ✅ | unit + API (`via=`) + E2E (3-point request) |
+| Offline | **11 bundled offline cities** (Visakhapatnam, Hyderabad, Vijayawada, Guntur, Tirupati at z15/z14; Bengaluru, Chennai, Mumbai, Delhi NCR, Kolkata, Pune at z14) from the Protomaps 2026-10-17 build via `pmtiles extract`; offline map picks the bundled city covering the map centre | ✅ | `web/offline/regions.json`; ~90 MB of PMTiles in the APK; full Indic glyph PBFs kept |
+| Offline | **Offline place index** for every bundled city (68 k real OSM names: POIs + localities, from the bundled tiles by `scripts/build-poi-index.mjs`): type-ahead "On device" suggestions, search fallback when Nominatim is unreachable, landmarks for instructions | ✅ | unit (Kailasagiri, King George Hospital) + E2E offline; `v05-desktop-09-offline-search.png` |
+| Search | **Voice search**: Android speech-recognition plugin (`@capacitor-community/speech-recognition`, system recogniser, `RECORD_AUDIO` asked on first tap after the rationale); Web Speech API in browsers; mic hidden when unavailable | ✅ / 🟡 | E2E with a stubbed recogniser (`en-IN`); Android path not device-tested |
+| Sharing | **Live location sharing** via the server (`/api/v1/live`: 5–240 min, secret-protected updates every 10 s, public read, delete; viewer marker polls every 10 s) | ✅ / 🔌 | API tests + E2E (server mode). **Needs a deployed server** for real use; Android background updates only while the app runs |
+| Sharing | **Favourites list sharing** (list encoded inside the link, ≤ 50 places; import asks first) | ✅ | unit + E2E |
+| i18n | v0.5 strings in en (complete) and hi / te (in-house, **need native review**); other 8 languages fall back to English for v0.5 keys | 🟡 | unit |
+| Size | APK grew from 29.2 MB (v0.4.8) to ~98 MB (v0.5.9) by design: 9 more bundled cities + place indexes; CI prints a size breakdown but never fails on size | ✅ | CI step "APK size report" |
+
+### Tests (v0.5)
+- `npm test`: **120 / 120 pass** (95 v0.1–v0.4 + 25 new: `tests/v05.test.js` 20, `tests/v05-api.test.js` 5).
+- Chromium E2E (`tests/e2e.mjs`): **91 / 91 pass** — desktop 52, mobile 39 (v0.3 regression 43, v0.4 regression 21, v0.5 new 27), 0 console errors; third-party services from real captured fixtures / mocks. Details: `docs/TEST-REPORT.md`.
+
+### Remaining gaps (v0.5)
+- Live traffic, toll fees, live transit arrivals: licensed data partners (unchanged).
+- Offline turn-by-turn routing for bundled cities (still a labelled straight-line estimate).
+- Device testing: Android permission prompts, intent delivery, launcher shortcuts, TTS/WebAudio output, speech recognition, background navigation.
+- Lane and speed-limit coverage is only as good as OSM tagging in India; implicit `IN:*` limits are deliberately not shown.
+- Native-speaker review of hi/te v0.5 strings and the other 8 languages.
+
+
+# Audit — Bharat Map v0.4 (19 Oct 2026)
 
 Legend: ✅ **Implemented** (working, tested) · 🟡 **Prototype** (works, but partial / simulated / estimate / not device-tested) ·
 🔌 **Needs external dependency** (code is in place; the named dependency must be supplied) · ⛔ Not built

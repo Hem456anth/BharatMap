@@ -2,6 +2,7 @@
 // Overpass / OSRM / Nominatim / Photon are answered from real captured fixtures (tests/fixtures).
 // Every other third-party request is aborted, so a test never silently depends on the network.
 import fs from 'node:fs';
+import { decodePolyline } from '../shared/polyline.js';
 
 const fx = (n) => fs.readFileSync(new URL(`./fixtures/${n}.json`, import.meta.url), 'utf8');
 const CAT_FIXTURE = [
@@ -30,7 +31,13 @@ export async function installNetworkFixtures(ctx, { log = [], fail = {} } = {}) 
   // FOSSGIS Valhalla (two-wheeler motor_scooter; avoid tolls/highways) — real captured response.
   await ctx.route(/^https:\/\/valhalla1\.openstreetmap\.de\//, (route) => {
     const u = decodeURIComponent(route.request().url()); const costing = (u.match(/"costing":"(\w+)"/) || [])[1];
-    if (/trace_attributes/.test(u)) { log.push('valhalla trace_attributes'); return fail.valhalla ? route.abort('internetdisconnected') : json(route, fx('valhalla-trace-silkboard-ecity')); }
+    if (/trace_attributes/.test(u)) {
+      log.push('valhalla trace_attributes');
+      if (fail.valhalla) return route.abort('internetdisconnected');
+      // Only the captured Bengaluru route has a real trace fixture; elsewhere answer "no edges" (limits stay unknown).
+      let first = null; try { first = decodePolyline(JSON.parse(u.slice(u.indexOf('json=') + 5)).encoded_polyline, 6)[0]; } catch { /* ignore */ }
+      return json(route, first && first[0] > 77 && first[0] < 78 ? fx('valhalla-trace-silkboard-ecity') : '{"edges":[],"units":"kilometers"}');
+    }
     log.push(`valhalla ${costing}`);
     if (fail.routing || fail.valhalla) return route.abort('internetdisconnected');
     return json(route, fx('valhalla-two-dwarakanagar-rkbeach'));

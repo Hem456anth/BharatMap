@@ -1,15 +1,30 @@
-# Bharat Map — v0.4 (map-first app + own map-services backend, Android + web)
+# Bharat Map — v0.5 (map-first app + own map-services backend, Android + web)
 
 An India-first map app with an original identity: a calm, full-screen map with a floating search pill and a
 three-height bottom sheet, real places from OpenStreetMap, route options for drive / two-wheeler / cycle / walk,
-turn-by-turn voice navigation with **landmark-led instructions in English, Hindi and Telugu**, offline maps for
-Visakhapatnam and Hyderabad, and a **Shop** area for the v0.2 commerce flow (product search → seller → order → rider
+turn-by-turn voice navigation with **landmark-led instructions in English, Hindi and Telugu**, lane guidance, speed-limit
+warnings and a night driving style, offline maps for **11 Indian cities** with an on-device place index, and a **Shop** area for the v0.2 commerce flow (product search → seller → order → rider
 tracking, seller and admin dashboards).
 
 > Status: **working prototype**. Map, search, places, routing and navigation use real open data (OpenStreetMap via
 > Overpass, Nominatim, Photon, OSRM). Sellers, products and riders in Shop are **fictional demo data**. Live traffic and live
 > transit arrivals are **not** included (they need licensed feeds); metro journeys use **scheduled** HMRL GTFS times. See `docs/AUDIT.md` for implemented vs prototype vs
 > needs-paid-API.
+
+## New in v0.5
+| Area | What you get |
+|---|---|
+| Lane guidance | Lane strip under the maneuver banner from OSRM `intersections[].lanes` / Valhalla lanes (valid lanes highlighted, original SVG arrows) |
+| Speed limit + overspeed | Speed from GPS; limit from OSM `maxspeed` via Valhalla `trace_attributes` (or a self-hosted OSRM's `annotations=maxspeed`, or Overpass along the corridor). Sign only when a number is known; > 10 % over for 2 s → gentle chime + red badge |
+| Navigation sounds | Approaching maneuver, reroute, arrival, overspeed, GPS lost/regained — synthesised with WebAudio, muted with voice |
+| Day / night driving | High-contrast navigation style; switches at sunrise/sunset (NOAA algorithm, unit-tested) with Auto / Day / Night override |
+| Junction view | Enlarged schematic diagram (original SVG from route geometry + junction bearings) before roundabouts, forks, ramps and sharp turns |
+| Permissions & privacy | Rationale before each OS prompt (location, background, notifications, microphone), denial help with “Open settings”, **Privacy dashboard** (what is stored, export JSON, delete all — DPDP Act 2023) |
+| Community | **Report a map problem** → anonymous OpenStreetMap note (4 categories, rate-limited). **Road incidents** (pothole, waterlogging, closure, police check) that expire after 2 h, with votes and confidence, labelled “Community report, not verified” (shared through the server, device-only otherwise) |
+| Deep links | `geo:` URIs, `bharatmap://place|directions|search|list|live`, web `?lat=&lon=`; Android intent filters + App plugin; share links (geo + app + https); launcher shortcuts (Home, Work, Petrol nearby, Offline maps) |
+| Home & routing | Commute card (Home/Work drive time, “no live traffic”), **multi-stop routes** (up to 5 stops), arrival summary with “report a problem on this trip” |
+| Offline, bigger | **11 bundled cities** (Visakhapatnam, Hyderabad, Vijayawada, Guntur, Tirupati, Bengaluru, Chennai, Mumbai, Delhi NCR, Kolkata, Pune) + an **offline place index** of 68 k real OSM names built from the bundled tiles (`scripts/build-poi-index.mjs`); full Indic glyphs kept. APK ≈ 98 MB |
+| Voice, live, lists | Voice search (Android speech recognition / Web Speech), **live location sharing** via the server (time-limited, secret-protected), favourites lists shared as links |
 
 ## New in v0.4
 | Area | What you get |
@@ -48,7 +63,7 @@ Requirements: Node.js ≥ 22.13 (uses built-in `node:sqlite`, no native builds).
 npm install
 npm run migrate         # creates data/mapos.db and seeds demo data
 npm start               # http://localhost:8080
-npm test                # 95 unit + API integration tests
+npm test                # 120 unit + API integration tests
 node tests/e2e.mjs      # Chromium E2E (needs the server running and Chromium at /usr/bin/chromium or $CHROME)
 npm run build:demo      # dist/india-mapos-demo.html — one-file serverless demo
 ```
@@ -60,15 +75,16 @@ Demo logins (password `demo1234`, change via `DEMO_PASSWORD`): customer@mapos.de
 web/                 client (MapLibre GL, vendored; no runtime CDN)
   shell.js           wires the map-first UI          app.js   map + Shop (commerce) + auth
   ui/                sheet.js (+ sheet-math.js), search.js, place.js, directions.js, saved.js, panels.js (layers/offline/settings), controls.js, icons.js
-  nav/               navigation.js (UI), tracker.js (progress/off-route), maneuver.js (text + landmarks), voice.js
+  nav/               navigation.js (UI), tracker.js (progress/off-route), maneuver.js (text + landmarks), voice.js, junction.js, sounds.js
+  ui/ (v0.5)         permissions.js, privacy.js, report.js, links.js (deep links, list + live sharing), voice-search.js
   services/          overpass.js, routing.js, geocode.js, net.js (timeouts, cache, rate spacing)
   map/               style.js (online/offline, light/dark, overlays, auto-offline), camera.js (reduced motion)
-  lib/               opening-hours.js, saved-model.js (pure, unit-tested)
-  offline/           PMTiles regions, fonts, light/dark sprites
+  lib/               opening-hours.js, saved-model.js, offline-index.js, privacy-model.js (pure, unit-tested)
+  offline/           PMTiles for 11 cities, pois/ place indexes, fonts (full Indic glyphs), light/dark sprites
 server/              Express API (auth, search, orders, SSE tracking, seller/admin, saved places, tile proxy)
   api-v1.js          /api/v1 map services        providers/  upstream chains     lib/  cache, rate limit, upstream
-  transit/           GTFS loader + bundled HMRL feed
-shared/              isomorphic core (search, address/DIGIPIN, logistics, i18n, CSP)
+  transit/           GTFS loader + bundled HMRL feed      community.js  incidents + live location (v0.5)
+shared/              isomorphic core (search, address/DIGIPIN, logistics, i18n, CSP, lanes, maxspeed, sun, deeplink, community)
 tests/               unit + API (node:test), Chromium E2E with fixture-backed network (tests/fixtures = real captured responses)
 android/             Capacitor 7 project (com.indiamapos.app); CI builds the APK
 docs/                ARCHITECTURE, API, AUDIT, TEST-REPORT, ANDROID, DEPLOYMENT, screenshots
@@ -76,9 +92,10 @@ docs/                ARCHITECTURE, API, AUDIT, TEST-REPORT, ANDROID, DEPLOYMENT,
 
 ## Android app
 Capacitor 7, package `com.indiamapos.app`, built by GitHub Actions on every push to `main` and published as a Release
-(`Bharat Map 0.4.N`, asset `bharat-map-0.4.N-debug.apk`). Native plugins: Geolocation (watchPosition for navigation),
-Share, App (hardware back), Local Notifications, Text-to-Speech (community plugin) for voice guidance, and the
-own `BackgroundNav` plugin (foreground service for navigation with the screen off). With no backend
+(`Bharat Map 0.5.N`, asset `bharat-map-0.5.N-debug.apk`, ≈ 98 MB with 11 offline cities). Native plugins: Geolocation (watchPosition for navigation),
+Share, App (hardware back + deep links), Local Notifications, Text-to-Speech and Speech Recognition (community plugins), and the
+own `BackgroundNav` plugin (foreground service for navigation with the screen off; opens app settings after a permission denial).
+Intent filters for `geo:` and `bharatmap://`, and four launcher shortcuts. With no backend
 configured the app runs fully on-device (Shop uses fictional demo data). Details: [docs/ANDROID.md](docs/ANDROID.md).
 
 ## Docs
@@ -87,7 +104,7 @@ configured the app runs fully on-device (Shop uses fictional demo data). Details
 
 ## Attribution & licences
 Map data © OpenStreetMap contributors (ODbL). Online tiles: OpenFreeMap / OpenMapTiles. Offline tiles: Protomaps basemap
-(OSM). Routing: OSRM and Valhalla on FOSSGIS servers (routing.openstreetmap.de, valhalla1.openstreetmap.de) or self-hosted.
+(OSM). Map problems are reported as public OpenStreetMap notes. Routing: OSRM and Valhalla on FOSSGIS servers (routing.openstreetmap.de, valhalla1.openstreetmap.de) or self-hosted.
 Transit: *Contains data provided by Hyderabad Metro Rail Ltd.* (HMRL GTFS, HMRL open-data terms). EV: Open Charge Map (CC BY 4.0) when enabled. Geocoding: Nominatim, Photon (komoot). Rendering:
 MapLibre GL JS (BSD-3). Fonts: Noto (OFL). Icons, colours and UI are original to this project (clean-room; no third-party
 brand assets).

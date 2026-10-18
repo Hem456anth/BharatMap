@@ -36,6 +36,8 @@ const shot4 = (page, name) => page.screenshot({ path: `${OUT}/v04-${name}.png` }
 const detent = (page) => page.getAttribute('#sheet', 'data-detent');
 const view = (page) => page.evaluate(() => window.__bm?.ctx.views.current);
 const waitView = (page, v, timeout = 15000) => page.waitForFunction((x) => window.__bm?.ctx.views.current === x, v, { timeout });
+// Deterministic camera waits: the map's own state, not a fixed sleep (CI renders with SwiftShader and is slower).
+const waitFlat = (page, timeout = 10000) => page.waitForFunction(() => { const m = window.__bm.ctx.map; return !m.isMoving() && m.getPitch() < 1 && Math.abs(m.getBearing()) < 1; }, null, { timeout });
 async function home(page) { await page.evaluate(() => { window.__bm.ctx.views.show('home', { detent: 'half' }); }); await page.waitForTimeout(300); }
 async function boot(page) {
   await page.goto(BASE, { waitUntil: 'domcontentloaded' });
@@ -215,7 +217,11 @@ for (const vp of [{ name: 'desktop', width: 1366, height: 820 }, { name: 'mobile
       await page.click('#dirSim');
       await page.waitForFunction(() => window.__spoken.some((s) => s.lang === 'te-IN'), null, { timeout: 10000 });
       await shot(page, 'desktop-11-nav-telugu');
+      // Regression (CI v0.5.9): another camera move right after navigation ends used to cut the reset short and
+      // leave the map tilted. Interrupt the reset on purpose; the map must still end north-up and flat.
       await page.click('#navEnd');
+      await page.evaluate(() => { const c = window.__bm.ctx; const ctr = c.map.getCenter(); c.cam.fly({ center: [ctr.lng + 0.002, ctr.lat], zoom: 15 }); });
+      await waitFlat(page);
       await setLang(page, 'en');
     });
     await step('desktop: right-click drops a pin → reverse geocode (Nominatim fixture) → place card', async () => {
@@ -242,12 +248,13 @@ for (const vp of [{ name: 'desktop', width: 1366, height: 820 }, { name: 'mobile
       assert(await page.evaluate(() => window.__bm.ctx.map.getLayoutProperty('bm-transit', 'visibility')) === 'visible', 'transit layer');
       await page.check('[data-ov=ev]');
       await page.waitForFunction(() => window.__bm.ctx.style.pois.features.length > 0, null, { timeout: 10000 });
+      await waitFlat(page); // navigation ended earlier in this journey: the map is back to north-up and flat
       await page.click('#tdBtn');
-      await page.waitForTimeout(1500);
+      await page.waitForFunction(() => !window.__bm.ctx.map.isMoving() && window.__bm.ctx.map.getPitch() > 40, null, { timeout: 10000 }).catch(() => {});
       assert(await page.evaluate(() => window.__bm.ctx.map.getPitch()) > 40, 'pitched');
       assert(await page.isVisible('#compassBtn'), 'compass visible when tilted');
       await shot(page, 'desktop-13-layers-3d');
-      await page.click('#compassBtn'); await page.waitForTimeout(900);
+      await page.click('#compassBtn'); await waitFlat(page).catch(() => {});
       assert(await page.evaluate(() => window.__bm.ctx.map.getPitch()) < 1, 'compass reset');
       await page.uncheck('[data-ov=ev]'); await page.uncheck('#lyrTransit');
     });
@@ -716,6 +723,21 @@ for (const vp of [{ name: 'desktop', width: 1366, height: 820 }, { name: 'mobile
       await page.waitForFunction(() => /\d+ min/.test(document.getElementById('commute').textContent), null, { timeout: 15000 });
       assert(/No live traffic/.test(await page.textContent('#commute')), 'label');
       await shot5(page, 'desktop-08-commute');
+    });
+    await step('v05 desktop: launcher shortcut link (petrol nearby) + arrival summary with "report a problem on this trip"', async () => {
+      await page.evaluate(() => { window.__bm.ctx.nav.end(); window.__bm.ctx.links.handle('bharatmap://category?id=fuel'); });
+      await waitView(page, 'results');
+      await page.evaluate(() => window.__bm.ctx.directions.open({ lat: 17.714, lng: 83.323, name: 'RK Beach' }, { mode: 'drive', from: { lat: 17.7289, lng: 83.305, name: 'Dwaraka Nagar' } }));
+      await page.waitForSelector('#dirStart', { timeout: 15000 });
+      await page.evaluate(() => { const c = window.__bm.ctx; const r = c.directions.state.result.routes[0]; c.nav.setSimSpeedKmh(60); c.nav.start(r, { mode: 'drive', dest: c.directions.state.to, simulate: true, simStartM: Math.max(0, r.distance_m - 600) }); });
+      await page.waitForFunction(() => !document.getElementById('navArrival').hidden, null, { timeout: 30000 });
+      await page.waitForTimeout(1500);
+      assert(/arrived/.test(await page.textContent('#navInstr')) && await page.isHidden('#navNext'), 'banner shows arrival');
+      assert(/Trip summary/.test(await page.textContent('#navArrival')) && /km\/h/.test(await page.textContent('#navArrival')), 'summary');
+      assert((await page.evaluate(() => window.__bm.ctx.nav.sounds.log)).includes('arrival'), 'arrival sound');
+      await shot5(page, 'desktop-15-arrival-summary');
+      await page.click('#navReport'); await page.waitForSelector('#reportDlg[open]'); await page.click('#reportCancel');
+      await page.click('#navEnd');
     });
     await step('v05 desktop: offline place index — suggestions from the bundled OSM index (works offline)', async () => {
       // The bundled index ships inside the app (Android assets); in the browser test it is loaded before going offline.

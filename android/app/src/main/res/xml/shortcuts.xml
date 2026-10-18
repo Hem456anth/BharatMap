@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- v0.5 static launcher shortcuts (long-press the app icon). Each opens a bharatmap:// deep link handled in
+     web/ui/links.js. No extra permissions. -->
+<shortcuts xmlns:android="http://schemas.android.com/apk/res/android">
+    <shortcut android:shortcutId="home" android:enabled="true" android:icon="@drawable/ic_sc_home" android:shortcutShortLabel="@string/sc_home" android:shortcutLongLabel="@string/sc_home_long">
+        <intent android:action="android.intent.action.VIEW" android:targetPackage="com.indiamapos.app" android:targetClass="com.indiamapos.app.MainActivity" android:data="bharatmap://saved?which=home" />
+    </shortcut>
+    <shortcut android:shortcutId="work" android:enabled="true" android:icon="@drawable/ic_sc_work" android:shortcutShortLabel="@string/sc_work" android:shortcutLongLabel="@string/sc_work_long">
+        <intent android:action="android.intent.action.VIEW" android:targetPackage="com.indiamapos.app" android:targetClass="com.indiamapos.app.MainActivity" android:data="bharatmap://saved?which=work" />
+    </shortcut>
+    <shortcut android:shortcutId="petrol" android:enabled="true" android:icon="@drawable/ic_sc_fuel" android:shortcutShortLabel="@string/sc_petrol" android:shortcutLongLabel="@string/sc_petrol_long">
+        <intent android:action="android.intent.action.VIEW" android:targetPackage="com.indiamapos.app" android:targetClass="com.indiamapos.app.MainActivity" android:data="bharatmap://category?id=fuel" />
+    </shortcut>
+    <shortcut android:shortcutId="offline" android:enabled="true" android:icon="@drawable/ic_sc_offline" android:shortcutShortLabel="@string/sc_offline" android:shortcutLongLabel="@string/sc_offline_long">
+        <intent android:action="android.intent.action.VIEW" android:targetPackage="com.indiamapos.app" android:targetClass="com.indiamapos.app.MainActivity" android:data="bharatmap://offline" />
+    </shortcut>
+</shortcuts>

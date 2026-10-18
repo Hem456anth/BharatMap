@@ -92,7 +92,7 @@ export function initControls(ctx) {
   map.on('moveend', () => { clearTimeout(fadeT); fadeT = setTimeout(() => fabs?.classList.remove('gesturing'), 600); });
   compassBtn.addEventListener('click', () => ctx.cam.ease({ bearing: 0, pitch: 0, duration: 500 }));
   tdBtn.addEventListener('click', () => {
-    const to3d = map.getPitch() < 20;
+    const to3d = map.getPitch() < 20 || !!ctx.cam.flattening; // mid-reset after navigation counts as flat
     if (to3d && ctx.bw?.policy.active) { ctx.toast(ctx.t('low_bw_on')); return; }
     if (to3d && !ctx.style.buildings3d) ctx.style.set3D(true);
     ctx.cam.ease({ pitch: to3d ? 55 : 0, bearing: to3d ? (map.getBearing() || -17) : map.getBearing(), duration: 800 });

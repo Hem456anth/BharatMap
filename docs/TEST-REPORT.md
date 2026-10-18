@@ -1,4 +1,80 @@
-# Bharat Map v0.4 — Test report
+# Bharat Map v0.5 — Test report
+
+Run date: 19 Oct 2026 (IST). Raw outputs: `docs/test-output.txt` (npm test), `docs/e2e-results.txt` (Chromium E2E),
+`docs/perf-v04.json` (performance, re-measured). Screenshots: `docs/screenshots/v05-*.png` (new), `v04-*` and `v03-*` (regression).
+
+## Summary
+| Suite | Result |
+|---|---|
+| Unit + API (`npm test`, node:test) | **120 / 120 pass** (95 from v0.3–v0.4 + 25 new) |
+| Browser E2E (`tests/e2e.mjs`, Chromium, desktop 1366×820 + mobile 390×844) | **91 / 91 pass** — desktop 52, mobile 39 (v0.3 regression 43, v0.4 regression 21, v0.5 new 27); 0 console errors. Green on two consecutive full local runs after the camera fix below |
+| Demo build (`npm run build:demo`) | OK — `dist/india-mapos-demo.html` (585 KB) |
+| CI | __CI_ROW__ |
+
+### Unit + API by file (120)
+| File | Tests | File | Tests |
+|---|--:|---|--:|
+| `tests/unit.test.js` | 20 | `tests/v04.test.js` | 25 |
+| `tests/api.test.js` | 12 | `tests/v04-api.test.js` | 6 |
+| `tests/phase2.test.js` | 12 | `tests/v05.test.js` | **20** |
+| `tests/v03.test.js` | 16 | `tests/v05-api.test.js` | **5** |
+| `tests/v03-api.test.js` | 4 | **Total** | **120** |
+
+`tests/v05.test.js` (20): lanes from OSRM intersections (real Bengaluru fork fixture) + Valhalla bitmasks + lane strip HTML;
+maxspeed parsing (`"50"`, `"50 mph"`, `IN:urban` → unknown), Valhalla `trace_attributes` (real fixture), OSRM annotation, Overpass
+ways matched to the route; overspeed timing (> 10 % for 2 s, re-arm after 10 s); speed from fixes; tracker along-route distance;
+NOAA sunrise/sunset vs published times; deep links (geo:, bharatmap://, https, **launcher shortcuts in `shortcuts.xml` all parse**);
+share/list links round-trip; OSM note payload + rate limit; incidents expiry/confidence; junction view SVG; sound cues; offline place
+index; privacy model (export excludes the token); multi-stop URLs; i18n v0.5 completeness (en/hi/te).
+`tests/v05-api.test.js` (5): `/api/v1/incidents` (create → list → votes → expiry; "gone" votes, rate limit), `/api/v1/live`,
+`/api/v1/speed-limits`, `/api/v1/route` with `via=` (one OSRM request, lanes in steps).
+
+### E2E journeys per viewport
+| Group | Desktop 1366×820 | Mobile 390×844 (touch) |
+|---|--:|--:|
+| v0.3 regression (map-first shell, search, places, directions, navigation, Shop, admin, …) | 26 | 17 |
+| v0.4 regression (performance, transit, tolls, EV/parking, low bandwidth, offline regions, background nav) | 10 | 11 |
+| v0.5 new (below) | 16 | 11 |
+| **Total** | **52** | **39** |
+
+v0.5 E2E steps: deep link `?lat&lon&name` (D/M); speed limit + overspeed chime + junction view (D/M); lane guidance (D/M); speed
+limit never shown where unknown (D/M); forced night driving style (D/M); report a map problem → OSM note, rate limited (D/M);
+device-only community incident (D/M); deep links + shared list import (D/M); multi-stop (D); commute card (D); **launcher shortcut
+link + arrival trip summary** (arrival banner stays on "You have arrived", no revert to the last turn) (D); offline place index (D);
+privacy dashboard export/delete (D); location rationale/denial (D/M); voice search (M); server-mode incidents + live location
+sharing (D); console-error checks per group.
+
+### Fixes in this round
+- **Camera kept its tilt after navigation (CI failure on `layers sheet … pitched`, run for `6b4ef2b`)**: ending navigation eases the
+  map back to flat/north-up over 600 ms; any camera move started before that ease finished (e.g. flying to a dropped pin; on CI's
+  software renderer the ease is easily still running) cancelled it and left the map at ~53°, so the next 3D tap toggled to 2D.
+  `web/map/camera.js` now keeps a *flatten* intent that is merged into the next fly/ease/fit until the map is flat (cleared by an
+  explicit pitch or a user gesture); the 3D button treats a pending flatten as flat. New E2E regression: end navigation and
+  immediately fly elsewhere — the map must still settle flat (it stayed at 53° before the fix).
+- **Deterministic waits** instead of fixed sleeps around the camera: wait until the map is not moving and flat before the layers
+  step, wait for pitch > 40 after 3D, wait for flat after the compass reset (assertions unchanged).
+- Arrival screen no longer reverts to the last turn when late speed-limit data arrives; E2E mock returns no speed-limit edges
+  outside the captured Bengaluru route, so limits stay unknown elsewhere (as with the real service).
+
+### Fixtures caveat
+Every third-party service in the browser E2E (Overpass, OSRM, Valhalla incl. `trace_attributes`, Nominatim, Photon, OSM Notes API,
+tile/style hosts) is answered from **real captured responses** in `tests/fixtures/` or a labelled mock; the browser has no internet.
+The OSM Notes API is mocked so tests never create real notes. Speed limits are only real for the captured Bengaluru (Silk Board →
+Electronic City) trace; elsewhere the mock returns no edges. Results therefore verify our parsing, UI and fallbacks, not the live
+availability or coverage of those services.
+
+### Known gaps (not covered automatically)
+- On-device Android: permission prompts, intent/deep-link delivery, launcher shortcuts, TTS and WebAudio output, speech
+  recognition, background navigation (Gradle build is verified in CI; JS paths run with stub plugins).
+- Real touch gestures (two-finger tilt/rotate) and TalkBack on hardware.
+- Lane / speed-limit coverage in India depends on sparse OSM tagging; implicit `IN:*` limits are deliberately never shown.
+- Native-speaker review of hi/te v0.5 strings; other 8 languages fall back to English for v0.5 keys.
+- Single-file demo E2E (`tests/e2e-demo.mjs`) was not re-run for v0.5 (demo build only).
+- Performance figures are SwiftShader software rendering, not representative of a phone.
+
+---
+
+# Bharat Map v0.4 — Test report (previous release)
 
 Run date: 19 Oct 2026 (IST). Raw outputs: `docs/test-output.txt` (npm test), `docs/e2e-results.txt` (Chromium E2E),
 `docs/perf-v04.json` (performance). Screenshots: `docs/screenshots/v04-*.png` (new) and `v03-*.png` (regression).

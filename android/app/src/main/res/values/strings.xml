@@ -4,4 +4,12 @@
     <string name="title_activity_main">Bharat Map</string>
     <string name="package_name">com.indiamapos.app</string>
     <string name="custom_url_scheme">com.indiamapos.app</string>
+    <string name="sc_home">Home</string>
+    <string name="sc_home_long">Directions home</string>
+    <string name="sc_work">Work</string>
+    <string name="sc_work_long">Directions to work</string>
+    <string name="sc_petrol">Petrol nearby</string>
+    <string name="sc_petrol_long">Petrol stations nearby</string>
+    <string name="sc_offline">Offline maps</string>
+    <string name="sc_offline_long">Offline maps</string>
 </resources>

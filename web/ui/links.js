@@ -25,6 +25,9 @@ export function initLinks(ctx) {
     else if (d.kind === 'list') {
       if (confirm(ctx.tf('list_import_q', { name: d.name, n: d.items.length }))) { const id = ctx.saved.importList(d); ctx.saved.openList(id); ctx.toast(ctx.tf('list_imported', { name: d.name })); }
     } else if (d.kind === 'live') watchLive(d.id);
+    else if (d.kind === 'saved') { const pl = ctx.saved.data[d.which]; if (pl) ctx.directions.open({ ...pl, name: pl.name || ctx.t(d.which) }); else { ctx.views.show('home', { detent: 'half' }); ctx.toast(ctx.t(d.which === 'home' ? 'set_home' : 'set_work')); } }
+    else if (d.kind === 'category') ctx.search.openCategory(d.id);
+    else if (d.kind === 'offline') ctx.views.show('offline', { detent: 'half' });
     return true;
   }
 

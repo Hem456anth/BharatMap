@@ -1,584 +1,734 @@
 
-> bharat-map@0.4.0 test
-> node --no-warnings --test --test-concurrency=1 tests/unit.test.js tests/api.test.js tests/phase2.test.js tests/v03.test.js tests/v03-api.test.js tests/v04.test.js tests/v04-api.test.js
+> bharat-map@0.5.0 test
+> node --no-warnings --test --test-concurrency=1 tests/unit.test.js tests/api.test.js tests/phase2.test.js tests/v03.test.js tests/v03-api.test.js tests/v04.test.js tests/v04-api.test.js tests/v05.test.js tests/v05-api.test.js
 
 TAP version 13
 # Subtest: health + security headers
 ok 1 - health + security headers
   ---
-  duration_ms: 37.491162
+  duration_ms: 58.966401
   type: 'test'
   ...
 # Subtest: search validates input and returns sellers
 ok 2 - search validates input and returns sellers
   ---
-  duration_ms: 21.027574
+  duration_ms: 33.932911
   type: 'test'
   ...
 # Subtest: geocode, reverse, digipin, route (offline fallback), optimize
 ok 3 - geocode, reverse, digipin, route (offline fallback), optimize
   ---
-  duration_ms: 59.793006
+  duration_ms: 80.406243
   type: 'test'
   ...
 # Subtest: assistant + mobility + i18n + ONDC catalog
 ok 4 - assistant + mobility + i18n + ONDC catalog
   ---
-  duration_ms: 38.136536
+  duration_ms: 48.865321
   type: 'test'
   ...
 # Subtest: auth: register, bad login, lockout, protected routes, RBAC
 ok 5 - auth: register, bad login, lockout, protected routes, RBAC
   ---
-  duration_ms: 100.163974
+  duration_ms: 99.428747
   type: 'test'
   ...
 # Subtest: KILLER FLOW: search → order → rider assigned → live tracking → delivered; stock decremented
 ok 6 - KILLER FLOW: search → order → rider assigned → live tracking → delivered; stock decremented
   ---
-  duration_ms: 1591.465972
+  duration_ms: 1600.13899
   type: 'test'
   ...
 # Subtest: order validation: out of stock, bad qty, out of range, no drop
 ok 7 - order validation: out of stock, bad qty, out of range, no drop
   ---
-  duration_ms: 45.746784
+  duration_ms: 42.892649
   type: 'test'
   ...
 # Subtest: wholesale pickup order applies tier price; cancel restores stock
 ok 8 - wholesale pickup order applies tier price; cancel restores stock
   ---
-  duration_ms: 41.540064
+  duration_ms: 38.764693
   type: 'test'
   ...
 # Subtest: seller dashboard: KPIs, edit own product, cannot edit others
 ok 9 - seller dashboard: KPIs, edit own product, cannot edit others
   ---
-  duration_ms: 55.317963
+  duration_ms: 51.315535
   type: 'test'
   ...
 # Subtest: admin verify + fleet; malformed JSON; unknown route
 ok 10 - admin verify + fleet; malformed JSON; unknown route
   ---
-  duration_ms: 50.137938
+  duration_ms: 44.71153
   type: 'test'
   ...
 # Subtest: SQL injection attempt is inert
 ok 11 - SQL injection attempt is inert
   ---
-  duration_ms: 3.31476
+  duration_ms: 3.373341
   type: 'test'
   ...
 # Subtest: metrics endpoint exposes Prometheus counters
 ok 12 - metrics endpoint exposes Prometheus counters
   ---
-  duration_ms: 2.329068
+  duration_ms: 2.141768
   type: 'test'
   ...
 # Subtest: migrations: 002 applied, orders accept razorpay, FK intact
 ok 13 - migrations: 002 applied, orders accept razorpay, FK intact
   ---
-  duration_ms: 2.518432
+  duration_ms: 2.610455
   type: 'test'
   ...
 # Subtest: config exposes enabled integrations without secrets
 ok 14 - config exposes enabled integrations without secrets
   ---
-  duration_ms: 251.059879
+  duration_ms: 245.485042
   type: 'test'
   ...
 # Subtest: CORS allows the Capacitor WebView origin, not arbitrary sites
 ok 15 - CORS allows the Capacitor WebView origin, not arbitrary sites
   ---
-  duration_ms: 12.26928
+  duration_ms: 12.664998
   type: 'test'
   ...
 # Subtest: razorpay: order created with provider order, signature verified, bad signature rejected
 ok 16 - razorpay: order created with provider order, signature verified, bad signature rejected
   ---
-  duration_ms: 120.489577
+  duration_ms: 112.171261
   type: 'test'
   ...
 # Subtest: razorpay webhook: requires valid signature over raw body
 ok 17 - razorpay webhook: requires valid signature over raw body
   ---
-  duration_ms: 52.339692
+  duration_ms: 48.799687
   type: 'test'
   ...
 # Subtest: signature helper is constant-time safe on length mismatch
 ok 18 - signature helper is constant-time safe on length mismatch
   ---
-  duration_ms: 0.321977
+  duration_ms: 0.266538
   type: 'test'
   ...
 # Subtest: razorpay disabled deployment returns 503, never creates an order
 ok 19 - razorpay disabled deployment returns 503, never creates an order
   ---
-  duration_ms: 111.627812
+  duration_ms: 108.778666
   type: 'test'
   ...
 # Subtest: notifications: customer and seller get order + payment notifications
 ok 20 - notifications: customer and seller get order + payment notifications
   ---
-  duration_ms: 91.025009
+  duration_ms: 82.104452
   type: 'test'
   ...
 # Subtest: admin: RBAC, overview, lists, CSV report
 ok 21 - admin: RBAC, overview, lists, CSV report
   ---
-  duration_ms: 102.311802
+  duration_ms: 89.637923
   type: 'test'
   ...
 # Subtest: admin: deactivate product hides it from search and blocks ordering; reactivate restores
 ok 22 - admin: deactivate product hides it from search and blocks ordering; reactivate restores
   ---
-  duration_ms: 86.452014
+  duration_ms: 80.40329
   type: 'test'
   ...
 # Subtest: admin: disabling a user revokes their live token and login; admin cannot disable self
 ok 23 - admin: disabling a user revokes their live token and login; admin cannot disable self
   ---
-  duration_ms: 112.56837
+  duration_ms: 106.9897
   type: 'test'
   ...
 # Subtest: admin: GSTIN validation on business update
 ok 24 - admin: GSTIN validation on business update
   ---
-  duration_ms: 38.673052
+  duration_ms: 36.375542
   type: 'test'
   ...
 # Subtest: haversine: Vizag RTC to RK Beach ~2 km
 ok 25 - haversine: Vizag RTC to RK Beach ~2 km
   ---
-  duration_ms: 1.042686
+  duration_ms: 0.984962
   type: 'test'
   ...
 # Subtest: DIGIPIN matches India Post reference (Dak Bhawan → 39J-49L-L8T4)
 ok 26 - DIGIPIN matches India Post reference (Dak Bhawan → 39J-49L-L8T4)
   ---
-  duration_ms: 0.337279
+  duration_ms: 0.280281
   type: 'test'
   ...
 # Subtest: DIGIPIN round-trip within 5 m
 ok 27 - DIGIPIN round-trip within 5 m
   ---
-  duration_ms: 0.296643
+  duration_ms: 0.792848
   type: 'test'
   ...
 # Subtest: inIndia rejects outside points
 ok 28 - inIndia rejects outside points
   ---
-  duration_ms: 0.115181
+  duration_ms: 0.168755
   type: 'test'
   ...
 # Subtest: pointAlong interpolates
 ok 29 - pointAlong interpolates
   ---
-  duration_ms: 0.174808
+  duration_ms: 0.206083
   type: 'test'
   ...
 # Subtest: address: landmark + locality + pincode resolves at high confidence
 ok 30 - address: landmark + locality + pincode resolves at high confidence
   ---
-  duration_ms: 2.321145
+  duration_ms: 2.353771
   type: 'test'
   ...
 # Subtest: address: pincode-only and Telugu locality
 ok 31 - address: pincode-only and Telugu locality
   ---
-  duration_ms: 3.882506
+  duration_ms: 3.765875
   type: 'test'
   ...
 # Subtest: address: short ASCII alias does not match inside words
 ok 32 - address: short ASCII alias does not match inside words
   ---
-  duration_ms: 0.642431
+  duration_ms: 0.578555
   type: 'test'
   ...
 # Subtest: address: DIGIPIN input
 ok 33 - address: DIGIPIN input
   ---
-  duration_ms: 1.21717
+  duration_ms: 0.57851
   type: 'test'
   ...
 # Subtest: i18n: all 11 languages have every key
 ok 34 - i18n: all 11 languages have every key
   ---
-  duration_ms: 2.067528
+  duration_ms: 1.407836
   type: 'test'
   ...
 # Subtest: i18n: native query normalisation
 ok 35 - i18n: native query normalisation
   ---
-  duration_ms: 0.606562
+  duration_ms: 0.662785
   type: 'test'
   ...
 # Subtest: query parsing: price, size, wholesale
 ok 36 - query parsing: price, size, wholesale
   ---
-  duration_ms: 1.234303
+  duration_ms: 1.242169
   type: 'test'
   ...
 # Subtest: killer flow search: "LED TVs near me" returns TV sellers, nearest verified first
 ok 37 - killer flow search: "LED TVs near me" returns TV sellers, nearest verified first
   ---
-  duration_ms: 1.343508
+  duration_ms: 1.318975
   type: 'test'
   ...
 # Subtest: search filters by size and price cap; in-stock first
 ok 38 - search filters by size and price cap; in-stock first
   ---
-  duration_ms: 0.533554
+  duration_ms: 0.938318
   type: 'test'
   ...
 # Subtest: search re-centres on a named locality
 ok 39 - search re-centres on a named locality
   ---
-  duration_ms: 0.332398
+  duration_ms: 0.271547
   type: 'test'
   ...
 # Subtest: assistant intents
 ok 40 - assistant intents
   ---
-  duration_ms: 14.021077
+  duration_ms: 13.560771
   type: 'test'
   ...
 # Subtest: pricing: free delivery above ₹999, bulky fee for 43" TV, wholesale tiers
 ok 41 - pricing: free delivery above ₹999, bulky fee for 43" TV, wholesale tiers
   ---
-  duration_ms: 0.363427
+  duration_ms: 0.31535
   type: 'test'
   ...
 # Subtest: rider assignment prefers nearest suitable vehicle
 ok 42 - rider assignment prefers nearest suitable vehicle
   ---
-  duration_ms: 0.248017
+  duration_ms: 0.228297
   type: 'test'
   ...
 # Subtest: tracking progress is monotonic and ends delivered
 ok 43 - tracking progress is monotonic and ends delivered
   ---
-  duration_ms: 0.653548
+  duration_ms: 0.539741
   type: 'test'
   ...
 # Subtest: route optimisation never worse than input order
 ok 44 - route optimisation never worse than input order
   ---
-  duration_ms: 0.311157
+  duration_ms: 0.245856
   type: 'test'
   ...
 # Subtest: saved places: auth required, round-trip, normalised, isolated per user, size-capped
 ok 45 - saved places: auth required, round-trip, normalised, isolated per user, size-capped
   ---
-  duration_ms: 172.02038
+  duration_ms: 171.251946
   type: 'test'
   ...
 # Subtest: CSP: server header equals the app-shell <meta>, and lists only the required third-party hosts
 ok 46 - CSP: server header equals the app-shell <meta>, and lists only the required third-party hosts
   ---
-  duration_ms: 6.934379
+  duration_ms: 4.476268
   type: 'test'
   ...
 # Subtest: version 0.4 + migration 003 + map style proxy accepts only known styles
 ok 47 - version 0.4 + migration 003 + map style proxy accepts only known styles
   ---
-  duration_ms: 3.410037
+  duration_ms: 3.141757
   type: 'test'
   ...
 # Subtest: service worker precache list only names files that exist (install would fail otherwise)
 ok 48 - service worker precache list only names files that exist (install would fail otherwise)
   ---
-  duration_ms: 1.163171
+  duration_ms: 1.158887
   type: 'test'
   ...
 # Subtest: opening_hours: 24/7 and plain daily range
 ok 49 - opening_hours: 24/7 and plain daily range
   ---
-  duration_ms: 1.881013
+  duration_ms: 1.772102
   type: 'test'
   ...
 # Subtest: opening_hours: weekday rules, off days, multiple ranges, overrides
 ok 50 - opening_hours: weekday rules, off days, multiple ranges, overrides
   ---
-  duration_ms: 1.297539
+  duration_ms: 1.334685
   type: 'test'
   ...
 # Subtest: opening_hours: past midnight and unsupported syntax
 ok 51 - opening_hours: past midnight and unsupported syntax
   ---
-  duration_ms: 0.239336
+  duration_ms: 0.258616
   type: 'test'
   ...
 # Subtest: off-route detector needs 3 consecutive fixes beyond 50 m and widens for poor accuracy
 ok 52 - off-route detector needs 3 consecutive fixes beyond 50 m and widens for poor accuracy
   ---
-  duration_ms: 0.158562
+  duration_ms: 0.168842
   type: 'test'
   ...
 # Subtest: tracker: on-route progress, step advance, off-route after 3 fixes, arrival
 ok 53 - tracker: on-route progress, step advance, off-route after 3 fixes, arrival
   ---
-  duration_ms: 2.508223
+  duration_ms: 2.451811
   type: 'test'
   ...
 # Subtest: projectOnRoute and step offsets
 ok 54 - projectOnRoute and step offsets
   ---
-  duration_ms: 0.153633
+  duration_ms: 0.161844
   type: 'test'
   ...
 # Subtest: maneuver text: en / hi / te turn, roundabout, arrive
 ok 55 - maneuver text: en / hi / te turn, roundabout, arrive
   ---
-  duration_ms: 0.648647
+  duration_ms: 0.648939
   type: 'test'
   ...
 # Subtest: landmark-enhanced instructions within 150 m only
 ok 56 - landmark-enhanced instructions within 150 m only
   ---
-  duration_ms: 0.461047
+  duration_ms: 0.485976
   type: 'test'
   ...
 # Subtest: distance rounding
 ok 57 - distance rounding
   ---
-  duration_ms: 12.464849
+  duration_ms: 12.41868
   type: 'test'
   ...
 # Subtest: sheet detents: heights, nearest snap, fling, jump, rubber band, keyboard
 ok 58 - sheet detents: heights, nearest snap, fling, jump, rubber band, keyboard
   ---
-  duration_ms: 0.990868
+  duration_ms: 0.846339
   type: 'test'
   ...
 # Subtest: Overpass query builder: tags, rounded bbox, limit, validation
 ok 59 - Overpass query builder: tags, rounded bbox, limit, validation
   ---
-  duration_ms: 0.768275
+  duration_ms: 0.707058
   type: 'test'
   ...
 # Subtest: Overpass parse: real fixture → named POIs sorted by distance
 ok 60 - Overpass parse: real fixture → named POIs sorted by distance
   ---
-  duration_ms: 20.016827
+  duration_ms: 19.043215
   type: 'test'
   ...
 # Subtest: OSRM: URL per mode, parse alternatives + steps, fallback
 ok 61 - OSRM: URL per mode, parse alternatives + steps, fallback
   ---
-  duration_ms: 1003.85585
+  duration_ms: 1002.032268
   type: 'test'
   ...
 # Subtest: geocode: local resolver (landmark, seller, DIGIPIN) and Photon/Nominatim parsing
 ok 62 - geocode: local resolver (landmark, seller, DIGIPIN) and Photon/Nominatim parsing
   ---
-  duration_ms: 5.839554
+  duration_ms: 5.485408
   type: 'test'
   ...
 # Subtest: saved places: shortcuts, lists, recents, merge
 ok 63 - saved places: shortcuts, lists, recents, merge
   ---
-  duration_ms: 0.637005
+  duration_ms: 0.598138
   type: 'test'
   ...
 # Subtest: i18n v0.3: every language has every key; en/hi/te are complete
 ok 64 - i18n v0.3: every language has every key; en/hi/te are complete
   ---
-  duration_ms: 0.773932
+  duration_ms: 1.934249
   type: 'test'
   ...
 # Subtest: /api/v1/route: two-wheeler via Valhalla (not an estimate), drive via OSRM, validation
 ok 65 - /api/v1/route: two-wheeler via Valhalla (not an estimate), drive via OSRM, validation
   ---
-  duration_ms: 66.776911
+  duration_ms: 61.630091
   type: 'test'
   ...
 # Subtest: /api/v1/geocode + /reverse + /places/nearby + /ev
 ok 66 - /api/v1/geocode + /reverse + /places/nearby + /ev
   ---
-  duration_ms: 36.27208
+  duration_ms: 22.077714
   type: 'test'
   ...
 # Subtest: /api/v1/tolls: plazas along the real Anakapalli route, no fees
 ok 67 - /api/v1/tolls: plazas along the real Anakapalli route, no fees
   ---
-  duration_ms: 29.816945
+  duration_ms: 33.914081
   type: 'test'
   ...
 # Subtest: /api/v1/transit: HMRL feed loaded with attribution; plan returns scheduled itineraries; stops with departures
 ok 68 - /api/v1/transit: HMRL feed loaded with attribution; plan returns scheduled itineraries; stops with departures
   ---
-  duration_ms: 229.634642
+  duration_ms: 218.762905
   type: 'test'
   ...
 # Subtest: /api/v1/regions catalogue (9 cities), /api/v1/providers status, gzip, client config
 ok 69 - /api/v1/regions catalogue (9 cities), /api/v1/providers status, gzip, client config
   ---
-  duration_ms: 20.325047
+  duration_ms: 14.278846
   type: 'test'
   ...
 # Subtest: per-IP rate limit on /api/v1 (429 + Retry-After)
 ok 70 - per-IP rate limit on /api/v1 (429 + Retry-After)
   ---
-  duration_ms: 203.53608
+  duration_ms: 180.174998
   type: 'test'
   ...
 # Subtest: LRU cache: TTL expiry, LRU eviction order, stats
 ok 71 - LRU cache: TTL expiry, LRU eviction order, stats
   ---
-  duration_ms: 1.090634
+  duration_ms: 1.03128
   type: 'test'
   ...
 # Subtest: token bucket: burst then refill, per key, retry-after
 ok 72 - token bucket: burst then refill, per key, retry-after
   ---
-  duration_ms: 0.355136
+  duration_ms: 0.38879
   type: 'test'
   ...
 # Subtest: upstream: identifying User-Agent, 1 req/s throttle, cache, coalescing
 ok 73 - upstream: identifying User-Agent, 1 req/s throttle, cache, coalescing
   ---
-  duration_ms: 1.491921
+  duration_ms: 1.398404
   type: 'test'
   ...
 # Subtest: upstream: timeout and circuit breaker (open → short-circuit → half-open → closed)
 ok 74 - upstream: timeout and circuit breaker (open → short-circuit → half-open → closed)
   ---
-  duration_ms: 21.469473
+  duration_ms: 21.787794
   type: 'test'
   ...
 # Subtest: withFallback: first success wins, failures recorded, all-fail error
 ok 75 - withFallback: first success wins, failures recorded, all-fail error
   ---
-  duration_ms: 0.445724
+  duration_ms: 0.375136
   type: 'test'
   ...
 # Subtest: provider config: env overrides, public defaults flagged for throttling
 ok 76 - provider config: env overrides, public defaults flagged for throttling
   ---
-  duration_ms: 0.22514
+  duration_ms: 0.205303
   type: 'test'
   ...
 # Subtest: providers.route: two-wheeler uses Valhalla motor_scooter; falls back to OSRM (estimate) then straight line
 ok 77 - providers.route: two-wheeler uses Valhalla motor_scooter; falls back to OSRM (estimate) then straight line
   ---
-  duration_ms: 6.004267
+  duration_ms: 4.705571
   type: 'test'
   ...
 # Subtest: providers.route: drive prefers OSRM unless VALHALLA_URL is self-hosted; avoid tolls goes to Valhalla with use_tolls=0
 ok 78 - providers.route: drive prefers OSRM unless VALHALLA_URL is self-hosted; avoid tolls goes to Valhalla with use_tolls=0
   ---
-  duration_ms: 3.279407
+  duration_ms: 3.657139
   type: 'test'
   ...
 # Subtest: providers.geocode: Photon first, Nominatim fallback; autocomplete never uses Nominatim
 ok 79 - providers.geocode: Photon first, Nominatim fallback; autocomplete never uses Nominatim
   ---
-  duration_ms: 2.999552
+  duration_ms: 2.430297
   type: 'test'
   ...
 # Subtest: providers.nearby: EV via Open Charge Map when keyed (key never in output), OSM fallback with connector details
 ok 80 - providers.nearby: EV via Open Charge Map when keyed (key never in output), OSM fallback with connector details
   ---
-  duration_ms: 3.030696
+  duration_ms: 2.467296
   type: 'test'
   ...
 # Subtest: polyline6 round trip, simplify keeps ends, projection along the line
 ok 81 - polyline6 round trip, simplify keeps ends, projection along the line
   ---
-  duration_ms: 0.743878
+  duration_ms: 0.679246
   type: 'test'
   ...
 # Subtest: Valhalla: request (costing, avoid options, alternates), real motor_scooter response → routes with steps
 ok 82 - Valhalla: request (costing, avoid options, alternates), real motor_scooter response → routes with steps
   ---
-  duration_ms: 5.090056
+  duration_ms: 1.184531
   type: 'test'
   ...
 # Subtest: tolls: real NH16 route Dwaraka Nagar → Anakapalli has 2 OSM toll plazas, ordered, booths merged, no fees
 ok 83 - tolls: real NH16 route Dwaraka Nagar → Anakapalli has 2 OSM toll plazas, ordered, booths merged, no fees
   ---
-  duration_ms: 8.092905
+  duration_ms: 7.006223
   type: 'test'
   ...
 # Subtest: EV: OSM socket tags → connectors/power/operator; OCM parse; parking details
 ok 84 - EV: OSM socket tags → connectors/power/operator; OCM parse; parking details
   ---
-  duration_ms: 0.984108
+  duration_ms: 0.869366
   type: 'test'
   ...
 # Subtest: GTFS CSV parser: BOM, quotes, embedded commas/newlines, CRLF, missing trailing newline
 ok 85 - GTFS CSV parser: BOM, quotes, embedded commas/newlines, CRLF, missing trailing newline
   ---
-  duration_ms: 0.507553
+  duration_ms: 0.508791
   type: 'test'
   ...
 # Subtest: GTFS: zip reader + loader + timetable (patterns, services, same-station transfers)
 ok 86 - GTFS: zip reader + loader + timetable (patterns, services, same-station transfers)
   ---
-  duration_ms: 4.399075
+  duration_ms: 4.063461
   type: 'test'
   ...
 # Subtest: RAPTOR: walk → ride → transfer → ride → walk; calendar exceptions; no stop nearby
 ok 87 - RAPTOR: walk → ride → transfer → ride → walk; calendar exceptions; no stop nearby
   ---
-  duration_ms: 2.489615
+  duration_ms: 2.369688
   type: 'test'
   ...
 # Subtest: RAPTOR on the real HMRL feed: Miyapur → Uppal needs Red → Blue at Ameerpet; pack/unpack is lossless
 ok 88 - RAPTOR on the real HMRL feed: Miyapur → Uppal needs Red → Blue at Ameerpet; pack/unpack is lossless
   ---
-  duration_ms: 266.994507
+  duration_ms: 222.476117
   type: 'test'
   ...
 # Subtest: low-bandwidth policy: Save-Data / 2G / 3G auto-on, manual override, prefetch only when unmetered
 ok 89 - low-bandwidth policy: Save-Data / 2G / 3G auto-on, manual override, prefetch only when unmetered
   ---
-  duration_ms: 0.492852
+  duration_ms: 0.464651
   type: 'test'
   ...
 # Subtest: corridor tiles: correct slippy tile, contiguous coverage, buffer, cap
 ok 90 - corridor tiles: correct slippy tile, contiguous coverage, buffer, cap
   ---
-  duration_ms: 18.792881
+  duration_ms: 8.839847
   type: 'test'
   ...
 # Subtest: region manager: download with progress → Cache Storage, list/covering/blob, delete, cancel, bad file, 404
 ok 91 - region manager: download with progress → Cache Storage, list/covering/blob, delete, cancel, bad file, 404
   ---
-  duration_ms: 114.939244
+  duration_ms: 105.266291
   type: 'test'
   ...
 # Subtest: offline geocoding: saved places (home/work/lists) and bundled landmarks resolve without network
 ok 92 - offline geocoding: saved places (home/work/lists) and bundled landmarks resolve without network
   ---
-  duration_ms: 1.009976
+  duration_ms: 0.918905
   type: 'test'
   ...
 # Subtest: client routing (no server): two-wheeler → FOSSGIS Valhalla motor_scooter (real, not estimate); fallback to OSRM estimate; drive → OSRM
 ok 93 - client routing (no server): two-wheeler → FOSSGIS Valhalla motor_scooter (real, not estimate); fallback to OSRM estimate; drive → OSRM
   ---
-  duration_ms: 2002.454647
+  duration_ms: 2003.391786
   type: 'test'
   ...
 # Subtest: client transit (no server): bundled HMRL timetable planned on-device; Vizag has no feed
 ok 94 - client transit (no server): bundled HMRL timetable planned on-device; Vizag has no feed
   ---
-  duration_ms: 21.651322
+  duration_ms: 20.732804
   type: 'test'
   ...
 # Subtest: i18n v0.4: every language has every new key; 8 languages flagged for native review
 ok 95 - i18n v0.4: every language has every new key; 8 languages flagged for native review
   ---
-  duration_ms: 0.59336
+  duration_ms: 0.630275
   type: 'test'
   ...
-1..95
-# tests 95
+# Subtest: /api/v1/incidents: create → list (labelled, unverified) → votes → expiry after 2 h
+ok 96 - /api/v1/incidents: create → list (labelled, unverified) → votes → expiry after 2 h
+  ---
+  duration_ms: 95.910831
+  type: 'test'
+  ...
+# Subtest: /api/v1/incidents: two "gone" votes remove a report; per-client rate limit
+ok 97 - /api/v1/incidents: two "gone" votes remove a report; per-client rate limit
+  ---
+  duration_ms: 27.689932
+  type: 'test'
+  ...
+# Subtest: /api/v1/live: create, update needs the secret, public read, delete, expiry
+ok 98 - /api/v1/live: create, update needs the secret, public read, delete, expiry
+  ---
+  duration_ms: 20.921541
+  type: 'test'
+  ...
+# Subtest: /api/v1/speed-limits: Valhalla trace_attributes (real fixture) → segments scaled to the line; validation
+ok 99 - /api/v1/speed-limits: Valhalla trace_attributes (real fixture) → segments scaled to the line; validation
+  ---
+  duration_ms: 8.107013
+  type: 'test'
+  ...
+# Subtest: /api/v1/route: multi-stop via points → one OSRM request with all points, no alternatives; lanes in steps
+ok 100 - /api/v1/route: multi-stop via points → one OSRM request with all points, no alternatives; lanes in steps
+  ---
+  duration_ms: 6.90333
+  type: 'test'
+  ...
+# Subtest: lanes: OSRM intersections → lanes (real Bengaluru fork fixture: 2 straight valid, right not valid)
+ok 101 - lanes: OSRM intersections → lanes (real Bengaluru fork fixture: 2 straight valid, right not valid)
+  ---
+  duration_ms: 2.894053
+  type: 'test'
+  ...
+# Subtest: lanes: parser edge cases + unknown indications normalised; Valhalla bitmasks
+ok 102 - lanes: parser edge cases + unknown indications normalised; Valhalla bitmasks
+  ---
+  duration_ms: 0.451457
+  type: 'test'
+  ...
+# Subtest: lanes: strip HTML marks valid lanes and has an accessible description; original SVG arrows
+ok 103 - lanes: strip HTML marks valid lanes and has an accessible description; original SVG arrows
+  ---
+  duration_ms: 0.400439
+  type: 'test'
+  ...
+# Subtest: maxspeed: "50", "50 mph", "IN:urban", lists, none/signals/walk, numbers
+ok 104 - maxspeed: "50", "50 mph", "IN:urban", lists, none/signals/walk, numbers
+  ---
+  duration_ms: 0.600104
+  type: 'test'
+  ...
+# Subtest: maxspeed: Valhalla trace_attributes (real fixture) → segments; limitAt; coverage; scaled to the route
+ok 105 - maxspeed: Valhalla trace_attributes (real fixture) → segments; limitAt; coverage; scaled to the route
+  ---
+  duration_ms: 1.606714
+  type: 'test'
+  ...
+# Subtest: maxspeed: OSRM annotation (synthetic, OSRM format), merge, Overpass ways matched to the route
+ok 106 - maxspeed: OSRM annotation (synthetic, OSRM format), merge, Overpass ways matched to the route
+  ---
+  duration_ms: 0.71147
+  type: 'test'
+  ...
+# Subtest: overspeed: >10 % for 2 s chimes once, stays over, re-arms only after 10 s at/below the limit
+ok 107 - overspeed: >10 % for 2 s chimes once, stays over, re-arms only after 10 s at/below the limit
+  ---
+  duration_ms: 0.481831
+  type: 'test'
+  ...
+# Subtest: speed from fixes: GPS speed (m/s) or derived from two fixes; null when implausible
+ok 108 - speed from fixes: GPS speed (m/s) or derived from two fixes; null when implausible
+  ---
+  duration_ms: 0.19742
+  type: 'test'
+  ...
+# Subtest: tracker exposes along-route distance for speed-limit lookup
+ok 109 - tracker exposes along-route distance for speed-limit lookup
+  ---
+  duration_ms: 1.976172
+  type: 'test'
+  ...
+# Subtest: sun: NOAA sunrise/sunset within ~2 min of published values; polar cases; day/night style
+ok 110 - sun: NOAA sunrise/sunset within ~2 min of published values; polar cases; day/night style
+  ---
+  duration_ms: 14.049251
+  type: 'test'
+  ...
+# Subtest: deep links: geo: URIs, bharatmap://, https share links, search, directions, invalid input
+ok 111 - deep links: geo: URIs, bharatmap://, https share links, search, directions, invalid input
+  ---
+  duration_ms: 1.938534
+  type: 'test'
+  ...
+# Subtest: deep links: share links (geo + app + https) and list links round-trip (Unicode names)
+ok 112 - deep links: share links (geo + app + https) and list links round-trip (Unicode names)
+  ---
+  duration_ms: 0.921184
+  type: 'test'
+  ...
+# Subtest: OSM note payload: categories, validation, text, rate limit, response parsing
+ok 113 - OSM note payload: categories, validation, text, rate limit, response parsing
+  ---
+  duration_ms: 0.974514
+  type: 'test'
+  ...
+# Subtest: incidents: validation, 2-hour expiry, confidence from votes, minutes left
+ok 114 - incidents: validation, 2-hour expiry, confidence from votes, minutes left
+  ---
+  duration_ms: 0.31455
+  type: 'test'
+  ...
+# Subtest: junction view: complex maneuvers only; SVG from real fork geometry, heading-up, arrow head
+ok 115 - junction view: complex maneuvers only; SVG from real fork geometry, heading-up, arrow head
+  ---
+  duration_ms: 1.387074
+  type: 'test'
+  ...
+# Subtest: navigation sound cues: all six defined, short, muted respected
+ok 116 - navigation sound cues: all six defined, short, muted respected
+  ---
+  duration_ms: 0.422217
+  type: 'test'
+  ...
+# Subtest: offline place index: bundled real OSM names (Vizag), prefix search, distance ranking, landmarks
+ok 117 - offline place index: bundled real OSM names (Vizag), prefix search, distance ranking, landmarks
+  ---
+  duration_ms: 20.290843
+  type: 'test'
+  ...
+# Subtest: privacy model: groups storage, export excludes the sign-in token, delete list
+ok 118 - privacy model: groups storage, export excludes the sign-in token, delete list
+  ---
+  duration_ms: 0.784298
+  type: 'test'
+  ...
+# Subtest: multi-stop: OSRM URL with via points (no alternatives), Valhalla locations, parsed waypoints, fallback through stops
+ok 119 - multi-stop: OSRM URL with via points (no alternatives), Valhalla locations, parsed waypoints, fallback through stops
+  ---
+  duration_ms: 2.094663
+  type: 'test'
+  ...
+# Subtest: i18n v0.5: en/hi/te complete for every v0.5 key; other languages fall back to English
+ok 120 - i18n v0.5: en/hi/te complete for every v0.5 key; other languages fall back to English
+  ---
+  duration_ms: 0.377824
+  type: 'test'
+  ...
+1..120
+# tests 120
 # suites 0
-# pass 95
+# pass 120
 # fail 0
 # cancelled 0
 # skipped 0
 # todo 0
-# duration_ms 9032.445788
+# duration_ms 9603.438614

@@ -6,6 +6,7 @@
 export const V5_NEEDS_REVIEW = ['hi', 'te'];
 export const V5 = {
   en: {
+    trip_summary: 'Trip summary', trip_stats: '{min} min · {km} km · average {avg} km/h', trip_report: 'Report a problem on this trip',
     ok: 'OK', lanes: 'Lanes', junction_view: 'Junction view', speed_limit_aria: 'Speed limit {n} km/h', overspeed_live: 'Above the {n} km/h speed limit',
     gps_lost: 'GPS signal lost', gps_back: 'GPS signal back',
     nav_style: 'Navigation map', nav_style_auto: 'Auto (sunrise/sunset)', nav_style_day: 'Day', nav_style_night: 'Night', nav_style_now: 'Navigation map: {s}',
@@ -55,6 +56,7 @@ export const V5 = {
     live_share_text: 'Follow my live location on Bharat Map until {t}', live_stop: 'Stop sharing (ends {t})', live_someone: 'Shared location', live_updated: 'updated {s} s ago', live_viewing: 'Showing live location of {name}', live_ended: 'This live location share has ended',
   },
   hi: {
+    trip_summary: 'यात्रा सारांश', trip_stats: '{min} मिनट · {km} किमी · औसत {avg} किमी/घंटा', trip_report: 'इस यात्रा में कोई समस्या बताएँ',
     ok: 'ठीक है', lanes: 'लेन', junction_view: 'चौराहे का दृश्य', speed_limit_aria: 'गति सीमा {n} किमी/घंटा', overspeed_live: '{n} किमी/घंटा की गति सीमा से तेज़',
     gps_lost: 'GPS सिग्नल नहीं मिल रहा', gps_back: 'GPS सिग्नल वापस आया',
     nav_style: 'नेविगेशन मानचित्र', nav_style_auto: 'ऑटो (सूर्योदय/सूर्यास्त)', nav_style_day: 'दिन', nav_style_night: 'रात', nav_style_now: 'नेविगेशन मानचित्र: {s}',
@@ -104,6 +106,7 @@ export const V5 = {
     live_share_text: '{t} तक Bharat Map पर मेरी लाइव लोकेशन देखें', live_stop: 'साझा बंद करें ({t} पर समाप्त)', live_someone: 'साझा लोकेशन', live_updated: '{s} सेकंड पहले अपडेट', live_viewing: '{name} की लाइव लोकेशन दिखा रहे हैं', live_ended: 'यह लाइव लोकेशन साझा समाप्त हो गया है',
   },
   te: {
+    trip_summary: 'ప్రయాణ సారాంశం', trip_stats: '{min} నిమి. · {km} కి.మీ · సగటు {avg} కి.మీ/గం', trip_report: 'ఈ ప్రయాణంలో సమస్యను నివేదించండి',
     ok: 'సరే', lanes: 'లేన్లు', junction_view: 'కూడలి దృశ్యం', speed_limit_aria: 'వేగ పరిమితి {n} కి.మీ/గం', overspeed_live: '{n} కి.మీ/గం వేగ పరిమితి కంటే ఎక్కువ',
     gps_lost: 'GPS సిగ్నల్ లేదు', gps_back: 'GPS సిగ్నల్ తిరిగి వచ్చింది',
     nav_style: 'నావిగేషన్ మ్యాప్', nav_style_auto: 'ఆటో (సూర్యోదయం/సూర్యాస్తమయం)', nav_style_day: 'పగలు', nav_style_night: 'రాత్రి', nav_style_now: 'నావిగేషన్ మ్యాప్: {s}',
