@@ -70,7 +70,7 @@ export function initDirections(ctx) {
     const res = S.result; const el = document.getElementById('dirRoutes'); if (!el) return;
     const notes = [];
     if (res.fallback) notes.push(`<p class="note warn" role="note">${esc(ctx.t('fallback_route'))}${res.error ? ` <small>(${esc(serviceError(ctx, { message: res.error }, 'OSRM'))})</small>` : ''}</p>`);
-    else if (S.mode === 'two') notes.push(`<p class="note warn" role="note">${esc(ctx.t('est_two'))}</p>`);
+    else if (S.mode === 'two' && res.estimate) notes.push(`<p class="note warn" role="note">${esc(ctx.t('est_two'))}</p>`);
     else if (S.mode === 'drive') notes.push(`<p class="note" role="note">${esc(ctx.t('no_traffic'))}</p>`);
     const now = Date.now();
     el.innerHTML = `${notes.join('')}<ul class="routes" role="radiogroup" aria-label="${esc(ctx.t('directions'))}">${res.routes.map((r, i) => `

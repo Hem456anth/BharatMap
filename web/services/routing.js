@@ -1,8 +1,19 @@
-// Turn-by-turn routing via the FOSSGIS OSRM servers (routing.openstreetmap.de, OSM data, ODbL).
-// Policy: https://routing.openstreetmap.de/about.html — light, interactive use only; heavy use => self-host OSRM.
-// Two-wheeler has no public open profile, so it uses the car graph and is labelled as an estimate.
+// Turn-by-turn routing. Order of engines:
+//  - with a Bharat Map server (services/server.js): /api/v1/route (Valhalla ⇄ OSRM with fallbacks, server-side)
+//  - direct (no server): Two-wheeler and "avoid tolls / highways" use FOSSGIS Valhalla (valhalla1.openstreetmap.de,
+//    costing motor_scooter = a real two-wheeler profile); Drive / Cycle / Walk use FOSSGIS OSRM
+//    (routing.openstreetmap.de). If the preferred engine fails, the other is tried; Two-wheeler on OSRM falls back
+//    to the car graph and is labelled an estimate. Policies: light interactive use only, 1 req/s — self-host for production.
 import { fetchJSON } from './net.js';
 import { haversineKm } from '../shared/geo.js';
+import { buildValhallaRequest, parseValhalla } from '../shared/valhalla.js';
+import { useServer, v1 } from './server.js';
+
+export const VALHALLA_BASE = 'https://valhalla1.openstreetmap.de';
+/** Pure: GET URL for Valhalla (GET keeps it a CORS "simple request"). */
+export function buildValhallaUrl(mode, from, to, opts = {}) {
+  return `${VALHALLA_BASE}/route?json=${encodeURIComponent(JSON.stringify(buildValhallaRequest(mode, from, to, opts)))}`;
+}
 
 export const ROUTING_BASE = 'https://routing.openstreetmap.de';
 export const MODES = {
@@ -60,12 +71,30 @@ export function fallbackRoutes(mode, from, to) {
   }];
 }
 
-export async function getRoutes(mode, from, to, { fetchImpl, timeout = 12000 } = {}) {
-  const m = MODES[mode];
-  try {
-    const json = await fetchJSON(buildRouteUrl(mode, from, to), { timeout, ttl: 5 * 60_000, fetchImpl });
-    return { mode, estimate: m.estimate, fallback: false, routes: parseOsrm(json, mode) };
-  } catch (e) {
-    return { mode, estimate: true, fallback: true, error: e.message, routes: fallbackRoutes(mode, from, to) };
+async function viaOsrm(mode, from, to, o) {
+  const json = await fetchJSON(buildRouteUrl(mode, from, to), { timeout: o.timeout, ttl: 5 * 60_000, fetchImpl: o.fetchImpl });
+  return { engine: 'osrm-fossgis', estimate: MODES[mode].estimate, routes: parseOsrm(json, mode), avoid_applied: !(o.avoidTolls || o.avoidHighways) };
+}
+async function viaValhalla(mode, from, to, o) {
+  const json = await fetchJSON(buildValhallaUrl(mode, from, to, o), { timeout: o.timeout, ttl: 5 * 60_000, fetchImpl: o.fetchImpl });
+  return { engine: 'valhalla-fossgis', estimate: false, routes: parseValhalla(json, mode, 'valhalla-fossgis'), avoid_applied: true };
+}
+
+/** getRoutes(mode, from, to, { avoidTolls, avoidHighways, fetchImpl, timeout }) → { mode, engine, estimate, fallback, routes } */
+export async function getRoutes(mode, from, to, opts = {}) {
+  const o = { timeout: 12000, ...opts };
+  if (useServer()) {
+    try {
+      const qs = new URLSearchParams({ mode, from_lat: from.lat.toFixed(6), from_lng: from.lng.toFixed(6), to_lat: to.lat.toFixed(6), to_lng: to.lng.toFixed(6), ...(o.avoidTolls ? { avoid_tolls: '1' } : {}), ...(o.avoidHighways ? { avoid_highways: '1' } : {}) });
+      const r = await v1(`/route?${qs}`, { timeout: 20000, fetchImpl: o.fetchImpl });
+      return { mode, engine: r.engine, provider: r.provider, estimate: !!r.estimate, fallback: !!r.fallback, routes: r.routes, avoid_applied: r.avoid_applied, via: 'server', error: r.error };
+    } catch { /* server unreachable: go direct */ }
   }
+  const valhallaFirst = mode === 'two' || o.avoidTolls || o.avoidHighways;
+  const order = valhallaFirst ? [viaValhalla, viaOsrm] : [viaOsrm, viaValhalla];
+  let err;
+  for (const fn of order) {
+    try { const r = await fn(mode, from, to, o); return { mode, fallback: false, via: 'direct', ...r }; } catch (e) { err = e; }
+  }
+  return { mode, engine: 'fallback-straight-line', estimate: true, fallback: true, error: err?.message, routes: fallbackRoutes(mode, from, to) };
 }

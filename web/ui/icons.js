@@ -48,6 +48,10 @@ const P = {
   restaurant: '<path d="M7 3.5V11a2 2 0 0 0 2 2v7.5M11 3.5V11a2 2 0 0 1-2 2M9 3.5V9M16.5 20.5V3.5c-2 1-3 3.6-3 7.5h3"/>',
   grocery: '<path d="M3.5 5h2.5l2 10h10l2-7H7"/><circle cx="9.5" cy="19" r="1.4"/><circle cx="16.5" cy="19" r="1.4"/>',
   parking: '<rect x="4" y="4" width="16" height="16" rx="3.5"/><path d="M9.5 17V7.5H13a3 3 0 0 1 0 6H9.5"/>',
+  airport: '<path d="M21 15.5v-2l-7.5-4.5V4.2a1.5 1.5 0 0 0-3 0V9L3 13.5v2l7.5-2.2v4.8l-2 1.5V21l3.5-1 3.5 1v-1.4l-2-1.5v-4.8z"/>',
+  toll: '<path d="M4 20V9l8-5 8 5v11M4 12h16M9 20v-5h6v5"/>',
+  plug: '<path d="M9 3v5M15 3v5M7 8h10v3a5 5 0 0 1-10 0zM12 16v5"/>',
+  wifi: '<path d="M2.5 9a14 14 0 0 1 19 0M5.5 12.5a9.5 9.5 0 0 1 13 0M8.5 16a5 5 0 0 1 7 0M12 19.5h.01"/>',
   toilets: '<circle cx="8" cy="5.5" r="1.6"/><circle cx="16" cy="5.5" r="1.6"/><path d="M6.5 20v-6H5.5l1.2-5.5h2.6L10.5 14H9.5v6M14.5 20v-11h3v11M12 3v18"/>',
   // maneuvers (arrow glyphs)
   left: '<path d="M17 20v-7a3 3 0 0 0-3-3H6m4-4-4 4 4 4"/>',

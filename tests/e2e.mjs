@@ -38,7 +38,7 @@ const waitView = (page, v, timeout = 15000) => page.waitForFunction((x) => windo
 async function home(page) { await page.evaluate(() => { window.__bm.ctx.views.show('home', { detent: 'half' }); }); await page.waitForTimeout(300); }
 async function boot(page) {
   await page.goto(BASE, { waitUntil: 'domcontentloaded' });
-  await page.waitForFunction(() => window.__bm?.ctx && document.querySelectorAll('#cats .chip').length === 12, null, { timeout: 25000 });
+  await page.waitForFunction(() => window.__bm?.ctx && document.querySelectorAll('#cats .chip').length === 13, null, { timeout: 25000 });
   await page.waitForFunction(() => window.__bm.ctx.map.isStyleLoaded() && window.__bm.ctx.map.getLayer('bm-route'), null, { timeout: 25000 });
   await page.waitForTimeout(1500);
 }

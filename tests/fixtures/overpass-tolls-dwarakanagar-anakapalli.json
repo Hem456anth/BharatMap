@@ -1,0 +1,53 @@
+{
+  "version": 0.6,
+  "generator": "Overpass API 0.7.62.11 87bfad18",
+  "osm3s": {
+    "timestamp_osm_base": "2026-10-18T18:19:24Z",
+    "copyright": "The data included in this document is from www.openstreetmap.org. The data is made available under ODbL."
+  },
+  "elements": [
+
+{
+  "type": "node",
+  "id": 2279803513,
+  "lat": 17.6854882,
+  "lon": 83.1499296,
+  "tags": {
+    "barrier": "toll_booth",
+    "name": "Aganampudi"
+  }
+},
+{
+  "type": "node",
+  "id": 2279803516,
+  "lat": 17.6855958,
+  "lon": 83.1501004,
+  "tags": {
+    "barrier": "toll_booth",
+    "name": "Aganampudi"
+  }
+},
+{
+  "type": "node",
+  "id": 4053034608,
+  "lat": 17.7139567,
+  "lon": 83.2123226,
+  "tags": {
+    "barrier": "toll_booth"
+  }
+},
+{
+  "type": "node",
+  "id": 5737540068,
+  "lat": 17.7138219,
+  "lon": 83.2120777,
+  "tags": {
+    "barrier": "toll_booth",
+    "currency:INR": "yes",
+    "payment:cash": "yes",
+    "payment:contactless": "yes"
+  }
+}
+
+  ]
+}

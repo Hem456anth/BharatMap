@@ -1,35 +1,85 @@
-# Local "production-shaped" stack. MVP app uses SQLite; PostGIS, OSRM and Valhalla
-# services are provisioned for the next migration step (see docs/DEPLOYMENT.md).
+# Bharat Map self-hosted stack (see docs/SELF_HOSTING.md for sizing and first-run times).
+#   docker compose up -d app                       # app only; map services use the public OSM instances (dev use)
+#   docker compose --profile routing up -d         # + Valhalla (India): two-wheeler, avoid tolls/highways, alternates
+#   docker compose --profile geocoding up -d       # + Photon (India index) and Nominatim (India import)
+#   docker compose --profile osrm up -d            # + OSRM car (optional; Valhalla covers all modes)
+# All services are built from the Geofabrik India extract (OpenStreetMap, ODbL).
+x-india-pbf: &india_pbf https://download.geofabrik.de/asia/india-latest.osm.pbf
+
 services:
   app:
     build: .
     ports: ["8080:8080"]
-    env_file: .env
+    env_file: [{ path: .env, required: false }]
     environment:
       DB_FILE: /data/mapos.db
-      OSRM_URL: http://osrm:5000
-    volumes: ["appdata:/data"]
-    depends_on: [osrm]
+      VALHALLA_URL: ${VALHALLA_URL:-http://valhalla:8002}
+      PHOTON_URL: ${PHOTON_URL:-http://photon:2322}
+      NOMINATIM_URL: ${NOMINATIM_URL:-http://nominatim:8080}
+      # OSRM_URL_CAR: http://osrm:5000          # uncomment with --profile osrm
+      # OVERPASS_URL: http://overpass/api/interpreter
+      # OCM_API_KEY: set in .env (Open Charge Map, free key)
+      REGIONS_DIR: /regions
+      TRANSIT_FEEDS_DIR: /gtfs
+      CLIENT_SERVICES: server
+      HTTP_USER_AGENT: ${HTTP_USER_AGENT:-BharatMap/0.4 (self-hosted; contact: set HTTP_USER_AGENT)}
+    volumes: ["appdata:/data", "./data/regions:/regions:ro", "./data/gtfs:/gtfs:ro"]
     restart: unless-stopped
 
-  osrm:   # self-hosted routing on the India extract (prepare once: scripts/prepare-osrm.sh)
+  valhalla:
+    profiles: ["routing"]
+    image: ghcr.io/valhalla/valhalla-scripted:latest
+    environment:
+      tile_urls: *india_pbf
+      serve_tiles: "True"
+      build_elevation: "False"
+      build_admins: "True"
+      build_time_zones: "True"
+      force_rebuild: "False"
+      use_tiles_ignore_pbf: "True"
+      server_threads: "4"
+    volumes: ["./valhalla:/custom_files"]
+    ports: ["8002:8002"]
+    restart: unless-stopped
+
+  photon:
+    profiles: ["geocoding"]
+    image: rtuszik/photon-docker:latest   # unofficial image of komoot/photon (Apache-2.0); prebuilt India index
+    environment:
+      REGION: india
+      UPDATE_STRATEGY: PARALLEL
+      UPDATE_INTERVAL: 720h
+      JAVA_PARAMS: -Xmx4g
+    volumes: ["photon_data:/photon/data"]
+    ports: ["2322:2322"]
+    restart: unless-stopped
+
+  nominatim:
+    profiles: ["geocoding"]
+    image: mediagis/nominatim:4.5
+    environment:
+      PBF_URL: *india_pbf
+      REPLICATION_URL: https://download.geofabrik.de/asia/india-updates/
+      NOMINATIM_PASSWORD: ${NOMINATIM_PASSWORD:-change-me}
+      IMPORT_STYLE: address
+      THREADS: "4"
+    shm_size: 1gb
+    volumes: ["nominatim_data:/var/lib/postgresql/16/main"]
+    ports: ["8088:8080"]
+    restart: unless-stopped
+
+  osrm:
+    profiles: ["osrm"]
     image: ghcr.io/project-osrm/osrm-backend:v5.27.1
-    command: osrm-routed --algorithm mld /data/india-latest.osrm
+    command: osrm-routed --algorithm mld /data/india-latest.osrm   # prepare once: scripts/prepare-osrm.sh
     volumes: ["./osm:/data"]
     ports: ["5000:5000"]
     restart: unless-stopped
 
   postgis:  # production DB target (db/postgis/001_init.sql)
+    profiles: ["next"]
     image: postgis/postgis:16-3.4
     environment: { POSTGRES_DB: mapos, POSTGRES_USER: mapos, POSTGRES_PASSWORD: "${POSTGRES_PASSWORD:-change-me}" }
     volumes: ["pgdata:/var/lib/postgresql/data", "./db/postgis:/docker-entrypoint-initdb.d:ro"]
-    profiles: ["next"]
 
-  valhalla: # truck / 2-wheeler / isochrones (phase 2)
-    image: ghcr.io/valhalla/valhalla-scripted:latest
-    environment: { tile_urls: "https://download.geofabrik.de/asia/india-latest.osm.pbf" }
-    volumes: ["./valhalla:/custom_files"]
-    ports: ["8002:8002"]
-    profiles: ["next"]
-
-volumes: { appdata: {}, pgdata: {} }
+volumes: { appdata: {}, pgdata: {}, photon_data: {}, nominatim_data: {} }

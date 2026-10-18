@@ -16,10 +16,12 @@ import { mountAdmin } from './admin.js';
 import { cspString } from '../shared/csp.js';
 import { normalizeSaved } from '../web/lib/saved-model.js';
 import { notify, notifyOrderParties } from './notify.js';
+import { mountApiV1 } from './api-v1.js';
+import zlib from 'node:zlib';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const CSP = cspString();
-export const VERSION = '0.3.0';
+export const VERSION = '0.4.0';
 
 // ---------- small infra helpers ----------
 const metrics = { requests: 0, errors: 0, byRoute: new Map(), latencyMs: [] };
@@ -41,7 +43,7 @@ const point = (lat, lng) => { const p = { lat: num(lat), lng: num(lng) }; return
 const bad = (res, msg, code = 400) => res.status(code).json({ error: msg });
 const str = (v, max = 300) => (typeof v === 'string' ? v.trim().slice(0, max) : '');
 
-export function createApp({ db = openDb(), timeScale = Number(process.env.DEMO_TIME_SCALE || RULES.demoTimeScale), payments = createRazorpay() } = {}) {
+export function createApp({ db = openDb(), timeScale = Number(process.env.DEMO_TIME_SCALE || RULES.demoTimeScale), payments = createRazorpay(), providers, transit } = {}) {
   seed(db);
   const app = express();
   app.disable('x-powered-by');
@@ -88,6 +90,27 @@ export function createApp({ db = openDb(), timeScale = Number(process.env.DEMO_T
   const isDisabled = db.prepare('SELECT disabled FROM users WHERE id=?');
   app.use((req, _res, next) => { if (req.user && isDisabled.get(req.user.sub)?.disabled) req.user = null; next(); });
 
+  // gzip JSON API responses (> 1 KB) for low-bandwidth clients; dependency-free.
+  app.use('/api', (req, res, next) => {
+    if (!/\bgzip\b/.test(req.headers['accept-encoding'] || '')) return next();
+    const json = res.json.bind(res);
+    res.json = (obj) => {
+      const body = Buffer.from(JSON.stringify(obj));
+      if (body.length < 1024 || res.headersSent) return json(obj);
+      res.setHeader('Content-Type', 'application/json; charset=utf-8');
+      res.setHeader('Content-Encoding', 'gzip'); res.setHeader('Vary', 'Accept-Encoding');
+      return res.end(zlib.gzipSync(body, { level: 6 }));
+    };
+    next();
+  });
+  // Client config: CLIENT_SERVICES=server makes the server-hosted web app use /api/v1 for map services.
+  app.get('/config.js', (_req, res) => {
+    res.type('application/javascript').setHeader('Cache-Control', 'no-cache');
+    res.send(`window.__MAPOS_CONFIG__ = window.__MAPOS_CONFIG__ || ${JSON.stringify({ apiBase: '', services: process.env.CLIENT_SERVICES === 'server' ? 'server' : 'direct', regionsBase: process.env.REGIONS_BASE || '' })};\n`);
+  });
+  const v1 = mountApiV1(app, { root: ROOT, ...(providers ? { providers } : {}), ...(transit ? { transit } : {}) });
+  app.locals.v1 = v1;
+
   // ---------- static frontend ----------
   app.use('/shared', express.static(path.join(ROOT, 'shared'), { maxAge: '1h' }));
   app.use(express.static(path.join(ROOT, 'web'), { maxAge: '10m', index: 'index.html' }));
@@ -126,7 +149,8 @@ export function createApp({ db = openDb(), timeScale = Number(process.env.DEMO_T
   app.get('/api/config', (_req, res) => res.json({
     version: VERSION,
     payments: { razorpay: payments.enabled, key_id: payments.keyId, mode: payments.mode, cod: true, upi_simulated: process.env.ALLOW_SIMULATED_UPI !== '0' },
-    routing: process.env.OFFLINE === '1' ? 'fallback' : (process.env.OSRM_URL ? 'osrm-self-hosted' : 'osrm-public-demo'),
+    routing: process.env.OFFLINE === '1' ? 'fallback' : (process.env.VALHALLA_URL ? 'valhalla-self-hosted' : process.env.OSRM_URL ? 'osrm-self-hosted' : 'osrm-public-demo'),
+    services: { v1: true, valhalla: !!process.env.VALHALLA_URL, ev_ocm: !!process.env.OCM_API_KEY, transit_feeds: v1.transit.feeds().map((f) => f.id) },
     llm: Boolean(process.env.LLM_API_KEY),
   }));
   app.get('/metrics', (_req, res) => {

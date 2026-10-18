@@ -142,7 +142,7 @@ test('Overpass query builder: tags, rounded bbox, limit, validation', () => {
   assert.match(buildOverpassQuery('atm', { s: 1, w: 2, n: 3, e: 4 }), /\["amenity"="atm"\].*\["amenity"="bank"\]\["atm"="yes"\]/);
   assert.throws(() => buildOverpassQuery('casino', { s: 1, w: 2, n: 3, e: 4 }), /unknown_category/);
   assert.throws(() => buildOverpassQuery('fuel', { s: 3, w: 2, n: 1, e: 4 }), /invalid_bbox/);
-  assert.equal(POI_CATEGORIES.length, 12);
+  assert.equal(POI_CATEGORIES.length, 13); // v0.4 adds airports
   const big = clampBBox({ lat: 17.72, lng: 83.3 }, { s: 17, w: 82, n: 18.5, e: 84 }, 8);
   assert.ok((big.n - big.s) * 110.574 <= 8.01 && (big.e - big.w) * 111.32 * Math.cos(17.72 * Math.PI / 180) <= 8.01);
 });

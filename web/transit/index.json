@@ -1,0 +1,24 @@
+{
+ "feeds": [
+  {
+   "id": "hmrl",
+   "name": "Hyderabad Metro Rail",
+   "attribution": "Contains data provided by Hyderabad Metro Rail Ltd.",
+   "valid": {
+    "start": "20260703",
+    "end": "20300101"
+   },
+   "bbox": [
+    78.3730262,
+    17.349846,
+    78.5601868,
+    17.4987037
+   ],
+   "file": "hmrl.json",
+   "bytes": 167291,
+   "stops": 117,
+   "routes": 3
+  }
+ ],
+ "note": "Scheduled times from GTFS, not live."
+}

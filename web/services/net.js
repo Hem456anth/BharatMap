@@ -14,6 +14,7 @@ const MAX_CACHE = 300;
 export const HOST_SPACING_MS = {
   'nominatim.openstreetmap.org': 1100,
   'overpass-api.de': 1000,
+  'valhalla1.openstreetmap.de': 1000, // FOSSGIS Valhalla: max 1 req/s
 };
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));

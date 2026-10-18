@@ -5,6 +5,8 @@
 //  - server-side timeout 20 s, client timeout 25 s, result count capped
 import { fetchJSON } from './net.js';
 import { haversineKm } from '../shared/geo.js';
+import { useServer, v1 } from './server.js';
+import { parseOsmCharger, parseParking } from '../shared/ev.js';
 
 export const OVERPASS_URL = 'https://overpass-api.de/api/interpreter';
 
@@ -22,7 +24,10 @@ export const POI_CATEGORIES = [
   { id: 'grocery', icon: 'grocery', sel: ['["shop"~"^(supermarket|convenience|grocery|general)$"]'] },
   { id: 'parking', icon: 'parking', sel: ['["amenity"="parking"]'] },
   { id: 'toilets', icon: 'toilets', sel: ['["amenity"="toilets"]'] },
+  { id: 'airport', icon: 'airport', sel: ['["aeroway"="aerodrome"]["iata"]', '["aeroway"="aerodrome"]["aerodrome:type"~"^(public|international)$"]', '["aeroway"="terminal"]'] },
 ];
+/** Categories shown as chips on the home sheet (airport is a chip too; v0.4). */
+export const CHIP_IDS = POI_CATEGORIES.map((c) => c.id);
 export const CATEGORY_BY_ID = Object.fromEntries(POI_CATEGORIES.map((c) => [c.id, c]));
 
 const KM_PER_DEG_LAT = 110.574;
@@ -80,10 +85,28 @@ function pickNames(tags) {
   return n;
 }
 
-/** Fetch real POIs for a category around a centre (bbox clamped). */
-export async function fetchPois(categoryId, center, viewBBox, { fetchImpl, limit = 60 } = {}) {
-  const bbox = clampBBox(center, viewBBox);
+/** Attach parsed EV / parking details (OSM tags) to places of those categories. */
+export function enrichPlaces(items, categoryId) {
+  if (categoryId === 'ev') return items.map((x) => (x.ev ? x : { ...x, ev: parseOsmCharger(x.tags) }));
+  if (categoryId === 'parking') return items.map((x) => (x.parking ? x : { ...x, parking: parseParking(x.tags) }));
+  return items;
+}
+
+/**
+ * Fetch real POIs for a category around a centre (bbox clamped to maxKm across; low-bandwidth mode passes a
+ * smaller maxKm and limit). With a Bharat Map server: /api/v1/places/nearby (EV via Open Charge Map when the server has a key).
+ */
+export async function fetchPois(categoryId, center, viewBBox, { fetchImpl, limit = 60, maxKm = 8 } = {}) {
+  const bbox = clampBBox(center, viewBBox, maxKm);
+  if (useServer()) {
+    try {
+      const radius = Math.round((Math.max(bbox.n - bbox.s, (bbox.e - bbox.w) * Math.cos((center.lat * Math.PI) / 180)) * 110574) / 2);
+      const qs = new URLSearchParams({ category: categoryId, lat: center.lat.toFixed(5), lng: center.lng.toFixed(5), radius: String(Math.max(300, radius)), limit: String(limit) });
+      const r = await v1(`/places/nearby?${qs}`, { timeout: 30000, ttl: 10 * 60_000, fetchImpl });
+      return { items: enrichPlaces(r.items || [], categoryId), bbox, provider: r.provider, attribution: r.attribution, timestamp: r.timestamp || null, via: 'server' };
+    } catch { /* server unreachable: go direct */ }
+  }
   const q = buildOverpassQuery(categoryId, bbox, { limit });
   const json = await fetchJSON(OVERPASS_URL, { method: 'POST', body: `data=${encodeURIComponent(q)}`, headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, timeout: 25000, ttl: 10 * 60_000, fetchImpl });
-  return { items: parseOverpass(json, categoryId, center), bbox, query: q, timestamp: json?.osm3s?.timestamp_osm_base || null };
+  return { items: enrichPlaces(parseOverpass(json, categoryId, center), categoryId), bbox, query: q, timestamp: json?.osm3s?.timestamp_osm_base || null, provider: 'overpass' };
 }

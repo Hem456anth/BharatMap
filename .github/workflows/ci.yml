@@ -42,7 +42,7 @@ jobs:
         run: |
           PORT=8080 LOG_REQUESTS=0 node --no-warnings server/index.js > server.log 2>&1 &
           for i in $(seq 1 30); do curl -sf localhost:8080/api/health && break; sleep 1; done
-      - name: E2E v0.3 (desktop + mobile; third-party map services served from fixtures)
+      - name: E2E v0.4 (desktop + mobile; third-party map services served from fixtures)
         run: CHROME=$(which google-chrome || which chromium) node tests/e2e.mjs
       - uses: actions/upload-artifact@v4
         if: always()
@@ -74,7 +74,7 @@ jobs:
         working-directory: android
         env:
           VERSION_CODE: ${{ github.run_number }}
-          VERSION_NAME: 0.3.${{ github.run_number }}
+          VERSION_NAME: 0.4.${{ github.run_number }}
           ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
           ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
           ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
@@ -86,8 +86,8 @@ jobs:
       - name: Collect APKs
         run: |
           mkdir -p out
-          cp android/app/build/outputs/apk/debug/app-debug.apk out/bharat-map-0.3.${{ github.run_number }}-debug.apk
-          [ -f android/app/build/outputs/apk/release/app-release.apk ] && cp android/app/build/outputs/apk/release/app-release.apk out/bharat-map-0.3.${{ github.run_number }}-release.apk || true
+          cp android/app/build/outputs/apk/debug/app-debug.apk out/bharat-map-0.4.${{ github.run_number }}-debug.apk
+          [ -f android/app/build/outputs/apk/release/app-release.apk ] && cp android/app/build/outputs/apk/release/app-release.apk out/bharat-map-0.4.${{ github.run_number }}-release.apk || true
           ls -la out
       - uses: actions/upload-artifact@v4
         with: { name: bharat-map-apk, path: out/*.apk, retention-days: 30 }
@@ -98,6 +98,6 @@ jobs:
         if: github.ref == 'refs/heads/main'
         env: { GH_TOKEN: "${{ github.token }}" }
         run: |
-          gh release create "v0.3.${{ github.run_number }}" out/*.apk \
-            --title "Bharat Map 0.3.${{ github.run_number }}" \
-            --notes "Bharat Map 0.3 (map-first: search, real OSM places, routing, turn-by-turn voice navigation, offline maps, Shop). Automated build of ${{ github.sha }}. Debug-signed APK: enable 'Install unknown apps' to sideload. See docs/TEST-REPORT.md."
+          gh release create "v0.4.${{ github.run_number }}" out/*.apk \
+            --title "Bharat Map 0.4.${{ github.run_number }}" \
+            --notes "Bharat Map 0.4 (own map-services backend, real two-wheeler routing via Valhalla, scheduled Hyderabad Metro journeys from HMRL GTFS, toll plazas on route, EV/parking details, low-bandwidth mode, downloadable offline regions, background navigation). Automated build of ${{ github.sha }}. Debug-signed APK: enable 'Install unknown apps' to sideload. See docs/TEST-REPORT.md."

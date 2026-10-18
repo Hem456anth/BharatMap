@@ -50,12 +50,12 @@ test('CSP: server header equals the app-shell <meta>, and lists only the require
   assert.ok(!/<script>[^<]/.test(html.replace(/<script type="application\/ld\+json">[^<]*<\/script>/, '')), 'no inline <script> in the shell');
 });
 
-test('version 0.3 + migration 003 + map style proxy accepts only known styles', async () => {
-  assert.equal((await j('GET', '/api/health')).body.version, '0.3.0');
+test('version 0.4 + migration 003 + map style proxy accepts only known styles', async () => {
+  assert.equal((await j('GET', '/api/health')).body.version, '0.4.0');
   assert.ok(db.prepare("SELECT 1 FROM schema_migrations WHERE version='003_saved_places.sql'").get());
   assert.ok(db.prepare("SELECT 1 FROM sqlite_master WHERE name='user_places'").get());
   const pkg = JSON.parse(fs.readFileSync(new URL('../package.json', import.meta.url)));
-  assert.match(pkg.version, /^0\.3\./);
+  assert.match(pkg.version, /^0\.4\./);
 });
 
 test('service worker precache list only names files that exist (install would fail otherwise)', () => {

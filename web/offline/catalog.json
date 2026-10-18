@@ -1,0 +1,15 @@
+{
+  "note": "Downloadable offline regions. Files are PMTiles extracts of the Protomaps daily basemap build (OpenStreetMap data, ODbL), made with scripts/make-region.sh and served from the region host (REGIONS_DIR on the Bharat Map server, or any static host with HTTP Range). Sizes are estimates until the file is generated.",
+  "attribution": "© OpenStreetMap contributors · Protomaps",
+  "regions": [
+    { "id": "visakhapatnam", "name": "Visakhapatnam", "state": "Andhra Pradesh", "bbox": [83.10, 17.58, 83.45, 17.90], "maxzoom": 15, "est_mb": 18 },
+    { "id": "hyderabad", "name": "Hyderabad", "state": "Telangana", "bbox": [78.25, 17.25, 78.70, 17.60], "maxzoom": 15, "est_mb": 60 },
+    { "id": "bengaluru", "name": "Bengaluru", "state": "Karnataka", "bbox": [77.40, 12.80, 77.80, 13.15], "maxzoom": 15, "est_mb": 75 },
+    { "id": "chennai", "name": "Chennai", "state": "Tamil Nadu", "bbox": [80.10, 12.85, 80.35, 13.25], "maxzoom": 15, "est_mb": 55 },
+    { "id": "mumbai", "name": "Mumbai", "state": "Maharashtra", "bbox": [72.77, 18.88, 73.05, 19.30], "maxzoom": 15, "est_mb": 65 },
+    { "id": "delhi", "name": "Delhi NCR", "state": "Delhi", "bbox": [76.84, 28.40, 77.35, 28.88], "maxzoom": 15, "est_mb": 90 },
+    { "id": "kolkata", "name": "Kolkata", "state": "West Bengal", "bbox": [88.25, 22.45, 88.50, 22.70], "maxzoom": 15, "est_mb": 45 },
+    { "id": "pune", "name": "Pune", "state": "Maharashtra", "bbox": [73.73, 18.42, 74.00, 18.65], "maxzoom": 15, "est_mb": 35 },
+    { "id": "vijayawada", "name": "Vijayawada", "state": "Andhra Pradesh", "bbox": [80.55, 16.45, 80.75, 16.60], "maxzoom": 15, "est_mb": 10 }
+  ]
+}

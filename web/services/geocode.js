@@ -8,6 +8,7 @@ import { searchPlaces } from '../shared/search.js';
 import { parseIndianAddress } from '../shared/address.js';
 import { BUSINESSES } from '../shared/seed.js';
 import { haversineKm } from '../shared/geo.js';
+import { useServer, v1 } from './server.js';
 
 export const NOMINATIM = 'https://nominatim.openstreetmap.org';
 export const PHOTON = 'https://photon.komoot.io';
@@ -51,6 +52,12 @@ export function parsePhoton(json, origin) {
   }).filter((x) => Number.isFinite(x.lat) && x.name);
 }
 export async function photonSearch(q, opts = {}) {
+  if (useServer()) {
+    try {
+      const qs = new URLSearchParams({ q, autocomplete: '1', lang: opts.lang || 'en', ...(Number.isFinite(opts.lat) ? { lat: opts.lat.toFixed(4), lng: opts.lng.toFixed(4) } : {}) });
+      return (await v1(`/geocode?${qs}`, { timeout: 8000, ttl: 30 * 60_000, fetchImpl: opts.fetchImpl })).items || [];
+    } catch { /* go direct */ }
+  }
   const json = await fetchJSON(photonUrl(q, opts), { timeout: 8000, ttl: 30 * 60_000, fetchImpl: opts.fetchImpl });
   return parsePhoton(json, Number.isFinite(opts.lat) ? { lat: opts.lat, lng: opts.lng } : null);
 }
@@ -74,10 +81,16 @@ export function parseNominatimItem(j) {
   };
 }
 export async function nominatimSearch(q, opts = {}) {
+  if (useServer()) {
+    try { return (await v1(`/geocode?${new URLSearchParams({ q, lang: opts.lang || 'en' })}`, { timeout: 12000, ttl: 60 * 60_000, fetchImpl: opts.fetchImpl })).items || []; } catch { /* go direct */ }
+  }
   const json = await fetchJSON(nominatimSearchUrl(q, opts), { timeout: 10000, ttl: 60 * 60_000, fetchImpl: opts.fetchImpl });
   return (Array.isArray(json) ? json : []).map(parseNominatimItem).filter(Boolean);
 }
 export async function reverseGeocode(lat, lng, opts = {}) {
+  if (useServer()) {
+    try { return (await v1(`/reverse?lat=${lat.toFixed(6)}&lng=${lng.toFixed(6)}&lang=${opts.lang || 'en'}`, { timeout: 12000, ttl: 60 * 60_000, fetchImpl: opts.fetchImpl })).item; } catch { /* go direct */ }
+  }
   const json = await fetchJSON(nominatimReverseUrl(lat, lng, opts), { timeout: 10000, ttl: 60 * 60_000, fetchImpl: opts.fetchImpl });
   return parseNominatimItem(json);
 }

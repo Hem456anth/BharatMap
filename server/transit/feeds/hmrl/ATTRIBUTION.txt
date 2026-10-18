@@ -1,0 +1,4 @@
+Contains data provided by Hyderabad Metro Rail Ltd.
+Source: HMRL open data (https://hmrl.co.in/open-data), GTFS dated 03 July 2026, published via Open Data Telangana and mirrored by OpenCity (https://data.opencity.in/dataset/hyderabad-metro-rail-gtfs).
+Licence: HMRL terms of use — free, non-exclusive, worldwide licence to use, reproduce and redistribute, commercial use allowed; attribution required; no endorsement by HMRL implied.
+Changes: stop_times.txt gzip-compressed for size (content unchanged); fare_attributes.txt, fare_rules.txt and shapes.txt not bundled (unused).

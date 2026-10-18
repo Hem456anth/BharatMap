@@ -177,3 +177,65 @@ Note 1: there is no free, redistributable high-resolution satellite imagery for 
 8. Landmark-anchored instructions
 9. Toll estimate (labelled)
 10. Hyderabad static transit
+
+## 9. AMap Global APK findings (v17.01.0)
+
+Source: static analysis of the user-supplied APK `com.autonavi.minimap` 17.01.0.2012 (`APK_ANALYSIS.md`, 18 Oct 2026). The APK carries the Chinese app label and only zh + en native resources, so it appears to be the main AMap build with international modes inside. [I]
+
+**Legend.**
+- **[O]**: observed in the APK (manifest, resource or file name, file magic)
+- **[I]**: inferred
+- **[U]**: unknown
+
+Most AMap UI sits in a 92 MB proprietary script bundle that was not opened, so absence of native evidence does **not** mean the feature is absent. This section updates the AMap column above where the APK gives evidence. Rows not listed keep their earlier value.
+
+| Feature (section) | AMap before | AMap from APK | Evidence |
+|---|---|---|---|
+| Dark mode (§1) | ● | ● map/nav, ◐ native UI | Day/night map and driving-nav styles; only 68 of 1,332 colours have night overrides [O] |
+| Map styles / layers (§1) | ● | ● | Standard, public-transport and driving-navigation style families, each day/night [O] |
+| Local-language labels / UI (§1) | ● 15 languages B4 | ◐ natively zh + en (zh-CN/HK/TW) | `values-en` has 8,400 strings vs 9,827 default. Other languages, if any, are inside the script bundle [U] |
+| Bottom sheet (§1) | ? | ● | `poi_detail_sliding_view_layout` [O] |
+| Long-press pin (§1) | ? | ◐ point picking | `fragment_map_select_point`, `map_select_point_mapinteractive_layout` [O]; long-press gesture itself [U] |
+| Typeahead, history, did-you-mean (§2) | ● | ● | `search_sugg_*`, `search_history_*`, error / city-suggest header [O] |
+| Search filters (§2) | ● | ● | `search_menu_filter_text` [O] |
+| Reviews / ratings UGC (§3) | ● | ● | Rating strings, `comment` package, bus-journey review layout [O] |
+| Child POIs / entrances (§3) | — | ● | `elipsized_child_poi_layout` [O] |
+| Photo contributions (§3) | — | ● | `poi_photo_update_success_fragment`, `DoorAddressUpload` [O] |
+| Two-wheeler / e-bike / truck modes (§4) | ● | ● | Vehicle-type chooser; per-mode guidance configs (e-bike, bike, walk, bus); truck/motorbike/EV disclaimers [O] |
+| Avoid tolls / route preferences (§4) | ● B6 | ● | `layout_route_preference_widget` [O]; options [I] |
+| Lane guidance (§5) | ● B7 | ● | Lane navigation + lane sound configs, lane render profiles [O] |
+| Voice guidance (§5) | ● | ● offline TTS + neural voice packs | Embedded TTS engine/data, MNN voice models, voice list + record screens [O] |
+| Speed / red-light cameras (§5) | ● B7 | ● | `edog_*` strings, camera/overspeed earcons [O] |
+| Traffic-light countdown (§5) | ● B5 | ● | `TrafficLightNewService` (location FGS), front-traffic-light earcon [O] |
+| Background navigation (§5) | ● B1 | ● | 11 location-type foreground services, `ACCESS_BACKGROUND_LOCATION`, floating nav overlay service [O] |
+| Free-drive / cruise mode (§5) | — | ● | `BackgroundCruiseService`, `amapuricruise` scheme [O] |
+| AR walking (§5) | — | ● | `arwalk` JNI/packages, ARCore + Huawei AR + EasyAR [O] |
+| Incident reporting (§5) | ● | ● | `traffic_report_*` layouts with photo + POI, event expiry states [O] |
+| Live transit / real-time bus (§6) | ● B1 | ● | Real-time bus widget and strings [O] |
+| Indoor maps (§6) | ● | ● | Indoor map strings and `indoorMap` deep link [O] |
+| EV chargers / petrol / parking (§6) | ● | ● | Charging, gas-station, fuel-discount widgets; parking-slot strings [O] |
+| Home / Work, commute (§7) | ● | ● | Commute widget providers and strings [O] |
+| Favourites / lists (§7) | ? | ● favourites | Favourites strings and sprites [O]; custom lists [U] |
+| Offline maps (§7) | ◐ | ● | City catalogue SQLite + download service + 119 offline strings [O]; coverage outside China [U] |
+| Offline routing / search (§7) | ? | ◐ | Offline SDK JNI + offline DB [O]; actual capability [U] |
+| Use without login (§7) | — | [U] | Many login SDKs present (Alipay, Taobao, WeChat, QQ, carrier one-tap, Google) [O]; gating unknown |
+| Telemetry (§7) | — | — (heavy) | UT analytics, UTDID, ADIU device ID, ad packages, AD_ID, an unidentified SDK, installed-app inventory permission [O] |
+| Home-screen widgets / shortcuts (new) | — | ● | 44 components in a widget process; launcher shortcut permissions [O] |
+| Car integration (new) | — | ● | HiCar, UCar, Honor Auto, car hand-off [O] |
+| Deep links (new) | — | ● | `androidamap://` (24 actions), `geo:`, App Links; also claims Google Maps URLs [O] |
+
+**Engineering profile (new rows).**
+
+| Item | AMap 17.01 | Bharat v0.3 |
+|---|---|---|
+| APK download size | 194 MB (arm64 only); 344 MB unpacked | ~29 MB (fonts ≈ 11.5 MB + PMTiles 13.4 MB) |
+| Code | 8 dex, 72,804 classes; 72 native libs (map engine 29 MB, nav engine 16 MB) | Capacitor WebView + MapLibre GL JS |
+| UI tech | Own JS-driven native UI runtime + server-driven templates + mini-program containers | Vanilla JS modules in a WebView |
+| min / target SDK | 21 / 35 | 23 / 35 (`android/variables.gradle`) |
+| Cleartext traffic | Permitted globally | Disabled (`usesCleartextTraffic=false`) |
+| allowBackup | false | false |
+| Exported components without permission | 83 | 1 (launcher activity) |
+| Background location | Declared | Not requested |
+| Third-party analytics / ads | Several | None |
+
+Bottom line: the APK confirms AMap's depth in navigation (lanes, cameras, signals, per-mode guidance, offline TTS) and in surfaces outside the app (widgets, car, deep links). It also shows the cost: size, permissions and tracking. Bharat's open, small and private posture is a real advantage. The ranked follow-ups are in `OPPORTUNITIES.md`.

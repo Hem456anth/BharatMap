@@ -27,6 +27,27 @@ services:
         sync: false
       - key: RAZORPAY_WEBHOOK_SECRET
         sync: false
+      # v0.4 map services (/api/v1). Unset = public OSM instances, throttled to 1 req/s (dev only).
+      - key: VALHALLA_URL
+        sync: false          # e.g. https://valhalla.example.in (self-hosted, docs/SELF_HOSTING.md)
+      - key: PHOTON_URL
+        sync: false
+      - key: NOMINATIM_URL
+        sync: false
+      - key: OSRM_URL_CAR
+        sync: false
+      - key: OVERPASS_URL
+        sync: false
+      - key: OCM_API_KEY
+        sync: false          # Open Charge Map key (kept server-side; never shipped in the app)
+      - key: HTTP_USER_AGENT
+        value: BharatMap/0.4 (+https://github.com/Hem456anth/BharatMap)
+      - key: CLIENT_SERVICES
+        value: server
+      - key: V1_RATE_BURST
+        value: "60"
+      - key: V1_RATE_PER_SEC
+        value: "2"
     # disk:
     #   name: mapos-data
     #   mountPath: /data
