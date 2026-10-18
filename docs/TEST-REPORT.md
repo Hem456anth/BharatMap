@@ -9,7 +9,7 @@ Run date: 19 Oct 2026 (IST). Raw outputs: `docs/test-output.txt` (npm test), `do
 | Unit + API (`npm test`, node:test) | **120 / 120 pass** (95 from v0.3–v0.4 + 25 new) |
 | Browser E2E (`tests/e2e.mjs`, Chromium, desktop 1366×820 + mobile 390×844) | **91 / 91 pass** — desktop 52, mobile 39 (v0.3 regression 43, v0.4 regression 21, v0.5 new 27); 0 console errors. Green on two consecutive full local runs after the camera fix below |
 | Demo build (`npm run build:demo`) | OK — `dist/india-mapos-demo.html` (585 KB) |
-| CI | __CI_ROW__ |
+| CI | [run 10](https://github.com/Hem456anth/BharatMap/actions/runs/39164678113) (`f4e1966`): unit + API + audit + secret scan ✅, Browser E2E ✅ (91 / 91 on GitHub's Chromium), Android Gradle build ✅ → release [v0.5.10](https://github.com/Hem456anth/BharatMap/releases/tag/v0.5.10), `bharat-map-0.5.10-debug.apk` 98,439,746 bytes (93.9 MiB): `AndroidManifest.xml`, `classes.dex`–`classes4.dex`, 11 offline PMTiles + 11 offline place indexes, launcher `shortcuts.xml`. Run 9 (`6b4ef2b`) failed only on E2E `layers sheet … pitched` — fixed above |
 
 ### Unit + API by file (120)
 | File | Tests | File | Tests |

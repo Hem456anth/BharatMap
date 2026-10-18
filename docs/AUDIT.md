@@ -31,7 +31,7 @@ Every feature from v0.1–v0.4 below keeps its status unless a v0.5 row changes 
 | Sharing | **Live location sharing** via the server (`/api/v1/live`: 5–240 min, secret-protected updates every 10 s, public read, delete; viewer marker polls every 10 s) | ✅ / 🔌 | API tests + E2E (server mode). **Needs a deployed server** for real use; Android background updates only while the app runs |
 | Sharing | **Favourites list sharing** (list encoded inside the link, ≤ 50 places; import asks first) | ✅ | unit + E2E |
 | i18n | v0.5 strings in en (complete) and hi / te (in-house, **need native review**); other 8 languages fall back to English for v0.5 keys | 🟡 | unit |
-| Size | APK grew from 29.2 MB (v0.4.8) to ~98 MB (v0.5.9) by design: 9 more bundled cities + place indexes; CI prints a size breakdown but never fails on size | ✅ | CI step "APK size report" |
+| Size | APK grew from 29.2 MB (v0.4.8) to 98.4 MB (v0.5.10, 98,439,746 bytes) by design: 9 more bundled cities + place indexes; CI prints a size breakdown but never fails on size | ✅ | CI step "APK size report" |
 
 ### Tests (v0.5)
 - `npm test`: **120 / 120 pass** (95 v0.1–v0.4 + 25 new: `tests/v05.test.js` 20, `tests/v05-api.test.js` 5).
