@@ -1,0 +1,37 @@
+{
+  "name": "india-mapos",
+  "version": "0.1.0",
+  "description": "India-first map super-app MVP: Map → Business → Product → Delivery",
+  "scripts": {
+    "test": "node --no-warnings --test --test-concurrency=1 tests/unit.test.js tests/api.test.js tests/phase2.test.js",
+    "e2e": "node tests/e2e.mjs",
+    "load": "node tests/load.mjs",
+    "vendor": "mkdir -p web/vendor && cp node_modules/maplibre-gl/dist/maplibre-gl.mjs node_modules/maplibre-gl/dist/maplibre-gl-worker.mjs node_modules/maplibre-gl/dist/maplibre-gl.css node_modules/maplibre-gl/LICENSE.txt web/vendor/",
+    "start": "node --no-warnings server/index.js",
+    "dev": "node --no-warnings --watch server/index.js",
+    "build:demo": "node scripts/build-demo.mjs",
+    "migrate": "node --no-warnings scripts/migrate.mjs"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "UNLICENSED",
+  "dependencies": {
+    "@capacitor/android": "^7.6.9",
+    "@capacitor/core": "^7.6.9",
+    "@capacitor/geolocation": "^7.1.8",
+    "@capacitor/local-notifications": "^7.0.7",
+    "express": "^4.22.3",
+    "pmtiles": "^4.5.0"
+  },
+  "type": "module",
+  "devDependencies": {
+    "@capacitor/cli": "^7.6.9",
+    "@protomaps/basemaps": "^5.7.2",
+    "esbuild": "^0.28.2",
+    "maplibre-gl": "^6.15.0",
+    "playwright-core": "^1.64.1"
+  },
+  "engines": {
+    "node": ">=22.13"
+  }
+}

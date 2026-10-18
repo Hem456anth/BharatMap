@@ -1,0 +1,35 @@
+# Local "production-shaped" stack. MVP app uses SQLite; PostGIS, OSRM and Valhalla
+# services are provisioned for the next migration step (see docs/DEPLOYMENT.md).
+services:
+  app:
+    build: .
+    ports: ["8080:8080"]
+    env_file: .env
+    environment:
+      DB_FILE: /data/mapos.db
+      OSRM_URL: http://osrm:5000
+    volumes: ["appdata:/data"]
+    depends_on: [osrm]
+    restart: unless-stopped
+
+  osrm:   # self-hosted routing on the India extract (prepare once: scripts/prepare-osrm.sh)
+    image: ghcr.io/project-osrm/osrm-backend:v5.27.1
+    command: osrm-routed --algorithm mld /data/india-latest.osrm
+    volumes: ["./osm:/data"]
+    ports: ["5000:5000"]
+    restart: unless-stopped
+
+  postgis:  # production DB target (db/postgis/001_init.sql)
+    image: postgis/postgis:16-3.4
+    environment: { POSTGRES_DB: mapos, POSTGRES_USER: mapos, POSTGRES_PASSWORD: "${POSTGRES_PASSWORD:-change-me}" }
+    volumes: ["pgdata:/var/lib/postgresql/data", "./db/postgis:/docker-entrypoint-initdb.d:ro"]
+    profiles: ["next"]
+
+  valhalla: # truck / 2-wheeler / isochrones (phase 2)
+    image: ghcr.io/valhalla/valhalla-scripted:latest
+    environment: { tile_urls: "https://download.geofabrik.de/asia/india-latest.osm.pbf" }
+    volumes: ["./valhalla:/custom_files"]
+    ports: ["8002:8002"]
+    profiles: ["next"]
+
+volumes: { appdata: {}, pgdata: {} }

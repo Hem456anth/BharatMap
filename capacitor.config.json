@@ -1,0 +1,10 @@
+{
+  "appId": "com.indiamapos.app",
+  "appName": "India MapOS",
+  "webDir": "www",
+  "android": { "allowMixedContent": false, "captureInput": true, "webContentsDebuggingEnabled": false },
+  "server": { "androidScheme": "https" },
+  "plugins": {
+    "LocalNotifications": { "iconColor": "#0F6E56" }
+  }
+}

@@ -1,0 +1,2 @@
+concurrency=50 duration=15s requests=23555 ok=23555 non2xx/err=0 rps=1570 p50=29.7ms p95=47.8ms p99=64.3ms
+rate limit (RATE_LIMIT_PER_MIN=20, 25 requests): 20x200 then 5x429

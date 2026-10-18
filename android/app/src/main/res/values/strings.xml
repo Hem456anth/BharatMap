@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">India MapOS</string>
+    <string name="title_activity_main">India MapOS</string>
+    <string name="package_name">com.indiamapos.app</string>
+    <string name="custom_url_scheme">com.indiamapos.app</string>
+</resources>

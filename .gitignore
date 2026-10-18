@@ -1,0 +1,12 @@
+node_modules/
+data/
+*.db
+*.db-*
+.env
+osm/
+valhalla/
+web/demo-local.html
+www/
+android/app/release.keystore
+*.keystore
+*.jks

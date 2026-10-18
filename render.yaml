@@ -1,0 +1,33 @@
+# Render Blueprint: one-click backend deploy (Dashboard → New → Blueprint → pick this repo).
+# Free plan: no persistent disk, so SQLite resets on each deploy/restart (fictional demo data reseeds).
+# For persistence switch to a paid instance and uncomment the disk.
+services:
+  - type: web
+    name: india-mapos-api
+    runtime: docker
+    plan: free
+    region: singapore
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: TRUST_PROXY
+        value: "1"
+      - key: JWT_SECRET
+        generateValue: true
+      - key: ADMIN_PASSWORD
+        sync: false          # set in the dashboard (min 12 chars)
+      - key: ADMIN_EMAIL
+        value: admin@mapos.demo
+      - key: CORS_ORIGINS
+        value: https://localhost,capacitor://localhost
+      - key: RAZORPAY_KEY_ID
+        sync: false          # rzp_test_… for Test Mode
+      - key: RAZORPAY_KEY_SECRET
+        sync: false
+      - key: RAZORPAY_WEBHOOK_SECRET
+        sync: false
+    # disk:
+    #   name: mapos-data
+    #   mountPath: /data
+    #   sizeGB: 1
