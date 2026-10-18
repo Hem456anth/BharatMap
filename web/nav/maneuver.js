@@ -10,7 +10,7 @@ const sideOf = (mod) => (/left/.test(mod || '') ? 'left' : 'right');
 /** Icon key for a step (rendered by web/ui/icons.js). */
 export function maneuverIcon(step) {
   const { type, modifier } = step || {};
-  if (type === 'arrive') return 'arrive';
+  if (type === 'arrive' || type === 'waypoint') return 'arrive';
   if (type === 'depart') return 'depart';
   if (/roundabout|rotary/.test(type || '')) return 'roundabout';
   if (modifier === 'uturn') return 'uturn';
@@ -36,6 +36,7 @@ export function buildInstruction(step, lang = 'en', { landmark = null, destinati
   switch (s.type) {
     case 'depart': text = road ? tf(lang, 'm_depart', { road }) : t(lang, 'm_depart_plain'); break;
     case 'arrive': text = t(lang, 'm_arrive'); break;
+    case 'waypoint': text = t(lang, 'm_waypoint'); break;
     case 'roundabout': case 'rotary': case 'roundabout turn': case 'exit roundabout': case 'exit rotary':
       if (s.exit) { text = road ? tf(lang, 'm_roundabout_onto', { n: s.exit, road }) : tf(lang, 'm_roundabout', { n: s.exit }); break; }
       text = dir ? (road ? tf(lang, 'm_turn_onto', { dir, road }) : tf(lang, 'm_turn', { dir })) : (road ? tf(lang, 'm_continue_on', { road }) : t(lang, 'm_continue'));

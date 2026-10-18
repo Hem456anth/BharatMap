@@ -1,5 +1,12 @@
 // Original line-icon set for Bharat Map (drawn for this project; 24×24 grid, 1.8 stroke, currentColor).
 const P = {
+  mic: '<rect x="9" y="3.5" width="6" height="11" rx="3"/><path d="M5.5 11.5a6.5 6.5 0 0 0 13 0M12 18v2.5"/>',
+  flag: '<path d="M6 21V4M6 4.5h11l-2.2 4 2.2 4H6"/>',
+  alert: '<path d="M12 4 21 19.5H3z"/><path d="M12 10v4.5"/><circle cx="12" cy="17.2" r=".9" fill="currentColor"/>',
+  shield: '<path d="M12 3.5 19 6v5.5c0 4.3-3 7.6-7 9-4-1.4-7-4.7-7-9V6z"/><path d="m9 12 2.2 2.2L15.5 10"/>',
+  plus: '<path d="M12 5v14M5 12h14"/>',
+  live: '<circle cx="12" cy="12" r="2.6" fill="currentColor"/><path d="M7.8 7.8a6 6 0 0 0 0 8.4M16.2 7.8a6 6 0 0 1 0 8.4M5 5a10 10 0 0 0 0 14M19 5a10 10 0 0 1 0 14"/>',
+  moon: '<path d="M19 14.5A7.5 7.5 0 0 1 9.5 5a7.5 7.5 0 1 0 9.5 9.5z"/>',
   brand: '<path d="M12 21.5s-6.5-6.2-6.5-11.2a6.5 6.5 0 0 1 13 0c0 5-6.5 11.2-6.5 11.2z" fill="currentColor" stroke="none"/><path d="M8.6 10.3h6.8M12 6.9v6.8" stroke="var(--on-brand,#fff)" stroke-width="1.6"/>',
   search: '<circle cx="10.5" cy="10.5" r="6"/><path d="m15 15 5 5"/>',
   close: '<path d="m6 6 12 12M18 6 6 18"/>',

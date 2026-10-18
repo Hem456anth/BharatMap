@@ -10,6 +10,8 @@ import { POI_CATEGORIES } from '../services/overpass.js';
 import { icon } from './icons.js';
 import { esc, serviceError } from './search.js';
 import { shareLink } from '../native.js';
+import { buildShareLinks } from '../shared/deeplink.js';
+import { serverBase } from '../services/server.js';
 import { parseOsmCharger, parseParking } from '../shared/ev.js';
 
 const CAT_FROM_TAGS = [
@@ -106,7 +108,7 @@ export function initPlace(ctx) {
         ${wc ? `<li class="detail">${icon('wheelchair', { size: 20 })}<div><div>${esc(ctx.t(wc === 'yes' ? 'wc_yes' : wc === 'limited' ? 'wc_limited' : 'wc_no'))}</div><small>${esc(ctx.t('wheelchair'))}</small></div></li>` : ''}
         <li class="detail">${icon('locate', { size: 20 })}<div><div class="mono">${esc(digipin || '')}</div><small>${esc(ctx.t('digipin'))} · ${p.lat.toFixed(5)}, ${p.lng.toFixed(5)}</small></div><button class="icon-btn sm" data-copy="digipin" aria-label="${esc(ctx.t('digipin'))}: copy">${icon('copy', { size: 18 })}</button></li>
       </ul>
-      <div class="row wrap"><button class="link" id="pcHome">${esc(ctx.t('set_as_home'))}</button><button class="link" id="pcWork">${esc(ctx.t('set_as_work'))}</button></div>
+      <div class="row wrap"><button class="link" id="pcHome">${esc(ctx.t('set_as_home'))}</button><button class="link" id="pcWork">${esc(ctx.t('set_as_work'))}</button>${ctx.directions.state?.to ? `<button class="link" id="pcStop">${icon('plus', { size: 16 })} ${esc(ctx.t('add_stop'))}</button>` : ''}<button class="link" id="pcReport">${icon('flag', { size: 16 })} ${esc(ctx.t('report_title'))}</button></div>
       <p class="small muted">${p.source === 'seller' || (seller && p.kind === 'seller') ? esc(ctx.t('demo_seller')) : p.source === 'ocm' ? 'Open Charge Map (CC BY 4.0)' : esc(ctx.t('osm_credit'))}</p>`;
     $('pcDir').onclick = () => ctx.directions.open(p);
     $('pcSave').onclick = () => ctx.saved.openSaveDialog(p, () => render(current));
@@ -114,6 +116,8 @@ export function initPlace(ctx) {
     if (seller) $('pcShop').onclick = () => ctx.openShop?.({ sellerId: seller.id, q: seller.products[0]?.category === 'tv' ? 'LED TVs near me' : seller.name });
     $('pcHome').onclick = () => { ctx.saved.setShortcut('home', p); ctx.toast(ctx.tf('saved_ok', { list: ctx.t('home') })); };
     $('pcWork').onclick = () => { ctx.saved.setShortcut('work', p); ctx.toast(ctx.tf('saved_ok', { list: ctx.t('work') })); };
+    $('pcReport').onclick = () => ctx.report.open({ lat: p.lat, lng: p.lng, name: p.name });
+    if ($('pcStop')) $('pcStop').onclick = () => ctx.directions.addStop({ lat: p.lat, lng: p.lng, name: p.name || ctx.t('dropped_pin') });
     $('placeCard').onclick = async (e) => {
       const c = e.target.closest('[data-copy]'); if (!c) return;
       const txt = c.dataset.copy === 'digipin' ? digipin : (current.address || `${p.lat.toFixed(6)}, ${p.lng.toFixed(6)}`);
@@ -122,8 +126,11 @@ export function initPlace(ctx) {
   }
 
   async function share(p) {
-    const url = `https://www.openstreetmap.org/?mlat=${p.lat.toFixed(6)}&mlon=${p.lng.toFixed(6)}#map=18/${p.lat.toFixed(6)}/${p.lng.toFixed(6)}`;
-    const text = [p.name, p.address, `DIGIPIN ${encodeDigipin(p.lat, p.lng)}`].filter(Boolean).join('\n');
+    // v0.5: a geo: URI (opens in any maps app) + a bharatmap:// app link, and an https link when the web app is hosted.
+    const links = buildShareLinks({ lat: p.lat, lng: p.lng, name: p.name || '' }, { webBase: serverBase() || (location.protocol === 'https:' ? location.origin : '') });
+    const url = links.web || `https://www.openstreetmap.org/?mlat=${p.lat.toFixed(6)}&mlon=${p.lng.toFixed(6)}#map=18/${p.lat.toFixed(6)}/${p.lng.toFixed(6)}`;
+    const text = [p.name, p.address, `DIGIPIN ${encodeDigipin(p.lat, p.lng)}`, links.geo, links.app].filter(Boolean).join('\n');
+    ctx.emit('share', { links, text, url });
     const r = await shareLink({ title: p.name || ctx.t('dropped_pin'), text, url });
     if (r === 'copied') ctx.toast(ctx.t('copied'));
   }

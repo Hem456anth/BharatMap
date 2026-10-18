@@ -7,7 +7,7 @@
 //    for cooldownMs, so callers fall back immediately instead of waiting for timeouts)
 import { LruCache } from './lru.js';
 
-export const DEFAULT_UA = process.env.HTTP_USER_AGENT || 'BharatMap/0.4 (+https://github.com/Hem456anth/BharatMap; open-source map app)';
+export const DEFAULT_UA = process.env.HTTP_USER_AGENT || 'BharatMap/0.5 (+https://github.com/Hem456anth/BharatMap; open-source map app)';
 
 export class UpstreamError extends Error {
   constructor(message, { status = 0, upstream = '', open = false } = {}) { super(message); Object.assign(this, { status, upstream, breakerOpen: open }); }

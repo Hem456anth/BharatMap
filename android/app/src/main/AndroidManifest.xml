@@ -23,6 +23,21 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
 
+            <!-- v0.5 deep links: geo: URIs from other apps (RFC 5870 / geo:0,0?q=lat,lng(label)) -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="geo" />
+            </intent-filter>
+            <!-- v0.5 deep links: bharatmap://place?lat=&lon=&name= , bharatmap://directions?... , bharatmap://search?q= -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="bharatmap" />
+            </intent-filter>
+
         </activity>
 
         <!-- v0.4 background navigation: location foreground service, started only during active navigation -->
@@ -56,10 +71,15 @@
     <uses-permission android:name="android.permission.ACCESS_BACKGROUND_LOCATION" />
     <!-- Local notifications: order / payment / delivery updates (runtime prompt on Android 13+) -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <!-- v0.5 voice search (speech recognition plugin); requested only when the user taps the microphone -->
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
     <!-- v0.3 voice guidance: Android 11+ package visibility for the system text-to-speech engine -->
     <queries>
         <intent>
             <action android:name="android.intent.action.TTS_SERVICE" />
+        </intent>
+        <intent>
+            <action android:name="android.speech.RecognitionService" />
         </intent>
     </queries>
 </manifest>

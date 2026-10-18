@@ -59,7 +59,7 @@ test('upstream: identifying User-Agent, 1 req/s throttle, cache, coalescing', as
   const u = createUpstream({ name: 't', baseUrl: 'https://x.test', minIntervalMs: 1000, fetchImpl, now: c.now, sleep: c.sleep });
   await u.request('/a'); await u.request('/b'); await u.request('/c');
   assert.deepEqual(calls.map((x) => x.t - calls[0].t), [0, 1000, 2000], 'spaced 1 s apart');
-  assert.match(calls[0].ua, /BharatMap\/0\.4/);
+  assert.match(calls[0].ua, /BharatMap\/0\.5/);
   await u.request('/a'); assert.equal(calls.length, 3, 'cache hit');
   const [p, q] = await Promise.all([u.request('/d'), u.request('/d')]);
   assert.deepEqual(p, q); assert.equal(calls.length, 4, 'coalesced'); assert.equal(u.stats.coalesced, 1);

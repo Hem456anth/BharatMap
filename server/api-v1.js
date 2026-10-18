@@ -10,12 +10,13 @@ import { createTransit } from './transit/index.js';
 import { TokenBucketLimiter, rateLimitMiddleware } from './lib/ratelimit.js';
 import { inIndia } from '../shared/geo.js';
 import { CATEGORY_BY_ID } from '../web/services/overpass.js';
+import { mountCommunity } from './community.js';
 
 const num = (v) => (v === undefined || v === '' ? NaN : Number(v));
 const pt = (lat, lng) => { const p = { lat: num(lat), lng: num(lng) }; return inIndia(p) ? p : null; };
 const bad = (res, error, code = 400) => res.status(code).json({ error });
 
-export function mountApiV1(app, { root, providers = createProviders(), transit = createTransit(), regionsDir = process.env.REGIONS_DIR || path.join(root, 'data/regions'),
+export function mountApiV1(app, { root, db = null, now, providers = createProviders(), transit = createTransit(), regionsDir = process.env.REGIONS_DIR || path.join(root, 'data/regions'),
   limiter = new TokenBucketLimiter({ capacity: Number(process.env.V1_RATE_BURST || 60), refillPerSec: Number(process.env.V1_RATE_PER_SEC || 2) }) } = {}) {
   const r = express.Router();
   r.use(rateLimitMiddleware(limiter, { name: 'v1' }));
@@ -30,7 +31,9 @@ export function mountApiV1(app, { root, providers = createProviders(), transit =
     if (!from || !to) return bad(res, 'invalid_points');
     const mode = String(req.query.mode || 'drive');
     if (!MODES.includes(mode)) return bad(res, 'unknown_mode');
-    const opts = { avoidTolls: req.query.avoid_tolls === '1', avoidHighways: req.query.avoid_highways === '1', alternates: req.query.alternatives === '0' ? 0 : 2 };
+    const via = String(req.query.via || '').split(';').filter(Boolean).slice(0, 8).map((x) => { const [a, b] = x.split(','); return pt(a, b); });
+    if (via.some((x) => !x)) return bad(res, 'invalid_via');
+    const opts = { via, avoidTolls: req.query.avoid_tolls === '1', avoidHighways: req.query.avoid_highways === '1', alternates: req.query.alternatives === '0' ? 0 : 2 };
     res.setHeader('Cache-Control', 'private, max-age=60');
     res.json(await providers.route(mode, from, to, opts));
   }));
@@ -59,6 +62,11 @@ export function mountApiV1(app, { root, providers = createProviders(), transit =
     if (!Array.isArray(c) || c.length < 2 || c.length > 20000 || !c.every((x) => Array.isArray(x) && inIndia({ lat: +x[1], lng: +x[0] }))) return bad(res, 'invalid_line');
     res.json(await providers.tolls(c.map((x) => [+x[0], +x[1]])));
   }));
+  r.post('/speed-limits', wrap(async (req, res) => {
+    const c = req.body?.coordinates;
+    if (!Array.isArray(c) || c.length < 2 || c.length > 20000 || !c.every((x) => Array.isArray(x) && inIndia({ lat: +x[1], lng: +x[0] }))) return bad(res, 'invalid_line');
+    res.json(await providers.speedLimits(c.map((x) => [+x[0], +x[1]]), { mode: String(req.body.mode || 'drive') }));
+  }));
   r.get('/transit/feeds', (_req, res) => res.json({ feeds: transit.feeds(), errors: transit.errors() }));
   r.get('/transit/plan', (req, res) => {
     const from = pt(req.query.from_lat, req.query.from_lng), to = pt(req.query.to_lat, req.query.to_lng);
@@ -73,6 +81,7 @@ export function mountApiV1(app, { root, providers = createProviders(), transit =
     const cat = JSON.parse(fs.readFileSync(path.join(root, 'web/offline/catalog.json'), 'utf8'));
     res.json({ ...cat, regions: cat.regions.map((x) => { const f = path.join(regionsDir, `${x.id}.pmtiles`); const ok = fs.existsSync(f); return { ...x, available: ok, size_bytes: ok ? fs.statSync(f).size : null, url: ok ? `/regions/${x.id}.pmtiles` : null }; }) });
   });
+  if (db) mountCommunity(r, { db, ...(now ? { now } : {}) });
   r.get('/providers', (_req, res) => res.json({ providers: providers.status(), transit: transit.feeds() }));
   r.use((_req, res) => bad(res, 'not_found', 404));
   app.use('/api/v1', r);

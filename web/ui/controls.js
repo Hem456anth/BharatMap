@@ -39,6 +39,7 @@ export function initControls(ctx) {
   async function startWatch() {
     if (stopWatch) return;
     firstFix = true;
+    if (!(await ctx.perm.ensure('location'))) { setMode('off'); return; }
     locBtn.setAttribute('aria-busy', 'true');
     stopWatch = await watchPosition((fix) => {
       locBtn.removeAttribute('aria-busy');
@@ -51,7 +52,7 @@ export function initControls(ctx) {
       if (fix.lat < 6 || fix.lat > 38 || fix.lng < 68 || fix.lng > 98) ctx.toast('You appear to be outside India; sellers here are India-only.');
     }, (e) => {
       locBtn.removeAttribute('aria-busy');
-      ctx.toast(e.code === 'denied' ? 'Location permission denied. Enable it in Android Settings → Apps → Bharat Map.' : 'Could not get your location.');
+      if (e.code === 'denied') ctx.perm.denied('location'); else ctx.toast(ctx.t('gps_wait'));
       setMode('off');
     });
   }

@@ -18,6 +18,12 @@ import { readConnection, bandwidthPolicy } from './lib/bandwidth.js';
 import { createRegionManager } from './lib/region-manager.js';
 import { createBackgroundNav } from './nav/background.js';
 import { serverBase } from './services/server.js';
+import { initPermissions } from './ui/permissions.js';
+import { initPrivacy } from './ui/privacy.js';
+import { initReport } from './ui/report.js';
+import { initLinks } from './ui/links.js';
+import { initVoiceSearch } from './ui/voice-search.js';
+import { currentPosition, setRationaleGate } from './native.js';
 
 export function createShell({ map, maplibregl, state, api, apiBase, toast, onShop }) {
   const listeners = new Map();
@@ -53,6 +59,13 @@ export function createShell({ map, maplibregl, state, api, apiBase, toast, onSho
   ctx.regions = createRegionManager({ storage: store, base: '' });
   ctx.regionsBase = regionsBase;
   ctx.bg = createBackgroundNav(ctx);
+  ctx.perm = initPermissions(ctx);
+  setRationaleGate((kind) => ctx.perm.ensure(kind));
+  ctx.locateOnce = async () => {
+    if (!(await ctx.perm.ensure('location'))) return null;
+    try { const p = await currentPosition(); ctx.myLoc = { ...p, ts: Date.now() }; ctx.controls.showPuck(ctx.myLoc); ctx.emit('location', ctx.myLoc); return ctx.myLoc; }
+    catch (e) { if (e.code === 'denied') ctx.perm.denied('location'); else ctx.toast(ctx.t('gps_wait')); return null; }
+  };
   ctx.sheet = createSheet(ctx);
   ctx.views = createViews(ctx);
   ctx.cam = createCamera(ctx);
@@ -64,6 +77,15 @@ export function createShell({ map, maplibregl, state, api, apiBase, toast, onSho
   ctx.directions = initDirections(ctx);
   ctx.nav = initNavigation(ctx);
   ctx.panels = initPanels(ctx);
+  ctx.report = initReport(ctx);
+  ctx.privacy = initPrivacy(ctx);
+  ctx.links = initLinks(ctx);
+  ctx.voiceSearch = initVoiceSearch(ctx, { onText: (text) => { document.getElementById('q').value = text; ctx.search.submit(text); } });
+  // Navigation map style preference (auto by sunrise/sunset, or forced day/night).
+  document.querySelectorAll('[name=navstyle]').forEach((r) => {
+    r.checked = r.value === (store.getItem('bm-nav-style') || 'auto');
+    r.addEventListener('change', () => { store.setItem('bm-nav-style', r.value); if (ctx.nav.active) ctx.nav.applyNavTheme(); });
+  });
   map.on('style.load', () => ctx.style.applyBandwidth(ctx.bw.policy));
   document.documentElement.classList.toggle('low-bw', ctx.bw.policy.active);
 

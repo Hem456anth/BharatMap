@@ -84,7 +84,7 @@ export function createTracker(route, { offRoute = new OffRouteDetector(), arrive
   const durTotal = route.duration_s || 0;
   let hint = 0, lastAlong = 0;
   return {
-    total, offsets, coords,
+    total, offsets, coords, cumulative: cum,
     update(fix) {
       const p = [fix.lng, fix.lat];
       const proj = projectOnRoute(coords, cum, p, hint);
@@ -107,6 +107,7 @@ export function createTracker(route, { offRoute = new OffRouteDetector(), arrive
         snapped: proj.point,
         arrived: remainingM <= arriveM || (toDest <= arriveM && proj.dist <= 50),
         progress: total ? along / total : 1,
+        along,
       };
     },
   };

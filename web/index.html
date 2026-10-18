@@ -2,7 +2,7 @@
 <html lang="en" data-theme="light">
 <head>
   <meta charset="utf-8" />
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://checkout.razorpay.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; worker-src 'self' blob:; frame-src https://api.razorpay.com https://checkout.razorpay.com; connect-src 'self' https://tiles.openfreemap.org https://overpass-api.de https://nominatim.openstreetmap.org https://photon.komoot.io https://routing.openstreetmap.de https://valhalla1.openstreetmap.de https://api.razorpay.com https://lumberjack.razorpay.com https://*.onrender.com; object-src 'none'; base-uri 'self'; form-action 'self'" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://checkout.razorpay.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; worker-src 'self' blob:; frame-src https://api.razorpay.com https://checkout.razorpay.com; connect-src 'self' https://tiles.openfreemap.org https://overpass-api.de https://nominatim.openstreetmap.org https://photon.komoot.io https://routing.openstreetmap.de https://valhalla1.openstreetmap.de https://api.openstreetmap.org https://api.razorpay.com https://lumberjack.razorpay.com https://*.onrender.com; object-src 'none'; base-uri 'self'; form-action 'self'" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <title>Bharat Map: maps, directions & local shops for India</title>
   <meta name="description" content="Bharat Map: an India-first map with search, real places from OpenStreetMap, turn-by-turn navigation with landmark directions in Indian languages, offline maps, and local shopping with delivery." />
@@ -32,6 +32,7 @@
       <input id="q" type="search" data-i18n-ph="search_map" placeholder="Search places or DIGIPIN" enterkeyhint="search"
         role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="suggest" />
       <button type="button" id="clearQ" class="icon-btn" hidden data-i18n-aria="clear" aria-label="Clear" data-icon="close"></button>
+      <button type="button" id="micBtn" class="icon-btn" hidden data-i18n-aria="voice_search" aria-label="Search by voice" data-icon="mic"></button>
       <button type="button" id="menuBtn" class="icon-btn avatar" data-i18n-aria="menu" aria-label="Menu and settings" data-icon="menu"></button>
       <ul id="suggest" class="suggest" role="listbox" hidden aria-label="Suggestions"></ul>
     </form>
@@ -58,6 +59,7 @@
       <!-- HOME -->
       <div class="view" data-view="home">
         <div class="chiprow" id="cats" role="list" aria-label="Find nearby"></div>
+        <div class="commute" id="commute" hidden></div>
         <div class="section">
           <div class="section-h"><h3 data-i18n="saved">Saved places</h3></div>
           <div class="shortcuts" id="shortcuts"></div>
@@ -99,6 +101,7 @@
       <div class="view" data-view="list" hidden>
         <header class="view-h"><button class="icon-btn" data-back data-i18n-aria="back" aria-label="Back" data-icon="back"></button><h3 id="listTitle"></h3><button class="icon-btn" data-home data-i18n-aria="close" aria-label="Close" data-icon="close"></button></header>
         <ul id="listItems" class="rows"></ul>
+        <button id="listShare" class="btn" type="button" hidden><span data-icon="share"></span> <span data-i18n="share_list">Share this list</span></button>
       </div>
 
       <!-- LAYERS -->
@@ -129,6 +132,13 @@
           <label for="city" data-i18n="city">City</label>
           <select id="city"><option value="vizag">Visakhapatnam</option><option value="hyderabad">Hyderabad</option></select>
           <label class="switch"><input type="checkbox" id="voiceDefault" checked /><span data-i18n="voice">Voice guidance</span></label>
+          <fieldset class="seg-field"><legend data-i18n="nav_style">Navigation map</legend>
+            <div class="seg" id="navStyleSeg" role="radiogroup">
+              <label><input type="radio" name="navstyle" value="auto" /><span data-i18n="nav_style_auto">Auto (sunrise/sunset)</span></label>
+              <label><input type="radio" name="navstyle" value="day" /><span data-i18n="nav_style_day">Day</span></label>
+              <label><input type="radio" name="navstyle" value="night" /><span data-i18n="nav_style_night">Night</span></label>
+            </div>
+          </fieldset>
           <label class="switch"><input type="checkbox" id="lowBwSet" /><span><b data-i18n="low_bw">Low-bandwidth mode</b><small id="lowBwNote" data-i18n="low_bw_note">Fewer map tiles, no 3D, smaller search area</small></span></label>
           <label class="switch"><input type="checkbox" id="bgNavSet" /><span><b data-i18n="bg_setting">Navigate with the screen off</b><small data-i18n="bg_setting_note">Uses a foreground service with a notification during navigation</small></span></label>
           <button id="bgAlways" class="btn" type="button" hidden><span data-i18n="bg_allow_always">Allow location all the time (optional)</span></button>
@@ -138,8 +148,16 @@
           <h4 data-i18n="privacy">Privacy</h4>
           <p class="small muted" data-i18n="privacy_note"></p>
           <button id="clearHistory" class="btn" type="button" data-i18n="clear_history">Clear search history</button>
+          <button id="openPrivacy" class="btn" type="button"><span data-icon="shield"></span> <span data-i18n="privacy_dash">Privacy dashboard</span></button>
+          <button id="openLive" class="btn" type="button"><span data-icon="live"></span> <span data-i18n="live_share">Share live location</span></button>
           <p class="small muted" id="aboutLine"></p>
         </div>
+      </div>
+
+      <!-- PRIVACY DASHBOARD (v0.5) -->
+      <div class="view" data-view="privacy" hidden>
+        <header class="view-h"><button class="icon-btn" data-back data-i18n-aria="back" aria-label="Back" data-icon="back"></button><h3 data-i18n="privacy_dash">Privacy dashboard</h3><button class="icon-btn" data-home data-i18n-aria="close" aria-label="Close" data-icon="close"></button></header>
+        <div id="privacyBody" class="form"></div>
       </div>
 
       <!-- SHOP (commerce: products → seller → order → rider tracking; seller & admin dashboards) -->
@@ -208,14 +226,22 @@
         <div class="nav-instr" id="navInstr"></div>
       </div>
     </div>
+    <div id="navLanes" class="nav-lanes" hidden></div>
+    <div id="navJunction" class="nav-junction" hidden></div>
+    <div id="navGps" class="nav-gps" hidden role="status" data-i18n="gps_lost">GPS signal lost</div>
     <div class="nav-next" id="navNext" hidden><span data-i18n="nav_then">Then</span> <span id="navNextIcon" aria-hidden="true"></span> <span id="navNextText"></span></div>
     <div id="navSim" class="sim-badge" hidden><span data-i18n="sim_badge">Simulation</span> <button id="simSpeed" class="link" type="button"></button></div>
     <div id="navLive" class="sr" aria-live="assertive" aria-atomic="true"></div>
+    <div class="nav-speedbox">
+      <div id="navLimit" class="limit-sign" hidden role="img" aria-label="Speed limit"><b></b></div>
+      <div id="navSpeed" class="speed-now" role="status"><b>–</b><small>km/h</small></div>
+    </div>
     <div class="nav-strip">
       <button id="navMute" class="fab" aria-pressed="false" data-i18n-aria="nav_mute" aria-label="Mute voice guidance" data-icon="volume"></button>
       <div class="nav-eta" id="navEta" role="status">
         <b id="navArrive"></b><span id="navRemain"></span>
       </div>
+      <button id="navTheme" class="fab" aria-label="Navigation map: automatic" data-icon="moon"></button>
       <button id="navOverview" class="fab" data-i18n-aria="nav_overview" aria-label="Overview" data-icon="route"></button>
       <button id="navEnd" class="btn danger" data-i18n="nav_end">End</button>
     </div>
@@ -284,6 +310,41 @@
       <h2 id="bgTitle" data-i18n="bg_title">Keep navigating with the screen off?</h2>
       <p id="bgBody" data-i18n="bg_body"></p>
       <div class="row end"><button value="no" class="btn ghost" id="bgNo" data-i18n="bg_not_now">Not now</button><button value="yes" class="btn primary" id="bgYes" data-i18n="bg_continue">Continue</button></div>
+    </form>
+  </dialog>
+
+  <!-- v0.5 permission rationale (shown before each OS prompt) and denial help -->
+  <dialog id="permDlg" aria-labelledby="permTitle" aria-describedby="permBody">
+    <form method="dialog" class="dlg">
+      <div class="perm-ic" id="permIcon" aria-hidden="true"></div>
+      <h2 id="permTitle"></h2>
+      <p id="permBody"></p>
+      <ul id="permPoints" class="perm-points"></ul>
+      <p class="small muted" id="permFoot"></p>
+      <div class="row end"><button value="no" class="btn ghost" id="permNo"></button><button value="settings" class="btn" id="permSettings" hidden></button><button value="yes" class="btn primary" id="permYes"></button></div>
+    </form>
+  </dialog>
+
+  <!-- v0.5 report: OpenStreetMap note (map problem) or community incident -->
+  <dialog id="reportDlg" aria-labelledby="reportTitle">
+    <form method="dialog" class="dlg" id="reportForm">
+      <h2 id="reportTitle" data-i18n="report_title">Report</h2>
+      <div class="seg" role="tablist" id="reportTabs">
+        <button type="button" role="tab" data-rtab="osm" aria-selected="true" data-i18n="report_map_problem">Map problem</button>
+        <button type="button" role="tab" data-rtab="incident" aria-selected="false" data-i18n="report_incident">Road incident</button>
+      </div>
+      <div id="reportOsm">
+        <fieldset class="report-cats" id="reportCats"></fieldset>
+        <label for="reportText" data-i18n="report_describe">Describe the problem</label>
+        <textarea id="reportText" rows="3" maxlength="1000"></textarea>
+        <p class="small muted" data-i18n="report_osm_note"></p>
+      </div>
+      <div id="reportInc" hidden>
+        <div class="inc-types" id="incTypes"></div>
+        <p class="small muted" id="incNote"></p>
+      </div>
+      <p class="small" id="reportStatus" role="status"></p>
+      <div class="row end"><button value="cancel" class="btn ghost" id="reportCancel" data-i18n="cancel">Cancel</button><button type="button" class="btn primary" id="reportSend" data-i18n="report_send">Send</button></div>
     </form>
   </dialog>
 

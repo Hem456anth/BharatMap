@@ -1,5 +1,5 @@
 {
-  "source": "Protomaps daily planet build 2026-10-17 (OpenStreetMap data, ODbL)",
+  "source": "Protomaps daily planet build 2026-10-17 (OpenStreetMap data, ODbL); cut with scripts/make-region.sh (pmtiles extract)",
   "attribution": "© OpenStreetMap contributors · Protomaps",
   "regions": {
     "vizag": {
@@ -32,6 +32,150 @@
       "center": [
         78.46,
         17.425
+      ]
+    },
+    "vijayawada": {
+      "file": "vijayawada.pmtiles",
+      "name": "Vijayawada",
+      "bbox": [
+        80.55,
+        16.45,
+        80.75,
+        16.6
+      ],
+      "maxzoom": 15,
+      "size_bytes": 6040637,
+      "center": [
+        80.65,
+        16.525
+      ]
+    },
+    "guntur": {
+      "file": "guntur.pmtiles",
+      "name": "Guntur",
+      "bbox": [
+        80.38,
+        16.24,
+        80.52,
+        16.36
+      ],
+      "maxzoom": 15,
+      "size_bytes": 3182469,
+      "center": [
+        80.45,
+        16.3
+      ]
+    },
+    "tirupati": {
+      "file": "tirupati.pmtiles",
+      "name": "Tirupati",
+      "bbox": [
+        79.36,
+        13.58,
+        79.47,
+        13.68
+      ],
+      "maxzoom": 15,
+      "size_bytes": 1652904,
+      "center": [
+        79.415,
+        13.63
+      ]
+    },
+    "bengaluru": {
+      "file": "bengaluru.pmtiles",
+      "name": "Bengaluru",
+      "bbox": [
+        77.4,
+        12.8,
+        77.8,
+        13.15
+      ],
+      "maxzoom": 14,
+      "size_bytes": 13979043,
+      "center": [
+        77.6,
+        12.975
+      ]
+    },
+    "chennai": {
+      "file": "chennai.pmtiles",
+      "name": "Chennai",
+      "bbox": [
+        80.1,
+        12.85,
+        80.35,
+        13.25
+      ],
+      "maxzoom": 14,
+      "size_bytes": 7086214,
+      "center": [
+        80.225,
+        13.05
+      ]
+    },
+    "mumbai": {
+      "file": "mumbai.pmtiles",
+      "name": "Mumbai",
+      "bbox": [
+        72.77,
+        18.88,
+        73.05,
+        19.3
+      ],
+      "maxzoom": 14,
+      "size_bytes": 7581479,
+      "center": [
+        72.91,
+        19.09
+      ]
+    },
+    "delhi": {
+      "file": "delhi.pmtiles",
+      "name": "Delhi NCR",
+      "bbox": [
+        76.84,
+        28.4,
+        77.35,
+        28.88
+      ],
+      "maxzoom": 14,
+      "size_bytes": 15193446,
+      "center": [
+        77.095,
+        28.64
+      ]
+    },
+    "kolkata": {
+      "file": "kolkata.pmtiles",
+      "name": "Kolkata",
+      "bbox": [
+        88.25,
+        22.45,
+        88.5,
+        22.7
+      ],
+      "maxzoom": 14,
+      "size_bytes": 7061183,
+      "center": [
+        88.375,
+        22.575
+      ]
+    },
+    "pune": {
+      "file": "pune.pmtiles",
+      "name": "Pune",
+      "bbox": [
+        73.73,
+        18.42,
+        74,
+        18.65
+      ],
+      "maxzoom": 14,
+      "size_bytes": 6198225,
+      "center": [
+        73.865,
+        18.535
       ]
     }
   }

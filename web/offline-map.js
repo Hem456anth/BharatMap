@@ -29,7 +29,9 @@ export async function offlineStyle(maplibregl, city, lang = 'en', flavor = 'ligh
     if (loaded.has(fileName)) region = { file: fileName, name: dl.name, downloaded: true };
   }
   if (!region) {
-    region = meta.regions[city];
+    // v0.5: 11 bundled cities — use the one covering the map centre, else the selected city.
+    const cover = center && Object.keys(meta.regions).find((id) => insideRegion(meta, id, center));
+    region = meta.regions[cover || city];
     if (!region) throw new Error(`no_offline_region:${city}`);
     if (!loaded.has(region.file)) {
       const r = await fetch(`offline/${region.file}`);

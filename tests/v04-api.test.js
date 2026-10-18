@@ -36,7 +36,7 @@ test('/api/v1/route: two-wheeler via Valhalla (not an estimate), drive via OSRM,
   assert.equal(drive.body.provider, 'osrm'); assert.ok(drive.body.routes[0].steps.length > 3);
   assert.equal((await get('/api/v1/route?mode=drive&from_lat=51&from_lng=0&to_lat=17.7&to_lng=83.3')).status, 400, 'outside India');
   assert.equal((await get('/api/v1/route?mode=hover&from_lat=17.7&from_lng=83.3&to_lat=17.71&to_lng=83.31')).status, 400);
-  assert.ok(upstreamLog.every((l) => /BharatMap\/0\.4/.test(l.ua)), 'identifying UA on every upstream call');
+  assert.ok(upstreamLog.every((l) => /BharatMap\/0\.5/.test(l.ua)), 'identifying UA on every upstream call');
 });
 test('/api/v1/geocode + /reverse + /places/nearby + /ev', async () => {
   const g = await get('/api/v1/geocode?q=Kailasa&autocomplete=1&lat=17.72&lng=83.3');
@@ -76,7 +76,7 @@ test('/api/v1/regions catalogue (9 cities), /api/v1/providers status, gzip, clie
   const raw = await new Promise((resolve) => { import('node:http').then(({ get: hg }) => hg(`${B}/api/v1/regions`, { headers: { 'accept-encoding': 'gzip' } }, (res) => { const ch = []; res.on('data', (c) => ch.push(c)); res.on('end', () => resolve({ enc: res.headers['content-encoding'], buf: Buffer.concat(ch) })); })); });
   assert.equal(raw.enc, 'gzip'); assert.equal(JSON.parse(zlib.gunzipSync(raw.buf)).regions.length, 9);
   const cfg = await (await fetch(`${B}/config.js`)).text(); assert.match(cfg, /"services":"direct"/);
-  assert.equal((await get('/api/health')).body.version, '0.4.0');
+  assert.equal((await get('/api/health')).body.version, '0.5.0');
 });
 test('per-IP rate limit on /api/v1 (429 + Retry-After)', async () => {
   const providers = createProviders({ env: { OFFLINE: '1' } });

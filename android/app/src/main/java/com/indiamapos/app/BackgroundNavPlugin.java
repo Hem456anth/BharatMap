@@ -3,7 +3,9 @@ package com.indiamapos.app;
 import android.Manifest;
 import android.content.Intent;
 import android.location.Location;
+import android.net.Uri;
 import android.os.Build;
+import android.provider.Settings;
 import androidx.core.content.ContextCompat;
 import com.getcapacitor.JSObject;
 import com.getcapacitor.PermissionState;
@@ -70,6 +72,28 @@ public class BackgroundNavPlugin extends Plugin {
     public void stop(PluginCall call) {
         getContext().stopService(new Intent(getContext(), NavLocationService.class));
         call.resolve();
+    }
+
+    /** v0.5: open this app's page in system settings (permission denial handling). */
+    @PluginMethod
+    public void openAppSettings(PluginCall call) {
+        try {
+            Intent i = new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.fromParts("package", getContext().getPackageName(), null));
+            i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            getContext().startActivity(i);
+            call.resolve();
+        } catch (Exception e) {
+            call.reject("Could not open settings: " + e.getMessage(), "settings_failed");
+        }
+    }
+
+    /** v0.5: report whether "Allow all the time" is granted without prompting. */
+    @PluginMethod
+    public void checkBackgroundPermission(PluginCall call) {
+        JSObject r = new JSObject();
+        boolean granted = Build.VERSION.SDK_INT < Build.VERSION_CODES.Q || getPermissionState("background") == PermissionState.GRANTED;
+        r.put("background", granted ? "granted" : "prompt");
+        call.resolve(r);
     }
 
     @PluginMethod

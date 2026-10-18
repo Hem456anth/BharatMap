@@ -21,12 +21,13 @@ const MODES = [['drive', 'car'], ['two', 'scooter'], ['bike', 'cycle'], ['walk',
 export function initDirections(ctx) {
   const { map } = ctx;
   const body = document.getElementById('dirBody');
-  const S = { from: null, to: null, mode: 'drive', result: null, selected: 0, seq: 0, transit: null, tollSeq: 0,
+  const S = { from: null, to: null, stops: [], mode: 'drive', result: null, selected: 0, seq: 0, transit: null, tollSeq: 0,
     avoidTolls: store.getItem('bm-avoid-tolls') === '1', avoidHighways: store.getItem('bm-avoid-hw') === '1' };
 
   async function resolveOrigin() {
     if (ctx.myLoc) return { lat: ctx.myLoc.lat, lng: ctx.myLoc.lng, label: ctx.t('your_location'), real: true };
     try {
+      if (!(await ctx.perm.ensure('location'))) throw new Error('not_now');
       // The user asked for directions: one location fix is reasonable (on user action).
       const p = await Promise.race([currentPosition(), new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), 6000))]);
       ctx.myLoc = { ...p, ts: Date.now() }; ctx.controls.showPuck(ctx.myLoc);
@@ -36,6 +37,7 @@ export function initDirections(ctx) {
 
   async function open(dest, { mode, from } = {}) {
     S.to = { lat: dest.lat, lng: dest.lng, label: dest.name || ctx.t('dropped_pin'), id: dest.id };
+    S.stops = Array.isArray(dest.stops) ? dest.stops.slice(0, 5) : [];
     if (mode) S.mode = mode;
     ctx.views.show('directions', { push: ctx.views.current !== 'directions', detent: 'half' });
     body.innerHTML = `<p class="muted">${esc(ctx.t('loading'))}</p>`;
@@ -47,7 +49,8 @@ export function initDirections(ctx) {
     return `<div class="od">
       <div class="od-rows">
         <div class="od-row"><span class="dot from" aria-hidden="true"></span><span><small>${esc(ctx.t('from'))}</small><b id="dirFrom">${esc(S.from.label)}</b></span>${S.from.real ? '' : `<button class="link" id="dirUseLoc">${esc(ctx.t('use_location'))}</button>`}</div>
-        <div class="od-row"><span class="dot to" aria-hidden="true"></span><span><small>${esc(ctx.t('to'))}</small><b id="dirTo">${esc(S.to.label)}</b></span></div>
+        ${S.stops.map((x, i) => `<div class="od-row stop"><span class="dot stop" aria-hidden="true">${i + 1}</span><span><small>${esc(ctx.tf('stop_n', { n: i + 1 }))}</small><b>${esc(x.label)}</b></span><button class="icon-btn sm" data-rmstop="${i}" aria-label="${esc(ctx.t('remove_stop'))}: ${esc(x.label)}">${icon('close', { size: 16 })}</button></div>`).join('')}
+        <div class="od-row"><span class="dot to" aria-hidden="true"></span><span><small>${esc(ctx.t('to'))}</small><b id="dirTo">${esc(S.to.label)}</b></span>${S.mode !== 'transit' && S.stops.length < 5 ? `<button class="link" id="dirAddStop">${icon('plus', { size: 16 })} ${esc(ctx.t('add_stop'))}</button>` : ''}</div>
       </div>
       <button class="icon-btn" id="dirSwap" aria-label="${esc(ctx.t('swap'))}">${icon('swap')}</button>
     </div>
@@ -55,7 +58,9 @@ export function initDirections(ctx) {
   }
   function bind() {
     body.querySelectorAll('[data-mode]').forEach((b) => { b.onclick = () => { S.mode = b.dataset.mode; compute(); }; });
-    const sw = document.getElementById('dirSwap'); if (sw) sw.onclick = () => { [S.from, S.to] = [{ ...S.to, real: false }, { ...S.from }]; compute(); };
+    body.querySelectorAll('[data-rmstop]').forEach((b) => { b.onclick = () => { S.stops.splice(+b.dataset.rmstop, 1); compute(); }; });
+    const as = document.getElementById('dirAddStop'); if (as) as.onclick = () => { ctx.toast(ctx.t('add_stop_hint')); document.getElementById('q').focus(); };
+    const sw = document.getElementById('dirSwap'); if (sw) sw.onclick = () => { [S.from, S.to] = [{ ...S.to, real: false }, { ...S.from }]; S.stops.reverse(); compute(); };
     const ul = document.getElementById('dirUseLoc'); if (ul) ul.onclick = async () => { ctx.myLoc = null; const o = await resolveOrigin(); if (!o.real) ctx.toast(ctx.t('gps_denied')); else { S.from = o; compute(); } };
   }
 
@@ -66,7 +71,7 @@ export function initDirections(ctx) {
     ctx.style.setRoutes(null); ctx.style.setLegs(null); ctx.style.setTolls(null);
     if (S.mode === 'transit') return transit(my);
     ctx.panels?.refreshOverlays?.(); // drop transit stop dots from a previous transit view
-    const res = await getRoutes(S.mode, S.from, S.to, { avoidTolls: S.avoidTolls && motor(), avoidHighways: S.avoidHighways && motor() });
+    const res = await getRoutes(S.mode, S.from, S.to, { via: S.stops, avoidTolls: S.avoidTolls && motor(), avoidHighways: S.avoidHighways && motor() });
     if (my !== S.seq) return;
     S.result = res; S.selected = 0;
     renderRoutes(); draw(true);
@@ -221,5 +226,14 @@ export function initDirections(ctx) {
   ctx.on('view-leave', ({ name, home }) => { if ((name === 'directions' || home) && !ctx.nav.active) { clearMap(); if (S.mode === 'transit') ctx.panels?.refreshOverlays?.(); } });
   ctx.on('view', ({ name }) => { if (name === 'home' && !ctx.nav.active) clearMap(); });
   ctx.on('lang', () => { if (ctx.views.current !== 'directions') return; if (S.mode === 'transit' && S.transit?.itineraries?.length) renderItineraries(); else if (S.result && S.mode !== 'transit') { const sel = S.selected; renderRoutes(); select(sel); } });
-  return { open, get state() { return S; }, redraw: () => draw(false), setRouteFromNav(route) { if (S.result) { S.result.routes = [route]; S.selected = 0; } } };
+  /** v0.5 multi-stop: insert a stop before the destination (max 5) and recompute. */
+  function addStop(p) {
+    if (!S.to) return;
+    if (S.stops.length >= 5) { ctx.toast(ctx.t('stops_max')); return; }
+    S.stops.push({ lat: p.lat, lng: p.lng, label: p.name || ctx.t('dropped_pin') });
+    if (S.mode === 'transit') S.mode = 'drive';
+    ctx.views.show('directions', { push: ctx.views.current !== 'directions', detent: 'half' });
+    compute();
+  }
+  return { open, addStop, get state() { return S; }, redraw: () => draw(false), setRouteFromNav(route) { if (S.result) { S.result.routes = [route]; S.selected = 0; } } };
 }

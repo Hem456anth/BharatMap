@@ -24,11 +24,13 @@ export async function installNetworkFixtures(ctx, { log = [], fail = {} } = {}) 
   await ctx.route(/^https:\/\/routing\.openstreetmap\.de\//, (route) => {
     const u = route.request().url(); log.push(`osrm ${u.split('/')[3]}`);
     if (fail.routing) return route.abort('internetdisconnected');
+    if (/77\.62/.test(u)) return json(route, fx('osrm-drive-silkboard-ecity'));
     return json(route, fx(/routed-foot/.test(u) ? 'osrm-walk-dwarakanagar-rkbeach' : /routed-bike/.test(u) ? 'osrm-bike-dwarakanagar-rkbeach' : /83\.0037/.test(u) ? 'osrm-drive-dwarakanagar-anakapalli' : 'osrm-drive-dwarakanagar-rkbeach'));
   });
   // FOSSGIS Valhalla (two-wheeler motor_scooter; avoid tolls/highways) — real captured response.
   await ctx.route(/^https:\/\/valhalla1\.openstreetmap\.de\//, (route) => {
     const u = decodeURIComponent(route.request().url()); const costing = (u.match(/"costing":"(\w+)"/) || [])[1];
+    if (/trace_attributes/.test(u)) { log.push('valhalla trace_attributes'); return fail.valhalla ? route.abort('internetdisconnected') : json(route, fx('valhalla-trace-silkboard-ecity')); }
     log.push(`valhalla ${costing}`);
     if (fail.routing || fail.valhalla) return route.abort('internetdisconnected');
     return json(route, fx('valhalla-two-dwarakanagar-rkbeach'));
@@ -38,9 +40,15 @@ export async function installNetworkFixtures(ctx, { log = [], fail = {} } = {}) 
     if (fail.nominatim) return route.abort('internetdisconnected');
     return json(route, fx(u.includes('/reverse') ? 'nominatim-reverse-dwarakanagar' : 'nominatim-search-kailasagiri'));
   });
+  // v0.5 OpenStreetMap Notes API — MOCKED (never create real notes from tests): echoes a note id like the real API.
+  await ctx.route(/^https:\/\/api\.openstreetmap\.org\/api\/0\.6\/notes/, (route) => {
+    const body = route.request().postData() || ''; log.push(`osmnote ${decodeURIComponent(body).slice(0, 120)}`);
+    if (fail.osm) return route.abort('internetdisconnected');
+    return json(route, JSON.stringify({ type: 'Feature', geometry: { type: 'Point', coordinates: [83.323, 17.714] }, properties: { id: 4242, status: 'open', mocked: true } }));
+  });
   await ctx.route(/^https:\/\/photon\.komoot\.io\//, (route) => { log.push('photon'); return fail.photon ? route.abort() : json(route, fx('photon-kailasa')); });
   // Anything else that is not our own server (or the server's same-origin tile proxy) is blocked.
-  await ctx.route((url) => !/^(https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?\/|data:|blob:|file:)/.test(url.href) && !/overpass-api|routing\.openstreetmap|valhalla1\.openstreetmap|nominatim\.openstreetmap|photon\.komoot/.test(url.host), (route) => { log.push(`blocked ${route.request().url().slice(0, 60)}`); return route.abort('blockedbyclient'); });
+  await ctx.route((url) => !/^(https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?\/|data:|blob:|file:)/.test(url.href) && !/overpass-api|routing\.openstreetmap|valhalla1\.openstreetmap|nominatim\.openstreetmap|photon\.komoot|api\.openstreetmap\.org/.test(url.host), (route) => { log.push(`blocked ${route.request().url().slice(0, 60)}`); return route.abort('blockedbyclient'); });
   if (fail.tiles) await ctx.route(/\/map\/(style\.json|ofm\/)/, (route) => route.abort('internetdisconnected'));
 }
 

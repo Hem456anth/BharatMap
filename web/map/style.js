@@ -19,7 +19,7 @@ export function createMapStyle(ctx) {
     transit: store.getItem('bm-transit') === '1',
     forceOffline: store.getItem('mapos-offline') === '1',
   };
-  const mapTheme = () => (S.pref === 'dark' ? 'dark' : S.pref === 'standard' ? 'light' : ctx.theme());
+  const mapTheme = () => (S.driving ? (S.driving === 'night' ? 'dark' : 'light') : S.pref === 'dark' ? 'dark' : S.pref === 'standard' ? 'light' : ctx.theme());
   const pal = () => PALETTE[mapTheme()];
 
   function onlineStyleUrl() {
@@ -45,7 +45,7 @@ export function createMapStyle(ctx) {
   }
 
   // Re-add our layers each time a style finishes loading.
-  map.on('style.load', () => { addOverlays(); if (!S.offlineActive) setLabelLanguage(); tuneDarkLabels(); });
+  map.on('style.load', () => { addOverlays(); if (!S.offlineActive) setLabelLanguage(); tuneDarkLabels(); applyDrivingPaint(); });
 
   // The upstream dark style draws street/place labels in dim grey (~2:1 on the near-black base). Lift them to a
   // legible light grey with a dark halo so names stay readable (≥4.5:1) in dark mode.
@@ -97,9 +97,31 @@ export function createMapStyle(ctx) {
     }
     if (!map.getSource('bm-tolls')) map.addSource('bm-tolls', { type: 'geojson', data: S.tolls });
     if (!map.getLayer('bm-tolls')) map.addLayer({ id: 'bm-tolls', type: 'circle', source: 'bm-tolls', paint: { 'circle-radius': 7, 'circle-color': '#B45309', 'circle-stroke-color': p.poiStroke, 'circle-stroke-width': 2.5 } });
+    // v0.5 community incident reports (unverified): ring colour by type, opacity by confidence.
+    if (!map.getSource('bm-incidents')) map.addSource('bm-incidents', { type: 'geojson', data: S.incidents || EMPTY });
+    if (!map.getLayer('bm-incidents')) map.addLayer({ id: 'bm-incidents', type: 'circle', source: 'bm-incidents', paint: { 'circle-radius': ['interpolate', ['linear'], ['zoom'], 11, 6, 16, 11], 'circle-color': ['match', ['get', 'type'], 'pothole', '#B45309', 'waterlogging', '#0E7490', 'closure', '#B91C1C', 'police', '#1D4ED8', '#6B7280'], 'circle-opacity': ['match', ['get', 'confidence'], 'high', 0.95, 'medium', 0.8, 0.6], 'circle-stroke-color': '#FFFFFF', 'circle-stroke-width': 2.5 } });
     if (!map.getSource('bm-pois')) map.addSource('bm-pois', { type: 'geojson', data: S.pois });
     if (!map.getLayer('bm-pois')) map.addLayer({ id: 'bm-pois', type: 'circle', source: 'bm-pois', paint: { 'circle-radius': ['interpolate', ['linear'], ['zoom'], 11, 4, 16, 8], 'circle-color': ['coalesce', ['get', 'color'], p.poi], 'circle-stroke-color': p.poiStroke, 'circle-stroke-width': 2 } });
     ctx.emit('overlays');
+  }
+
+  // v0.5 dedicated driving style (high contrast): wider route with a strong casing, amber route at night,
+  // POI icons/labels hidden so roads and the route dominate. Day/night is chosen by sunrise/sunset (shared/sun.js).
+  const DRIVE = { day: { route: '#1F2A9E', casing: '#FFFFFF', width: 11, casingW: 16 }, night: { route: '#FFC233', casing: '#0B0D14', width: 11, casingW: 16 } };
+  const isPoiLayer = (l) => l.type === 'symbol' && !l.id.startsWith('bm-') && /poi|pois|landuse|aerodrome_label|airport/i.test(`${l.id} ${l['source-layer'] || ''}`);
+  function applyDrivingPaint() {
+    if (!map.getLayer('bm-route')) return;
+    const d = S.driving ? DRIVE[S.driving] : null; const p = pal();
+    map.setPaintProperty('bm-route', 'line-color', d ? d.route : p.route);
+    map.setPaintProperty('bm-route', 'line-width', d ? d.width : 7);
+    map.setPaintProperty('bm-route-casing', 'line-color', d ? d.casing : p.routeCasing);
+    map.setPaintProperty('bm-route-casing', 'line-width', d ? d.casingW : 11);
+    for (const l of map.getStyle().layers) if (isPoiLayer(l)) { try { map.setLayoutProperty(l.id, 'visibility', d ? 'none' : 'visible'); } catch { /* ignore */ } }
+  }
+  function setDriving(v) {
+    const before = mapTheme();
+    S.driving = v || null;
+    if (mapTheme() !== before) apply({ reason: 'driving' }); else applyDrivingPaint();
   }
 
   function applyDash() {
@@ -137,7 +159,8 @@ export function createMapStyle(ctx) {
   window.addEventListener('online', () => { if (S.auto && !S.forceOffline) { S.auto = false; apply({ reason: 'online' }); ctx.toast(ctx.t('online_back')); } });
 
   return {
-    apply, setLabelLanguage, schema,
+    apply, setLabelLanguage, schema, setDriving,
+    get driving() { return S.driving || null; },
     get offline() { return S.offlineActive; },
     get autoOffline() { return S.auto; },
     get pref() { return S.pref; },
@@ -151,6 +174,8 @@ export function createMapStyle(ctx) {
     set3D(v) { S.buildings3d = !!v; store.setItem('bm-3d', v ? '1' : '0'); if (map.getLayer('bm-buildings-3d')) map.setLayoutProperty('bm-buildings-3d', 'visibility', v && !S.lowBw ? 'visible' : 'none'); },
     setTransit(v) { S.transit = !!v; store.setItem('bm-transit', v ? '1' : '0'); if (map.getLayer('bm-transit')) map.setLayoutProperty('bm-transit', 'visibility', v ? 'visible' : 'none'); },
     setRoutes(fc) { S.routes = fc || EMPTY; map.getSource('bm-routes')?.setData(S.routes); applyDash(); },
+    setIncidents(fc) { S.incidents = fc || EMPTY; map.getSource('bm-incidents')?.setData(S.incidents); },
+    get incidents() { return S.incidents || EMPTY; },
     setPois(fc) { S.pois = fc || EMPTY; map.getSource('bm-pois')?.setData(S.pois); },
     setLegs(fc) { S.legs = fc || EMPTY; map.getSource('bm-legs')?.setData(S.legs); },
     setTolls(fc) { S.tolls = fc || EMPTY; map.getSource('bm-tolls')?.setData(S.tolls); },

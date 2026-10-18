@@ -133,13 +133,13 @@ export function initPanels(ctx) {
     $('bgNavSet').checked = ctx.bg.enabled();
     $('bgNavSet').closest('label').hidden = !ctx.bg.supported();
     $('bgAlways').hidden = $('bgAlwaysNote').hidden = !ctx.bg.supported();
-    $('aboutLine').textContent = `Bharat Map · ${ctx.tf('version', { v: '0.4' })} · ${ctx.t('osm_credit')} · Contains data provided by Hyderabad Metro Rail Ltd.`;
+    $('aboutLine').textContent = `Bharat Map · ${ctx.tf('version', { v: '0.5' })} · ${ctx.t('osm_credit')} · Contains data provided by Hyderabad Metro Rail Ltd.`;
   }
   document.querySelectorAll('[name=theme]').forEach((r) => r.addEventListener('change', () => ctx.applyTheme(r.value)));
   $('voiceDefault').addEventListener('change', (e) => ctx.nav.voice.setMuted(!e.target.checked));
   $('lowBwSet').addEventListener('change', (e) => { ctx.bw.set(e.target.checked ? 'on' : 'off'); renderSettings(); });
   $('bgNavSet').addEventListener('change', (e) => { ctx.bg.setEnabled(e.target.checked); if (!e.target.checked) ctx.bg.stop(); });
-  $('bgAlways').addEventListener('click', async () => { const r = await ctx.bg.requestAlways().catch((err) => err.message); ctx.toast(`${ctx.t('bg_allow_always')}: ${r}`); });
+  $('bgAlways').addEventListener('click', async () => { if (!(await ctx.perm.ensure('background'))) return; const r = await ctx.bg.requestAlways().catch((err) => err.message); ctx.toast(`${ctx.t('bg_allow_always')}: ${r}`); });
   ctx.on('bandwidth', () => { if (ctx.views.current === 'layers') renderLayers(); if (ctx.views.current === 'settings') renderSettings(); overlayData = {}; });
   $('clearHistory').addEventListener('click', () => { ctx.saved.clearRecents(); ctx.toast(ctx.t('history_cleared')); });
   $('openSettings').addEventListener('click', () => ctx.views.show('settings', { detent: 'full' }));

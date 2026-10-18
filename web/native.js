@@ -22,16 +22,20 @@ export async function currentPosition() {
     { enableHighAccuracy: true, timeout: 10000, maximumAge: 30000 }));
 }
 
+// v0.5: an in-app rationale is shown before the OS notification prompt (web/ui/permissions.js).
+let rationaleGate = null;
+export function setRationaleGate(fn) { rationaleGate = fn; }
 let notifyAllowed = null, nid = Math.floor(Date.now() / 1000) % 100000;
 export async function ensureNotifyPermission() {
   if (notifyAllowed !== null) return notifyAllowed;
   const L = plugin('LocalNotifications');
   if (L) {
     let p = await L.checkPermissions().catch(() => ({}));
-    if (p.display !== 'granted') p = await L.requestPermissions().catch(() => ({}));
+    if (p.display !== 'granted') { if (rationaleGate && !(await rationaleGate('notifications'))) return false; p = await L.requestPermissions().catch(() => ({})); }
     notifyAllowed = p.display === 'granted';
     if (notifyAllowed) await L.createChannel?.({ id: 'orders', name: 'Orders & delivery', importance: 4, visibility: 1 }).catch(() => {});
   } else if ('Notification' in window) {
+    if (Notification.permission === 'default' && rationaleGate && !(await rationaleGate('notifications'))) return false;
     notifyAllowed = Notification.permission === 'granted' || (Notification.permission === 'default' && (await Notification.requestPermission()) === 'granted');
   } else notifyAllowed = false;
   return notifyAllowed;

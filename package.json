@@ -1,9 +1,9 @@
 {
   "name": "bharat-map",
-  "version": "0.4.0",
+  "version": "0.5.0",
   "description": "India-first map super-app MVP: Map → Business → Product → Delivery",
   "scripts": {
-    "test": "node --no-warnings --test --test-concurrency=1 tests/unit.test.js tests/api.test.js tests/phase2.test.js tests/v03.test.js tests/v03-api.test.js tests/v04.test.js tests/v04-api.test.js",
+    "test": "node --no-warnings --test --test-concurrency=1 tests/unit.test.js tests/api.test.js tests/phase2.test.js tests/v03.test.js tests/v03-api.test.js tests/v04.test.js tests/v04-api.test.js tests/v05.test.js tests/v05-api.test.js",
     "e2e": "node tests/e2e.mjs",
     "load": "node tests/load.mjs",
     "vendor": "mkdir -p web/vendor && cp node_modules/maplibre-gl/dist/maplibre-gl.mjs node_modules/maplibre-gl/dist/maplibre-gl-worker.mjs node_modules/maplibre-gl/dist/maplibre-gl.css node_modules/maplibre-gl/LICENSE.txt web/vendor/",
@@ -16,6 +16,7 @@
   "author": "",
   "license": "UNLICENSED",
   "dependencies": {
+    "@capacitor-community/speech-recognition": "^7.0.1",
     "@capacitor-community/text-to-speech": "^6.1.0",
     "@capacitor/android": "^7.6.9",
     "@capacitor/app": "^7.1.2",

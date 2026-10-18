@@ -13,6 +13,8 @@ import { buildOverpassQuery, parseOverpass, CATEGORY_BY_ID } from '../../web/ser
 import { buildTollQuery, parseTolls } from '../../shared/tolls.js';
 import { parseOcm, parseOsmCharger, parseParking } from '../../shared/ev.js';
 import { haversineKm } from '../../shared/geo.js';
+import { segmentsFromValhallaTrace, segmentsFromOverpassWays, buildMaxspeedQuery, coverage, scaleSegments } from '../../shared/maxspeed.js';
+import { lineLengthM, simplify } from '../../shared/polyline.js';
 
 export const MODES = ['drive', 'two', 'bike', 'walk'];
 const PUBLIC = {
@@ -25,7 +27,7 @@ export function providerConfig(env = process.env) {
   const osrmEnv = { drive: env.OSRM_URL_CAR || env.OSRM_URL, bike: env.OSRM_URL_BIKE, walk: env.OSRM_URL_FOOT };
   return {
     valhalla: { url: env.VALHALLA_URL || PUBLIC.valhalla, public: !env.VALHALLA_URL, configured: !!env.VALHALLA_URL },
-    osrm: Object.fromEntries(['drive', 'bike', 'walk'].map((m) => [m, { url: osrmEnv[m] || PUBLIC.osrm[m], public: !osrmEnv[m] }])),
+    osrm: Object.fromEntries(['drive', 'bike', 'walk'].map((m) => [m, { url: osrmEnv[m] || PUBLIC.osrm[m], public: !osrmEnv[m], maxspeed: !!osrmEnv[m] && env.OSRM_MAXSPEED === '1' }])),
     photon: { url: env.PHOTON_URL || PUBLIC.photon, public: !env.PHOTON_URL },
     nominatim: { url: env.NOMINATIM_URL || PUBLIC.nominatim, public: !env.NOMINATIM_URL },
     overpass: { url: env.OVERPASS_URL || PUBLIC.overpass, public: !env.OVERPASS_URL },
@@ -58,7 +60,8 @@ export function createProviders({ env = process.env, fetchImpl, now, sleep, time
     offline();
     const prof = mode === 'two' ? 'drive' : mode;
     const c6 = (x) => Math.round(x * 1e6) / 1e6;
-    const path = `/route/v1/driving/${c6(from.lng)},${c6(from.lat)};${c6(to.lng)},${c6(to.lat)}?alternatives=true&steps=true&overview=full&geometries=geojson`;
+    const via = opts.via || [];
+    const path = `/route/v1/driving/${[from, ...via, to].map((p) => `${c6(p.lng)},${c6(p.lat)}`).join(';')}?alternatives=${via.length ? 'false' : 'true'}&steps=true&overview=full&geometries=geojson${cfg.osrm[prof].maxspeed ? '&annotations=maxspeed' : ''}`;
     const j = await up.osrm[prof].request(path);
     const routes = parseOsrm(j, mode).map((r) => ({ ...r, engine: cfg.osrm[prof].public ? 'osrm-fossgis' : 'osrm' }));
     return { engine: routes[0]?.engine, estimate: mode === 'two', routes, avoid_applied: !(opts.avoidTolls || opts.avoidHighways) };
@@ -74,7 +77,7 @@ export function createProviders({ env = process.env, fetchImpl, now, sleep, time
       const r = await withFallback(steps);
       return { mode, provider: r.provider, ...r.value, fallback: false, tried: r.tried };
     } catch (e) {
-      return { mode, provider: 'straight-line', engine: 'fallback-straight-line', estimate: true, fallback: true, routes: fallbackRoutes(mode, from, to), tried: e.tried || [], error: 'routing_unavailable' };
+      return { mode, provider: 'straight-line', engine: 'fallback-straight-line', estimate: true, fallback: true, routes: fallbackRoutes(mode, from, to, opts.via || []), tried: e.tried || [], error: 'routing_unavailable' };
     }
   }
 
@@ -125,6 +128,22 @@ export function createProviders({ env = process.env, fetchImpl, now, sleep, time
     return { provider: 'overpass', ...parseTolls(j, coords), attribution: '© OpenStreetMap contributors (ODbL)' };
   }
 
+  /** Speed limits along a line: Valhalla trace_attributes (edge.speed_limit) → Overpass maxspeed tags. */
+  async function speedLimits(coords, { mode = 'drive' } = {}) {
+    offline();
+    const pts = coords.length > 600 ? simplify(coords, 4) : coords;
+    const total = lineLengthM(coords);
+    try {
+      const body = JSON.stringify({ shape: pts.map(([lng, lat]) => ({ lat, lon: lng })), shape_match: 'map_snap', costing: mode === 'two' ? 'motor_scooter' : 'auto', filters: { attributes: ['edge.speed_limit', 'edge.length'], action: 'include' } });
+      const j = await up.valhalla.request('/trace_attributes', { method: 'POST', body, headers: { 'Content-Type': 'application/json' } });
+      const segs = scaleSegments(segmentsFromValhallaTrace(j), total);
+      if (segs && coverage(segs) > 0) return { source: 'valhalla', segments: segs, coverage: coverage(segs) };
+    } catch { /* fall through */ }
+    const j = await overpass(buildMaxspeedQuery(coords));
+    const segs = segmentsFromOverpassWays(j, coords);
+    return { source: segs && coverage(segs) > 0 ? 'overpass' : null, segments: segs && coverage(segs) > 0 ? segs : null, coverage: segs ? coverage(segs) : 0 };
+  }
+
   function status() {
     const s = (u, c) => ({ url: c.public ? c.url : '(self-hosted)', public: c.public, breaker: u.breaker.state, stats: u.stats, cache: u.cache.size });
     return {
@@ -135,5 +154,5 @@ export function createProviders({ env = process.env, fetchImpl, now, sleep, time
       offline: cfg.offline,
     };
   }
-  return { route, geocode, reverse, nearby, tolls, overpass, status, cfg, upstreams: up };
+  return { route, geocode, reverse, nearby, tolls, overpass, speedLimits, status, cfg, upstreams: up };
 }

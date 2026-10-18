@@ -1,7 +1,7 @@
 // End-to-end UI tests in real Chromium (desktop 1366×820 + mobile 390×844).
 // Run: BASE=http://localhost:8080 node tests/e2e.mjs   (server must be running; see scripts/dev-restart.sh)
 // Third-party map services are answered from real captured fixtures (tests/e2e-net.mjs); the browser
-// has no other network access. Screenshots: docs/screenshots/v03-*.png.
+// has no other network access. Screenshots: docs/screenshots/v03-*.png, v04-*.png, v05-*.png.
 import { chromium } from 'playwright-core';
 import fs from 'node:fs';
 import { installNetworkFixtures, SPEECH_STUB } from './e2e-net.mjs';
@@ -591,6 +591,229 @@ await step('v04 mobile: low-bandwidth auto-detected from navigator.connection (S
   await ctx.close();
 });
 if (Object.keys(perf).length === 2 && !ONLY) fs.writeFileSync('docs/perf-v04.json', `${JSON.stringify({ measured: new Date().toISOString(), ...perf }, null, 2)}\n`);
+
+// ======================= v0.5 =======================
+// Lanes + speed limit + overspeed + junction view (real Bengaluru route: OSRM lanes at the Hosur Road fork, Valhalla
+// edge speed limits), night style, permission rationale, report a map problem (OSM Notes API mocked), community
+// incidents (device + server), deep links, commute card, offline search, privacy dashboard, voice search, multi-stop,
+// live location sharing. Screenshots: docs/screenshots/v05-*.png
+const shot5 = (page, name) => page.screenshot({ path: `${OUT}/v05-${name}.png` });
+const SILK = { lat: 12.9172, lng: 77.6228, name: 'Silk Board' }, ECITY = { lat: 12.8452, lng: 77.6602, name: 'Electronic City' };
+async function startBlrSim(page, { startM, kmh = 95 }) {
+  await page.evaluate(async ({ SILK, ECITY, startM, kmh }) => {
+    const c = window.__bm.ctx; c.nav.end({ silent: true });
+    await c.directions.open({ lat: ECITY.lat, lng: ECITY.lng, name: ECITY.name }, { mode: 'drive', from: SILK });
+  }, { SILK, ECITY, startM, kmh });
+  await page.waitForFunction(() => window.__bm.ctx.directions.state.result?.routes?.length, null, { timeout: 15000 });
+  await page.evaluate(({ startM, kmh }) => { const c = window.__bm.ctx; c.nav.setSimSpeedKmh(kmh); const S = c.directions.state; c.nav.start(S.result.routes[0], { mode: 'drive', dest: S.to, simulate: true, simStartM: startM }); }, { startM, kmh });
+  await page.waitForSelector('#nav:not([hidden])');
+}
+for (const vp of [{ name: 'desktop', width: 1366, height: 820 }, { name: 'mobile', width: 390, height: 844, isMobile: true }]) {
+  const V = vp.name;
+  const { ctx, page, netLog, errors } = await newPage(vp, { blockSW: true });
+  await ctx.addInitScript(`window.__simMult = 1;`);
+  await step(`v05 ${V}: boot + deep link ?lat&lon&name opens the place card`, async () => {
+    await page.goto(`${BASE}/?simspeed=1&lat=17.714&lon=83.323&name=RK%20Beach`, { waitUntil: 'domcontentloaded' });
+    await page.waitForFunction(() => window.__bm?.ctx?.map.isStyleLoaded() && window.__bm.ctx.map.getLayer('bm-route'), null, { timeout: 30000 });
+    await waitView(page, 'place');
+    assert(/RK Beach/.test(await page.textContent('#placeTitle')), 'place title');
+  });
+  await step(`v05 ${V}: speed limit (Valhalla edge.speed_limit) + overspeed chime + junction view at the fork`, async () => {
+    await startBlrSim(page, { startM: 700, kmh: 95 });
+    await page.waitForFunction(() => !document.getElementById('navLimit').hidden, null, { timeout: 15000 });
+    const lim = Number(await page.textContent('#navLimit b'));
+    assert([60, 80].includes(lim), `limit ${lim}`);
+    assert(netLog.some((l) => l === 'valhalla trace_attributes'), 'trace_attributes requested');
+    await page.waitForFunction(() => document.getElementById('navSpeed').classList.contains('over'), null, { timeout: 12000 });
+    assert((await page.evaluate(() => window.__bm.ctx.nav.sounds.log)).includes('overspeed'), 'overspeed chime');
+    await page.waitForFunction(() => !document.getElementById('navJunction').hidden, null, { timeout: 12000 });
+    assert(await page.$('#navJunction svg.junction-svg path.jv-route'), 'junction svg');
+    await page.waitForTimeout(600);
+    await shot5(page, `${V}-01-speed-junction`);
+  });
+  await step(`v05 ${V}: lane guidance from OSRM intersections (2 valid of 3) in the nav banner`, async () => {
+    await startBlrSim(page, { startM: 2700, kmh: 60 });
+    await page.waitForFunction(() => !document.getElementById('navLanes').hidden, null, { timeout: 12000 });
+    const n = await page.$$eval('#navLanes .lane', (x) => x.length); const ok = await page.$$eval('#navLanes .lane.ok', (x) => x.length);
+    assert(n === 3 && ok === 2, `lanes ${n}/${ok}`);
+    assert(/Lanes/.test(await page.getAttribute('#navLanes .lane-strip', 'aria-label')), 'lane aria');
+    await page.waitForTimeout(400);
+    await shot5(page, `${V}-02-lanes`);
+  });
+  await step(`v05 ${V}: speed limit never shown where unknown (8.2–9.9 km of the route)`, async () => {
+    await startBlrSim(page, { startM: 8600, kmh: 40 });
+    await page.waitForFunction(() => window.__bm.ctx.nav.state && window.__bm.ctx.nav.state.along > 8600, null, { timeout: 10000 });
+    await page.waitForTimeout(1500);
+    assert(await page.isHidden('#navLimit'), 'limit hidden when unknown');
+    assert((await page.evaluate(() => window.__bm.ctx.nav.speed.limit)) == null, 'no limit');
+  });
+  await step(`v05 ${V}: night driving style (forced) → dark map, amber high-contrast route`, async () => {
+    await page.evaluate(() => localStorage.setItem('bm-nav-style', 'night'));
+    await startBlrSim(page, { startM: 900, kmh: 40 });
+    await page.waitForFunction(() => document.documentElement.dataset.navTheme === 'night' && window.__bm.ctx.style.mapTheme() === 'dark', null, { timeout: 10000 });
+    await page.waitForFunction(() => window.__bm.ctx.map.isStyleLoaded() && window.__bm.ctx.map.getLayer('bm-route') && window.__bm.ctx.map.getPaintProperty('bm-route', 'line-color') === '#FFC233', null, { timeout: 20000 });
+    await page.waitForTimeout(1500);
+    await shot5(page, `${V}-03-night-nav`);
+    await page.click('#navTheme'); // night → auto
+    assert((await page.evaluate(() => localStorage.getItem('bm-nav-style'))) === 'auto', 'cycle to auto');
+    await page.evaluate(() => window.__bm.ctx.nav.end());
+    await page.waitForFunction(() => !document.documentElement.dataset.navTheme && !window.__bm.ctx.style.driving, null, { timeout: 5000 });
+  });
+  await step(`v05 ${V}: report a map problem → OpenStreetMap note (mocked API), rate limited`, async () => {
+    await page.evaluate(() => { localStorage.removeItem('bm-notes-history'); window.__bm.ctx.links.handle('geo:0,0?q=17.714,83.323(RK Beach)'); });
+    await waitView(page, 'place');
+    await page.click('#pcReport');
+    await page.waitForSelector('#reportDlg[open]');
+    await page.check('[name=rcat][value=missing_place]');
+    await page.fill('#reportText', 'Public toilet next to the beach entrance is not on the map');
+    await shot5(page, `${V}-04-report-problem`);
+    await page.click('#reportSend');
+    await page.waitForFunction(() => /4242/.test(document.getElementById('reportStatus').textContent), null, { timeout: 8000 });
+    const sent = netLog.filter((l) => l.startsWith('osmnote')).map((l) => l.replace(/\+/g, ' '));
+    assert(sent.length === 1 && /lat=17\.714/.test(sent[0]) && /Missing place/.test(sent[0]), `note payload ${sent[0]}`);
+    await page.waitForFunction(() => !document.getElementById('reportDlg').open, null, { timeout: 5000 });
+    await page.click('#pcReport'); await page.fill('#reportText', 'Second report straight away'); await page.click('#reportSend');
+    await page.waitForFunction(() => /wait/i.test(document.getElementById('reportStatus').textContent), null, { timeout: 5000 });
+    assert(netLog.filter((l) => l.startsWith('osmnote')).length === 1, 'rate limited');
+    await page.click('#reportCancel');
+  });
+  await step(`v05 ${V}: community incident (device-only, no server) → on the map, labelled unverified, expires in 2 h`, async () => {
+    await page.click('#pcReport'); await page.click('[data-rtab=incident]');
+    assert(/this device only/.test(await page.textContent('#incNote')), 'device-only note');
+    await page.click('[data-inc=pothole]');
+    await shot5(page, `${V}-05-incident-report`);
+    await page.click('#reportSend');
+    await page.waitForFunction(() => window.__bm.ctx.style.incidents.features.length >= 1, null, { timeout: 8000 });
+    const inc = await page.evaluate(() => JSON.parse(localStorage.getItem('bm-incidents-local'))[0]);
+    assert(inc.type === 'pothole' && inc.expires_ms - inc.created_ms === 7200000, 'expiry 2 h');
+  });
+  await step(`v05 ${V}: deep links — bharatmap://directions (walk), bharatmap://search, shared favourites list import`, async () => {
+    await page.evaluate(() => window.__bm.ctx.links.handle('bharatmap://directions?lat=17.714&lon=83.323&name=RK%20Beach&mode=walk'));
+    await waitView(page, 'directions');
+    await page.waitForFunction(() => window.__bm.ctx.directions.state.mode === 'walk', null, { timeout: 5000 });
+    page.once('dialog', (d) => d.accept());
+    const link = await page.evaluate(async () => (await import('/shared/deeplink.js')).buildListLink({ name: 'Vizag beaches', items: [{ name: 'RK Beach', lat: 17.714, lng: 83.323 }, { name: 'Rushikonda Beach', lat: 17.7826, lng: 83.3849 }] }).app);
+    await page.evaluate((l) => window.__bm.ctx.links.handle(l), link);
+    await waitView(page, 'list');
+    assert(/Vizag beaches/.test(await page.textContent('#listTitle')) && (await page.$$eval('#listItems li', (x) => x.length)) === 2, 'list imported');
+    await shot5(page, `${V}-06-shared-list`);
+  });
+  if (V === 'desktop') {
+    await step('v05 desktop: multi-stop route — stop row, OSRM request with 3 points', async () => {
+      await page.evaluate(() => window.__bm.ctx.directions.open({ lat: 17.714, lng: 83.323, name: 'RK Beach' }, { mode: 'drive', from: { lat: 17.7289, lng: 83.305, name: 'Dwaraka Nagar' } }));
+      await page.waitForSelector('#dirStart', { timeout: 15000 });
+      await page.evaluate(() => window.__bm.ctx.directions.addStop({ lat: 17.7215, lng: 83.3155, name: 'Siripuram' }));
+      await page.waitForFunction(() => document.querySelectorAll('.od-row.stop').length === 1 && document.getElementById('dirStart'), null, { timeout: 15000 });
+      assert(netLog.some((l) => l.startsWith('osrm') && l.includes('routed-car')), 'osrm');
+      const urls = await page.evaluate(() => performance.getEntriesByType('resource').map((r) => r.name).filter((u) => /routed-car.*;.*;/.test(u)));
+      assert(urls.length >= 1, '3-point request');
+      await shot5(page, 'desktop-07-multistop');
+      await page.click('[data-rmstop="0"]');
+      await page.waitForFunction(() => !document.querySelector('.od-row.stop'), null, { timeout: 5000 });
+    });
+    await step('v05 desktop: commute card (Home set + location) → drive ETA labelled no live traffic', async () => {
+      await page.evaluate(() => { const c = window.__bm.ctx; c.myLoc = { lat: 17.7289, lng: 83.305, accuracy: 10, ts: Date.now() }; c.saved.setShortcut('home', { id: 'h', name: 'RK Beach', lat: 17.714, lng: 83.323 }); c.views.show('home', { detent: 'half' }); });
+      await page.waitForFunction(() => /\d+ min/.test(document.getElementById('commute').textContent), null, { timeout: 15000 });
+      assert(/No live traffic/.test(await page.textContent('#commute')), 'label');
+      await shot5(page, 'desktop-08-commute');
+    });
+    await step('v05 desktop: offline place index — suggestions from the bundled OSM index (works offline)', async () => {
+      // The bundled index ships inside the app (Android assets); in the browser test it is loaded before going offline.
+      await page.evaluate(async () => { const m = await import('/lib/offline-index.js'); const c = window.__bm.ctx.map.getCenter(); await m.indexFor({ lat: c.lat, lng: c.lng }); });
+      await ctx.setOffline(true);
+      await page.fill('#q', ''); await page.click('#q'); await page.type('#q', 'kailas', { delay: 30 });
+      await page.waitForFunction(() => [...document.querySelectorAll('#suggest li')].some((li) => /On device/.test(li.textContent) && /Kailasagiri/.test(li.textContent)), null, { timeout: 10000 });
+      await shot5(page, 'desktop-09-offline-search');
+      await ctx.setOffline(false);
+      await page.keyboard.press('Escape');
+    });
+    await step('v05 desktop: privacy dashboard — lists stored data, export JSON (no token), delete all', async () => {
+      await page.evaluate(() => { localStorage.setItem('mapos-token', 'secret-test-token'); window.__bm.ctx.views.show('privacy', { detent: 'full' }); });
+      await page.waitForFunction(() => /Saved places/.test(document.getElementById('privacyBody').textContent), null, { timeout: 8000 });
+      assert(/Search history|Saved places/.test(await page.textContent('#privacyBody')), 'groups');
+      await shot5(page, 'desktop-10-privacy');
+      const [dl] = await Promise.all([page.waitForEvent('download'), page.click('#privExport')]);
+      const doc = JSON.parse(fs.readFileSync(await dl.path(), 'utf8'));
+      assert(doc.data['bm-saved-v1'] && !doc.data['mapos-token'], 'export has saved places, no token');
+      page.once('dialog', (d) => d.accept());
+      await page.click('#privDelete');
+      await page.waitForFunction(() => !localStorage.getItem('bm-saved-v1') && !localStorage.getItem('mapos-token'), null, { timeout: 5000 });
+    });
+  }
+  const relevant = errors.filter((e) => !/WebGL|GPU|Failed to load resource|ERR_BLOCKED_BY_CLIENT|net::ERR|AJAXError|Could not load image|ERR_INTERNET_DISCONNECTED/i.test(e));
+  results.push(`${relevant.length ? 'WARN' : 'PASS'} v05 ${V}: console errors ${relevant.length}${relevant.length ? ` → ${relevant.slice(0, 3).join(' | ')}` : ''}`);
+  await ctx.close();
+}
+// Permission rationale before the OS prompt, and denial handling (no geolocation permission granted).
+for (const vp of [{ name: 'desktop', width: 1366, height: 820 }, { name: 'mobile', width: 390, height: 844, isMobile: true }]) {
+  const V = vp.name;
+  await step(`v05 ${V}: location rationale before the OS prompt; "Not now" asks nothing; denial → settings help`, async () => {
+    const c = await browser.newContext({ viewport: { width: vp.width, height: vp.height }, isMobile: !!vp.isMobile, hasTouch: !!vp.isMobile, locale: 'en-IN', timezoneId: 'Asia/Kolkata' });
+    await installNetworkFixtures(c, {}); await c.addInitScript(SPEECH_STUB);
+    const p = await c.newPage();
+    await p.goto(BASE, { waitUntil: 'domcontentloaded' });
+    await p.waitForFunction(() => window.__bm?.ctx?.perm && window.__bm.ctx.map.isStyleLoaded(), null, { timeout: 30000 });
+    await p.waitForTimeout(800);
+    await p.click('#locBtn');
+    await p.waitForSelector('#permDlg[open]', { timeout: 5000 });
+    assert((await p.getAttribute('#permDlg', 'data-kind')) === 'location' && /location/i.test(await p.textContent('#permTitle')), 'location rationale');
+    assert((await p.$$eval('#permPoints li', (x) => x.length)) === 3, 'three points');
+    await p.waitForTimeout(300);
+    await shot5(p, `${V}-11-permission-rationale`);
+    await p.click('#permNo');
+    await p.waitForFunction(() => document.getElementById('locBtn').getAttribute('aria-pressed') === 'false', null, { timeout: 3000 });
+    assert(!(await p.evaluate(() => window.__bm.ctx.myLoc)), 'not now → nothing requested');
+    // Simulate an OS denial: the browser reports "denied" → denial dialog explains how to re-enable.
+    await c.addInitScript(() => {});
+    await p.evaluate(() => { navigator.geolocation.watchPosition = (ok, err) => { setTimeout(() => err({ code: 1, message: 'denied' }), 50); return 1; }; navigator.geolocation.clearWatch = () => {}; });
+    await p.click('#locBtn');
+    await p.waitForSelector('#permDlg[open][data-mode=rationale]', { timeout: 5000 });
+    await p.click('#permYes');
+    await p.waitForSelector('#permDlg[open][data-mode=denied]', { timeout: 5000 });
+    assert(/Permission is off/.test(await p.textContent('#permTitle')), 'denied title');
+    await shot5(p, `${V}-12-permission-denied`);
+    await p.click('#permYes');
+    await c.close();
+  });
+}
+// Voice search (Web Speech API stub) with the microphone rationale.
+await step('v05 mobile: voice search — microphone rationale, recognised "petrol" → nearby petrol stations', async () => {
+  const { ctx, page } = await newPage({ width: 390, height: 844, isMobile: true });
+  await ctx.addInitScript(`{ const q = navigator.permissions.query.bind(navigator.permissions); navigator.permissions.query = (d) => (d?.name === 'microphone' ? Promise.resolve({ state: 'prompt' }) : q(d)); } window.SpeechRecognition = window.webkitSpeechRecognition = function () { const r = this; r.start = () => setTimeout(() => { window.__recLang = r.lang; r.onresult?.({ results: [[{ transcript: 'petrol' }]] }); r.onend?.(); }, 200); };`);
+  await page.goto(BASE, { waitUntil: 'domcontentloaded' });
+  await page.waitForFunction(() => window.__bm?.ctx?.map.isStyleLoaded() && !document.getElementById('micBtn').hidden, null, { timeout: 30000 });
+  await page.click('#micBtn');
+  await page.waitForSelector('#permDlg[open][data-kind=microphone]', { timeout: 5000 });
+  await page.click('#permYes');
+  await waitView(page, 'results');
+  await page.waitForFunction(() => document.querySelectorAll('#poiList [data-poi]').length >= 5, null, { timeout: 15000 });
+  assert((await page.evaluate(() => window.__recLang)) === 'en-IN', 'recogniser language');
+  await shot5(page, 'mobile-13-voice-search');
+  await ctx.close();
+});
+// Server mode: community incidents shared via /api/v1/incidents and live location sharing via /api/v1/live.
+await step('v05 desktop: server mode — incident stored on the server (label, confidence, expiry) + live location share → viewer marker', async () => {
+  const { ctx, page } = await newPage({ width: 1366, height: 820 });
+  await ctx.addInitScript(`localStorage.setItem('mapos-api', ${JSON.stringify(BASE)});`);
+  await page.goto(BASE, { waitUntil: 'domcontentloaded' });
+  await page.waitForFunction(() => window.__bm?.ctx?.map.isStyleLoaded() && window.__bm.ctx.map.getLayer('bm-incidents'), null, { timeout: 30000 });
+  const r = await page.evaluate(async () => (await import('/services/community.js')).reportIncident({ type: 'waterlogging', lat: 17.7262, lng: 83.3075 }));
+  assert(r.id && r.verified === false && /not verified/.test(r.label) && r.minutes_left === 120, JSON.stringify(r));
+  await page.evaluate(() => window.__bm.ctx.cam.fly({ center: [83.3075, 17.7262], zoom: 15 }));
+  await page.waitForFunction(() => window.__bm.ctx.style.incidents.features.some((f) => f.properties.type === 'waterlogging'), null, { timeout: 10000 });
+  await page.waitForTimeout(1200);
+  await shot5(page, 'desktop-14-incidents-server');
+  // live location: start sharing (fix from the browser geolocation), then view the share as a recipient
+  const live = page.waitForFunction(() => window.__liveInfo, null, { timeout: 15000 });
+  await page.evaluate(() => window.__bm.ctx.on('live', (x) => { window.__liveInfo = x; }));
+  await page.evaluate(() => window.__bm.ctx.links.startLive());
+  const info = await (await live).jsonValue();
+  await page.waitForFunction(async (id) => (await (await fetch(`/api/v1/live/${id}`)).json()).active, info.id, { timeout: 15000 });
+  await page.evaluate((id) => window.__bm.ctx.links.watchLive(id), info.id);
+  await page.waitForSelector('.live-mk', { timeout: 10000 });
+  await page.evaluate(() => window.__bm.ctx.links.stopLive());
+  await ctx.close();
+});
 
 await browser.close();
 console.log(results.join('\n'));

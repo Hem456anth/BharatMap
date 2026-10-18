@@ -21,7 +21,7 @@ import zlib from 'node:zlib';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const CSP = cspString();
-export const VERSION = '0.4.0';
+export const VERSION = '0.5.0';
 
 // ---------- small infra helpers ----------
 const metrics = { requests: 0, errors: 0, byRoute: new Map(), latencyMs: [] };
@@ -43,7 +43,7 @@ const point = (lat, lng) => { const p = { lat: num(lat), lng: num(lng) }; return
 const bad = (res, msg, code = 400) => res.status(code).json({ error: msg });
 const str = (v, max = 300) => (typeof v === 'string' ? v.trim().slice(0, max) : '');
 
-export function createApp({ db = openDb(), timeScale = Number(process.env.DEMO_TIME_SCALE || RULES.demoTimeScale), payments = createRazorpay(), providers, transit } = {}) {
+export function createApp({ db = openDb(), timeScale = Number(process.env.DEMO_TIME_SCALE || RULES.demoTimeScale), payments = createRazorpay(), providers, transit, now } = {}) {
   seed(db);
   const app = express();
   app.disable('x-powered-by');
@@ -108,7 +108,7 @@ export function createApp({ db = openDb(), timeScale = Number(process.env.DEMO_T
     res.type('application/javascript').setHeader('Cache-Control', 'no-cache');
     res.send(`window.__MAPOS_CONFIG__ = window.__MAPOS_CONFIG__ || ${JSON.stringify({ apiBase: '', services: process.env.CLIENT_SERVICES === 'server' ? 'server' : 'direct', regionsBase: process.env.REGIONS_BASE || '' })};\n`);
   });
-  const v1 = mountApiV1(app, { root: ROOT, ...(providers ? { providers } : {}), ...(transit ? { transit } : {}) });
+  const v1 = mountApiV1(app, { root: ROOT, db, now, ...(providers ? { providers } : {}), ...(transit ? { transit } : {}) });
   app.locals.v1 = v1;
 
   // ---------- static frontend ----------

@@ -42,7 +42,7 @@ jobs:
         run: |
           PORT=8080 LOG_REQUESTS=0 node --no-warnings server/index.js > server.log 2>&1 &
           for i in $(seq 1 30); do curl -sf localhost:8080/api/health && break; sleep 1; done
-      - name: E2E v0.4 (desktop + mobile; third-party map services served from fixtures)
+      - name: E2E v0.3–v0.5 (desktop + mobile; third-party map services served from fixtures, OSM Notes API mocked)
         run: CHROME=$(which google-chrome || which chromium) node tests/e2e.mjs
       - uses: actions/upload-artifact@v4
         if: always()
@@ -74,7 +74,7 @@ jobs:
         working-directory: android
         env:
           VERSION_CODE: ${{ github.run_number }}
-          VERSION_NAME: 0.4.${{ github.run_number }}
+          VERSION_NAME: 0.5.${{ github.run_number }}
           ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
           ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
           ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
@@ -86,9 +86,17 @@ jobs:
       - name: Collect APKs
         run: |
           mkdir -p out
-          cp android/app/build/outputs/apk/debug/app-debug.apk out/bharat-map-0.4.${{ github.run_number }}-debug.apk
-          [ -f android/app/build/outputs/apk/release/app-release.apk ] && cp android/app/build/outputs/apk/release/app-release.apk out/bharat-map-0.4.${{ github.run_number }}-release.apk || true
+          cp android/app/build/outputs/apk/debug/app-debug.apk out/bharat-map-0.5.${{ github.run_number }}-debug.apk
+          [ -f android/app/build/outputs/apk/release/app-release.apk ] && cp android/app/build/outputs/apk/release/app-release.apk out/bharat-map-0.5.${{ github.run_number }}-release.apk || true
           ls -la out
+      - name: APK size report (informational, never fails the build)
+        run: |
+          APK=$(ls out/*-debug.apk | head -1)
+          echo "## APK size" >> $GITHUB_STEP_SUMMARY
+          echo "$(basename $APK): $(du -h $APK | cut -f1) ($(stat -c%s $APK) bytes)" | tee -a $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          unzip -lv "$APK" | awk 'NR>3 && $1 ~ /^[0-9]+$/ { split($8, p, "/"); key = p[1]; if (key == "assets") key = p[1] "/" p[2] "/" p[3]; raw[key] += $1; comp[key] += $3 } END { for (k in raw) printf "%10.1f MB stored %10.1f MB raw  %s\n", comp[k]/1048576, raw[k]/1048576, k }' | sort -rn | head -20 | tee -a $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
       - uses: actions/upload-artifact@v4
         with: { name: bharat-map-apk, path: out/*.apk, retention-days: 30 }
       - uses: actions/upload-artifact@v4
@@ -98,6 +106,6 @@ jobs:
         if: github.ref == 'refs/heads/main'
         env: { GH_TOKEN: "${{ github.token }}" }
         run: |
-          gh release create "v0.4.${{ github.run_number }}" out/*.apk \
-            --title "Bharat Map 0.4.${{ github.run_number }}" \
-            --notes "Bharat Map 0.4 (own map-services backend, real two-wheeler routing via Valhalla, scheduled Hyderabad Metro journeys from HMRL GTFS, toll plazas on route, EV/parking details, low-bandwidth mode, downloadable offline regions, background navigation). Automated build of ${{ github.sha }}. Debug-signed APK: enable 'Install unknown apps' to sideload. See docs/TEST-REPORT.md."
+          gh release create "v0.5.${{ github.run_number }}" out/*.apk \
+            --title "Bharat Map 0.5.${{ github.run_number }}" \
+            --notes "Bharat Map 0.5: lane guidance (OSRM/Valhalla lanes), speed-limit sign + overspeed chime (OSM maxspeed via Valhalla/Overpass; never shown when unknown), navigation sounds, sunrise/sunset day-night driving style, junction view, permission explainers + privacy dashboard (DPDP), report a map problem (OpenStreetMap notes) and 2-hour community incidents, geo:/bharatmap:// deep links + share links, commute card, multi-stop routes, offline maps for 11 cities with an offline place index, voice search, live location and list sharing. Automated build of ${{ github.sha }}. Debug-signed APK: enable Install unknown apps to sideload. See docs/TEST-REPORT.md."
