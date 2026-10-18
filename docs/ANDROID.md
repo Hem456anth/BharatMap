@@ -11,7 +11,7 @@ and attached to a GitHub Release (`v0.2.<run>`).
 | GPS "near me" | `@capacitor/geolocation` (runtime permission prompt; fine + coarse location in the manifest) |
 | Notifications | `@capacitor/local-notifications` + channel "Orders & delivery"; POST_NOTIFICATIONS prompt on Android 13+ |
 | Offline maps | Visakhapatnam (z0–15, 4.1 MB) and Hyderabad (z0–14, 9.3 MB) PMTiles + fonts + sprites bundled in the APK |
-| Backend | Any India MapOS server over HTTPS; URL set at build time (`MAPOS_API_BASE`) or in-app ⚙ Settings |
+| Backend | Any Bharat Map server over HTTPS; URL set at build time (`MAPOS_API_BASE`) or in-app ⚙ Settings |
 | On-device mode | With no backend configured, the full flow runs locally on fictional demo data (clearly badged) |
 
 ## Build locally (x86_64 Linux/macOS/Windows with JDK 21 + Android SDK 35)

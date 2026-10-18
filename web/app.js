@@ -1,4 +1,4 @@
-// India MapOS web client. Talks to the REST API; falls back to an in-browser
+// Bharat Map web client. Talks to the REST API; falls back to an in-browser
 // backend (mock-api.js) when served statically without a server.
 import { store } from './shared/storage.js';
 import * as maplibregl from './vendor/maplibre-gl.mjs';
@@ -302,7 +302,7 @@ async function payWithRazorpay(o) {
     await loadScript('https://checkout.razorpay.com/v1/checkout.js');
     const rz = new window.Razorpay({
       key: o.razorpay.key_id, order_id: o.razorpay.order_id, amount: o.razorpay.amount, currency: 'INR',
-      name: 'India MapOS', description: o.razorpay.description, prefill: { email: state.user?.email || '' }, theme: { color: '#0f6e56' },
+      name: 'Bharat Map', description: o.razorpay.description, prefill: { email: state.user?.email || '' }, theme: { color: '#0f6e56' },
       handler: async (resp) => {
         try { await api('POST', '/api/payments/razorpay/verify', resp); toast('Payment successful ✓'); deviceNotify('Payment received', `${inr(o.total)} paid for ${o.id}`); track(o.id); } catch (e) { toast(`Payment verification failed: ${e.message}`); }
       },
@@ -521,7 +521,7 @@ $('#locBtn').addEventListener('click', async () => {
   try {
     const p = await currentPosition(); setMe(p); map.flyTo({ center: [p.lng, p.lat], zoom: 15 });
     if (p.lat < 6 || p.lat > 38 || p.lng < 68 || p.lng > 98) toast('You appear to be outside India; sellers here are India-only.');
-  } catch (e) { toast(e.code === 'denied' ? 'Location permission denied. Enable it in Android Settings → Apps → India MapOS. Using city centre.' : 'Could not get your location. Using city centre.'); }
+  } catch (e) { toast(e.code === 'denied' ? 'Location permission denied. Enable it in Android Settings → Apps → Bharat Map. Using city centre.' : 'Could not get your location. Using city centre.'); }
   finally { $('#locBtn').removeAttribute('aria-busy'); }
 });
 $('#offBtn').addEventListener('click', () => { state.offline = !state.offline; store.setItem('mapos-offline', state.offline ? '1' : '0'); applyMapStyle(); });

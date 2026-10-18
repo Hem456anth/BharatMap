@@ -3,7 +3,7 @@
 // have strict usage policies: OK for development only. Self-host for production (docs/DEPLOYMENT.md).
 import { fallbackRoute } from '../../shared/geo.js';
 
-const UA = process.env.HTTP_USER_AGENT || 'IndiaMapOS-MVP/0.1 (dev; contact: set HTTP_USER_AGENT)';
+const UA = process.env.HTTP_USER_AGENT || 'BharatMap-MVP/0.1 (dev; contact: set HTTP_USER_AGENT)';
 const cache = new Map();
 const CACHE_MAX = 2000;
 function cacheGet(k) { const v = cache.get(k); if (v && v.exp > Date.now()) return v.val; cache.delete(k); return undefined; }

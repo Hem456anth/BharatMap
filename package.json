@@ -1,7 +1,7 @@
 {
-  "name": "india-mapos",
+  "name": "bharat-map",
   "version": "0.1.0",
-  "description": "India-first map super-app MVP: Map → Business → Product → Delivery",
+  "description": "India-first map super-app MVP: Map \u2192 Business \u2192 Product \u2192 Delivery",
   "scripts": {
     "test": "node --no-warnings --test --test-concurrency=1 tests/unit.test.js tests/api.test.js tests/phase2.test.js",
     "e2e": "node tests/e2e.mjs",

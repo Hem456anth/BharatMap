@@ -1,4 +1,4 @@
-// Maps MapOS search results to a Beckn/ONDC `on_search` catalog shape (retail domain).
+// Maps Bharat Map search results to a Beckn/ONDC `on_search` catalog shape (retail domain).
 // PROTOTYPE: real ONDC participation requires registry subscription, ed25519 request
 // signing (Authorization header), gateway routing and certification. See docs/RESEARCH.md.
 import crypto from 'node:crypto';
@@ -16,7 +16,7 @@ export function toBecknCatalog(ctx, result) {
     },
     message: {
       catalog: {
-        'bpp/descriptor': { name: 'India MapOS (demo seller network)' },
+        'bpp/descriptor': { name: 'Bharat Map (demo seller network)' },
         'bpp/providers': result.results.map((r) => ({
           id: r.business.id,
           descriptor: { name: r.business.name },

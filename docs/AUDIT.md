@@ -1,4 +1,4 @@
-# Final Audit — India MapOS v0.1 (18 Oct 2026)
+# Final Audit — Bharat Map v0.1 (18 Oct 2026)
 
 Legend: ✅ Implemented & tested · 🟡 Prototype / partial / simulated · 🔌 External dependency · ⛔ Not built
 

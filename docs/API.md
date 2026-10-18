@@ -1,4 +1,4 @@
-# India MapOS REST API (v0.2)
+# Bharat Map REST API (v0.2)
 
 Base URL: `/`. JSON in/out. Auth: `Authorization: Bearer <JWT>` (HS256, 12 h). Errors: `{"error":"code"}` with HTTP status.
 Rate limit: `RATE_LIMIT_PER_MIN` per IP on `/api/*` (header `RateLimit-Remaining`, 429 when exceeded).

@@ -1,4 +1,4 @@
--- India MapOS MVP schema (SQLite dialect, used by the reference server).
+-- Bharat Map MVP schema (SQLite dialect, used by the reference server).
 -- Production PostGIS equivalent: db/postgis/001_init.sql
 PRAGMA foreign_keys = ON;
 

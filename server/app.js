@@ -310,7 +310,7 @@ export function createApp({ db = openDb(), timeScale = Number(process.env.DEMO_T
       try {
         const rz = await payments.createOrder({ amountPaise: priced.total * 100, receipt: id, notes: { mapos_order: id } });
         db.prepare('INSERT INTO payments(order_id,provider,provider_order_id,amount_paise,status,raw) VALUES (?,?,?,?,?,?)').run(id, 'razorpay', rz.id, priced.total * 100, 'created', JSON.stringify({ status: rz.status }));
-        out.razorpay = { key_id: payments.keyId, order_id: rz.id, amount: priced.total * 100, currency: 'INR', name: 'India MapOS', description: `Order ${id}` };
+        out.razorpay = { key_id: payments.keyId, order_id: rz.id, amount: priced.total * 100, currency: 'INR', name: 'Bharat Map', description: `Order ${id}` };
       } catch (e) {
         db.prepare("UPDATE orders SET payment_status='payment_init_failed' WHERE id=?").run(id);
         out.payment_status = 'payment_init_failed'; out.payment_error = e.message;

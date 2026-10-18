@@ -1,4 +1,4 @@
-# India MapOS — Product Requirements Document (v0.1, Oct 2026)
+# Bharat Map — Product Requirements Document (v0.1, Oct 2026)
 
 ## 1. Vision
 One intelligent map that connects **places → businesses → products → transport → delivery** for India.

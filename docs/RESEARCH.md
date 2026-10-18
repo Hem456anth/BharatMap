@@ -1,4 +1,4 @@
-# India MapOS: Research Dossier
+# Bharat Map: Research Dossier
 
 **Date:** October 2026
 **Scope:** India-first map + commerce + logistics + mobility super-app. The MVP is built clean-room on open data.
@@ -185,7 +185,7 @@
 - ETA comes from a store-to-door isochrone plus picker queue time.
 - A two-wheeler rider fleet handles delivery.
 
-**For India MapOS [I]**
+**For Bharat Map [I]**
 - Do not run dark stores.
 - Build the primitives: serviceability polygons, two-wheeler isochrones, and ETA promise.
 - Expose these to ONDC sellers and logistics BPPs.

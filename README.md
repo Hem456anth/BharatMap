@@ -1,4 +1,4 @@
-# India MapOS — v0.2 (Android app + backend)
+# Bharat Map — v0.2 (Android app + backend)
 
 India-first map super-app: **Map → Business → Product → Delivery** on one intelligent map.
 Search “LED TVs near me” (in 11 Indian languages), compare verified nearby sellers by price and stock,

@@ -1,4 +1,4 @@
--- India MapOS production schema (PostgreSQL 16 + PostGIS 3.4 + h3-pg).
+-- Bharat Map production schema (PostgreSQL 16 + PostGIS 3.4 + h3-pg).
 -- Mirrors db/migrations/001_init.sql with spatial types, partitioning and RLS hooks.
 CREATE EXTENSION IF NOT EXISTS postgis;
 CREATE EXTENSION IF NOT EXISTS pg_trgm;      -- fuzzy name search
