@@ -1,4 +1,4 @@
-# Bharat Map — v0.3 (map-first app + Shop, Android + web)
+# Bharat Map — v0.4 (map-first app + own map-services backend, Android + web)
 
 An India-first map app with an original identity: a calm, full-screen map with a floating search pill and a
 three-height bottom sheet, real places from OpenStreetMap, route options for drive / two-wheeler / cycle / walk,
@@ -7,9 +7,22 @@ Visakhapatnam and Hyderabad, and a **Shop** area for the v0.2 commerce flow (pro
 tracking, seller and admin dashboards).
 
 > Status: **working prototype**. Map, search, places, routing and navigation use real open data (OpenStreetMap via
-> Overpass, Nominatim, Photon, OSRM). Sellers, products and riders in Shop are **fictional demo data**. Live traffic and
-> transit timetables are **not** included (they need licensed feeds). See `docs/AUDIT.md` for implemented vs prototype vs
+> Overpass, Nominatim, Photon, OSRM). Sellers, products and riders in Shop are **fictional demo data**. Live traffic and live
+> transit arrivals are **not** included (they need licensed feeds); metro journeys use **scheduled** HMRL GTFS times. See `docs/AUDIT.md` for implemented vs prototype vs
 > needs-paid-API.
+
+## New in v0.4
+| Area | What you get |
+|---|---|
+| Own backend for map services | `/api/v1` route · geocode · reverse · places/nearby · ev · tolls · transit · regions, with env-configurable upstreams (Valhalla, OSRM per profile, Photon, Nominatim, Overpass, Open Charge Map), LRU+TTL cache, per-IP rate limit, identifying User-Agent, 1 req/s throttle for public instances, request coalescing, timeouts and a circuit breaker with fallbacks. The app uses it when a backend is configured and the public OSM services directly otherwise. `docker-compose.yml` + [docs/SELF_HOSTING.md](docs/SELF_HOSTING.md) for self-hosted Valhalla, Photon, Nominatim on the India extract |
+| Real two-wheeler routing | Valhalla `motor_scooter` (FOSSGIS public instance or your own), alternates, **avoid tolls / avoid highways**; OSRM fallback is labelled an estimate |
+| Metro journeys | Hyderabad Metro **scheduled** itineraries from the official HMRL GTFS (bundled with attribution): walk → Red/Green/Blue line → change → walk, planned on the phone (RAPTOR) or on the server. Labelled "Scheduled times, not live". Drop TGSRTC's GTFS into `data/gtfs/` on the server for buses |
+| Tolls | "Toll plazas on route (fees not available)": OSM toll booths/gantries along the selected route, ordered, on the map; km on toll roads |
+| EV & parking | Charging connectors, power, operator, points (Open Charge Map through the server when keyed, else OSM); parking fee/capacity/type; railway-station and airport chips and layers |
+| Low-bandwidth mode | Auto on Save-Data / 2G / 3G or by toggle: fewer tiles (zoom cap, no low-zoom prefetch), no 3D, smaller search area; gzip on the server; route-corridor tile prefetch on Wi-Fi |
+| Offline regions | Download manager (size, progress, cancel, delete) for 9 city regions served as PMTiles; `scripts/make-region.sh` cuts them from the Protomaps daily build; saved places and landmarks searchable offline |
+| Background navigation | Android foreground service (type `location`) with a persistent notification and an in-app rationale; "Allow all the time" only on request |
+| Polish | Gesture tuning (tilt, rotate + compass, double-tap/one-finger zoom, inertial pan), motion per the UI spec, reduced motion, TalkBack labels, v0.4 strings in all 11 languages (8 marked for native review), Shop/admin lazy-loaded, performance recorded |
 
 ## Features (v0.3)
 | Area | What you get |
@@ -35,7 +48,7 @@ Requirements: Node.js ≥ 22.13 (uses built-in `node:sqlite`, no native builds).
 npm install
 npm run migrate         # creates data/mapos.db and seeds demo data
 npm start               # http://localhost:8080
-npm test                # 64 unit + API integration tests
+npm test                # 95 unit + API integration tests
 node tests/e2e.mjs      # Chromium E2E (needs the server running and Chromium at /usr/bin/chromium or $CHROME)
 npm run build:demo      # dist/india-mapos-demo.html — one-file serverless demo
 ```
@@ -53,6 +66,8 @@ web/                 client (MapLibre GL, vendored; no runtime CDN)
   lib/               opening-hours.js, saved-model.js (pure, unit-tested)
   offline/           PMTiles regions, fonts, light/dark sprites
 server/              Express API (auth, search, orders, SSE tracking, seller/admin, saved places, tile proxy)
+  api-v1.js          /api/v1 map services        providers/  upstream chains     lib/  cache, rate limit, upstream
+  transit/           GTFS loader + bundled HMRL feed
 shared/              isomorphic core (search, address/DIGIPIN, logistics, i18n, CSP)
 tests/               unit + API (node:test), Chromium E2E with fixture-backed network (tests/fixtures = real captured responses)
 android/             Capacitor 7 project (com.indiamapos.app); CI builds the APK
@@ -61,16 +76,18 @@ docs/                ARCHITECTURE, API, AUDIT, TEST-REPORT, ANDROID, DEPLOYMENT,
 
 ## Android app
 Capacitor 7, package `com.indiamapos.app`, built by GitHub Actions on every push to `main` and published as a Release
-(`Bharat Map 0.3.N`, asset `bharat-map-0.3.N-debug.apk`). Native plugins: Geolocation (watchPosition for navigation),
-Share, App (hardware back), Local Notifications, Text-to-Speech (community plugin) for voice guidance. With no backend
+(`Bharat Map 0.4.N`, asset `bharat-map-0.4.N-debug.apk`). Native plugins: Geolocation (watchPosition for navigation),
+Share, App (hardware back), Local Notifications, Text-to-Speech (community plugin) for voice guidance, and the
+own `BackgroundNav` plugin (foreground service for navigation with the screen off). With no backend
 configured the app runs fully on-device (Shop uses fictional demo data). Details: [docs/ANDROID.md](docs/ANDROID.md).
 
 ## Docs
 `docs/ARCHITECTURE.md` · `docs/API.md` · `docs/AUDIT.md` (implemented / prototype / needs paid API) · `docs/TEST-REPORT.md` ·
-`docs/ANDROID.md` · `docs/DEPLOYMENT.md` · `docs/PRD.md` · `docs/RESEARCH.md` · research for v0.3 in `docs/re/`.
+`docs/ANDROID.md` · `docs/SELF_HOSTING.md` · `docs/DEPLOYMENT.md` · `docs/PRD.md` · `docs/RESEARCH.md` · research for v0.3 in `docs/re/`.
 
 ## Attribution & licences
 Map data © OpenStreetMap contributors (ODbL). Online tiles: OpenFreeMap / OpenMapTiles. Offline tiles: Protomaps basemap
-(OSM). Routing: OSRM on FOSSGIS servers (routing.openstreetmap.de). Geocoding: Nominatim, Photon (komoot). Rendering:
+(OSM). Routing: OSRM and Valhalla on FOSSGIS servers (routing.openstreetmap.de, valhalla1.openstreetmap.de) or self-hosted.
+Transit: *Contains data provided by Hyderabad Metro Rail Ltd.* (HMRL GTFS, HMRL open-data terms). EV: Open Charge Map (CC BY 4.0) when enabled. Geocoding: Nominatim, Photon (komoot). Rendering:
 MapLibre GL JS (BSD-3). Fonts: Noto (OFL). Icons, colours and UI are original to this project (clean-room; no third-party
 brand assets).

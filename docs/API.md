@@ -1,3 +1,30 @@
+# Bharat Map REST API (v0.4)
+
+## Map services — `/api/v1` (v0.4)
+Used by the app when it has a server (`MAPOS_API_BASE`, Settings → Backend server, or `CLIENT_SERVICES=server`).
+Per-IP token bucket (`V1_RATE_BURST`, default 60; `V1_RATE_PER_SEC`, default 2) → `429 {error:'rate_limited', retry_after_ms}`
+with `Retry-After`. JSON responses > 1 KB are gzip-encoded when the client accepts it. Upstream failures that exhaust
+every provider return `502 {error, tried[]}`; `OFFLINE=1` returns `503 offline_mode` (route still answers with the
+labelled straight-line estimate).
+
+| Method | Path | Params | Returns |
+|---|---|---|---|
+| GET | `/api/v1/route` | `mode` = `drive\|two\|bike\|walk`, `from_lat/from_lng/to_lat/to_lng`, `avoid_tolls=1`, `avoid_highways=1`, `alternatives=0` | `{mode, provider: valhalla\|osrm\|straight-line, engine, estimate, fallback, avoid_applied, routes[≤3]{distance_m, duration_s, summary, geometry, steps[]{type, modifier, name, location, distance_m, duration_s, toll?}}, tried[]}` |
+| GET | `/api/v1/geocode` | `q` (≥2), `lat,lng` (bias), `lang`, `limit` (≤10), `autocomplete=1` (Photon only) | `{provider: photon\|nominatim, items[]{id, name, lat, lng, address, distance_m}}` |
+| GET | `/api/v1/reverse` | `lat,lng`, `lang` | `{provider: 'nominatim', item{id, name, address, tags}}` |
+| GET | `/api/v1/places/nearby` | `category` (fuel, ev, atm, metro, bus, rail, hospital, pharmacy, restaurant, grocery, parking, toilets, airport), `lat,lng`, `radius` m (200–5000), `limit` (≤120) | `{provider, items[]{id, name, lat, lng, tags, address, distance_m, ev?, parking?}, timestamp, attribution}` |
+| GET | `/api/v1/ev` | `lat,lng`, `radius` m, `limit` | as above; Open Charge Map when `OCM_API_KEY` is set (key never returned), else OSM |
+| POST | `/api/v1/tolls` | `{coordinates: [[lng,lat],…]}` (≤ 20 000 points, inside India) | `{count, plazas[]{id, name, operator, kind: plaza\|gantry, lat, lng, along_m, booths}, toll_road_m, toll_roads[], fees: null, note}` |
+| GET | `/api/v1/transit/feeds` | – | `{feeds[]{id, name, attribution, valid, stops, routes}, errors[]}` |
+| GET | `/api/v1/transit/plan` | `from_lat/from_lng/to_lat/to_lng`, `date=YYYY-MM-DD`, `time=HH:MM` (IST; default now) | `{scheduled: true, label, when, itineraries[≤3]{depart_s, arrive_s, duration_s, transfers, walk_m, legs[]{type: walk\|ride\|transfer, route{short,long,color}, headsign, from, to, depart_s, arrive_s, stops, geometry}}, reason?}` |
+| GET | `/api/v1/transit/stops` | `lat,lng`, `radius` | `{stops[]{id, name, distance_m, departures[]{dep_s, route, headsign}}}` (scheduled) |
+| GET | `/api/v1/regions` | – | offline-region catalogue + `{available, size_bytes, url}` per region (files in `REGIONS_DIR`) |
+| GET | `/regions/<id>.pmtiles` | HTTP Range | PMTiles archive; 404 `region_not_hosted` |
+| GET | `/api/v1/providers` | – | upstream status: URL (public ones only), breaker state, cache size, counters |
+| GET | `/config.js` | – | client config (`services: direct\|server`, `regionsBase`) |
+
+Times in transit responses are seconds after midnight (IST) of the service day and are **scheduled (GTFS), not live**.
+
 # Bharat Map REST API (v0.3)
 
 Base URL: `/`. JSON in/out. Auth: `Authorization: Bearer <JWT>` (HS256, 12 h). Errors: `{"error":"code"}` with HTTP status.

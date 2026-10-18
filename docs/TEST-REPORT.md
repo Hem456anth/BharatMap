@@ -1,4 +1,57 @@
-# Bharat Map v0.3 — Test report
+# Bharat Map v0.4 — Test report
+
+Run date: 19 Oct 2026 (IST). Raw outputs: `docs/test-output.txt` (npm test), `docs/e2e-results.txt` (Chromium E2E),
+`docs/perf-v04.json` (performance). Screenshots: `docs/screenshots/v04-*.png` (new) and `v03-*.png` (regression).
+
+## Summary
+| Suite | Result |
+|---|---|
+| Unit + API (`npm test`, node:test) | **95 / 95 pass** (64 from v0.3 + 31 new) |
+| Browser E2E (`tests/e2e.mjs`, Chromium, desktop 1366×820 + mobile 390×844) | **64 / 64 pass** — 43 v0.3 regression journeys (two-wheeler step updated for Valhalla) + 21 new v0.4 steps; 0 console errors |
+| Demo build (`npm run build:demo`) | OK — `dist/india-mapos-demo.html` (467 KB) with lazy modules inlined |
+| CI | run 7 (`ac669ba`): tests + audit + secret scan ✅, E2E ✅, Android Gradle build incl. the new BackgroundNav plugin ✅ |
+| Real-service smoke (sandbox shell, not CI) | `/api/v1/route?mode=two` → live FOSSGIS Valhalla `motor_scooter`, 3 routes, 0.7 s; `make-region.sh vijayawada 13` → real 1.5 MB PMTiles served with HTTP Range (206) |
+
+## New unit + API tests (31)
+| File | Tests | Covers |
+|---|---|---|
+| `tests/v04.test.js` | 25 | LRU+TTL cache; token bucket; upstream UA + 1 req/s spacing + cache + coalescing; timeout + circuit breaker (open → short-circuit → half-open → closed; 404 doesn't trip); `withFallback`; provider config; route chain (two-wheeler Valhalla → OSRM estimate → straight line; drive OSRM-first; avoid tolls → Valhalla with `use_tolls:0`; self-hosted Valhalla first); geocode chain (Photon → Nominatim; autocomplete never Nominatim); EV via OCM (key never in output) and OSM fallback; polyline6 / simplify / projection; Valhalla request + real response parsing; **tolls along a real NH16 route** (2 plazas, Agnampudi, merged booths, toll-road length); EV/parking tag parsing; GTFS CSV edge cases, ZIP reader, loader, timetable, calendar_dates; RAPTOR on a labelled test fixture (walk → ride → transfer → ride → walk) and on the **real HMRL feed** (Miyapur → Uppal = Red → Blue at Ameerpet); pack/unpack lossless; low-bandwidth policy; corridor tiles; region manager (real PMTiles bytes, progress, cancel, 404, wrong file, delete); offline saved-place geocoding; client routing order without a server; on-device transit planning; i18n v0.4 completeness (11 languages) |
+| `tests/v04-api.test.js` | 6 | `/api/v1/route` (Valhalla/OSRM, validation, UA on every upstream call), geocode/reverse/places/ev, tolls, transit feeds/plan/stops, regions catalogue + providers + gzip + `/config.js` + version, per-IP 429 with Retry-After |
+
+## New E2E steps (fixtures = real captured responses; the browser has no internet)
+| Step | Desktop | Mobile |
+|---|:-:|:-:|
+| Performance: load, map-ready, FPS, JS bytes; Shop demo backend + admin **not** loaded at boot | ✅ | ✅ |
+| Transit: scheduled HMRL itinerary Miyapur → Uppal (Red Line → change at Ameerpet → Blue Line), legs on map, "Scheduled times, not live", attribution | ✅ | ✅ |
+| Tolls: Dwaraka Nagar → Anakapalli, 2 OSM plazas (fees not available), markers; avoid tolls → Valhalla `auto` | ✅ | ✅ |
+| EV details (operator, points, connectors from OSM) | ✅ | ✅ |
+| Parking details (fee, capacity, type) | ✅ | ✅ |
+| Airport chip + rail/airport overlays | ✅ | ✅ |
+| Low-bandwidth toggle → zoom cap 16, no 3D, 3 km Overpass | ✅ | ✅ |
+| Offline region download (mocked host): progress → Cache Storage → used by the offline map → delete | ✅ | ✅ |
+| Background-navigation rationale → foreground service start (stub plugin) → fix forwarded → stop on end | ✅ | ✅ |
+| Low-bandwidth auto-detected (stubbed `navigator.connection` Save-Data/3G) | – | ✅ |
+| Two-wheeler now uses Valhalla `motor_scooter` (no "Estimate" label) | ✅ | ✅ |
+
+## Performance (headless Chromium, SwiftShader software GL, aarch64 sandbox — `docs/perf-v04.json`)
+| Metric | Desktop | Mobile 390×844 |
+|---|---|---|
+| `load` event | 1.27 s | 0.82 s |
+| Map style + Bharat Map layers ready | 4.4 s | 3.1 s |
+| FPS during a 2 s `easeTo` | 2.4 | 7.1 |
+| JS loaded at boot | 51 files, 2.08 MB decoded (MapLibre 1.1 MB + worker 0.5 MB; app code 0.43 MB unminified) | same |
+FPS is software-rendered (no GPU in the sandbox/CI) and is **not representative of a phone**; it is recorded to catch
+regressions. Load figures are from localhost. App-code size: 428 KB of own JS (unminified, served as ES modules).
+
+## Not covered automatically
+- Background navigation on a real Android device (Gradle build is verified in CI; JS flow with a stub plugin).
+- Real touch gestures (two-finger tilt/rotate, double-tap-drag zoom) — MapLibre handlers, not synthesised in E2E.
+- Open Charge Map with a real key; self-hosted Valhalla/Photon/Nominatim (fake-upstream API tests only).
+- TalkBack on hardware; native-speaker review of ta, kn, ml, bn, mr, gu, pa, or.
+
+---
+
+# Bharat Map v0.3 — Test report (previous release)
 
 Run date: 18 Oct 2026 (IST), on the release commit. Raw outputs: `docs/test-output.txt` (npm test),
 `docs/e2e-results.txt` (Chromium E2E), `docs/e2e-demo-results.txt` (single-file demo E2E). Screenshots: `docs/screenshots/v03-*.png`.

@@ -1,5 +1,73 @@
 # Architecture
 
+## v0.4 — integrated map-services backend
+
+```mermaid
+flowchart LR
+  subgraph Client["Client (web + Android WebView)"]
+    SVC["services/server.js<br/>serverBase(): MAPOS_API_BASE · Settings URL · CLIENT_SERVICES=server"]
+    RT[services/routing.js]
+    GC[services/geocode.js]
+    PO[services/overpass.js]
+    TO[services/tolls.js]
+    TS["services/transit.js<br/>on-device RAPTOR over web/transit/hmrl.json"]
+    BW["lib/bandwidth.js<br/>Save-Data / 2G / 3G → low-bandwidth policy"]
+    RM["lib/region-manager.js<br/>download · progress · cancel · delete (Cache Storage)"]
+    BG["nav/background.js<br/>rationale → BackgroundNav plugin"]
+  end
+  subgraph Server["Bharat Map server — /api/v1 (server/api-v1.js)"]
+    RL["lib/ratelimit.js<br/>per-IP token bucket"]
+    GZ[gzip JSON]
+    PROV["providers/index.js<br/>fallback chains"]
+    UP["lib/upstream.js per upstream:<br/>UA · 1 req/s for public · LRU+TTL cache<br/>coalescing · timeout · circuit breaker"]
+    TR["transit/: gtfs.js (CSV/ZIP loader, timetable)<br/>+ shared/transit/raptor.js"]
+    REG["/regions/*.pmtiles (HTTP Range)<br/>REGIONS_DIR"]
+  end
+  subgraph Up["Upstreams (env-configurable; public defaults = dev only)"]
+    VAL[(Valhalla<br/>auto · motor_scooter · bicycle · pedestrian)]
+    OSRM[(OSRM car / bike / foot)]
+    PH[(Photon)]
+    NOM[(Nominatim)]
+    OVP[(Overpass)]
+    OCM[(Open Charge Map<br/>OCM_API_KEY, server-only)]
+    GTFS[(GTFS feeds<br/>HMRL bundled · TGSRTC drop-in)]
+  end
+  SVC -->|server configured| RL --> GZ --> PROV --> UP
+  UP --> VAL & OSRM & PH & NOM & OVP & OCM
+  PROV --> TR --> GTFS
+  RT -. no server .-> VAL & OSRM
+  GC -. no server .-> PH & NOM
+  PO -. no server .-> OVP
+  TO -. no server .-> OVP
+  RM --> REG
+  BG --> FGS["Android NavLocationService<br/>foregroundServiceType=location"]
+```
+
+* **Two modes, same client code.** Every client service first asks `serverBase()`. With a Bharat Map server it calls
+  `/api/v1/*`; if that fails (or there is no server) it calls the public OSM services directly, exactly as v0.3 did.
+* **Fallback chains** (server and client): route = Valhalla ⇄ OSRM (Valhalla first for two-wheeler, avoid tolls/highways,
+  or when `VALHALLA_URL` is self-hosted) → labelled straight-line estimate; geocode = Photon → Nominatim; EV = Open
+  Charge Map (keyed) → OSM via Overpass. Results say which engine answered (`engine`, `provider`, `tried`).
+* **Upstream hygiene** (`server/lib/upstream.js`): identifying `User-Agent`, ≥ 1 s between requests to any public instance
+  (queued in order), identical in-flight requests coalesced, LRU + TTL cache, per-request timeout, circuit breaker
+  (3 consecutive failures → skip for 30 s; 4xx never trips it). Per-IP token bucket on `/api/v1` and gzip for JSON > 1 KB.
+* **Transit**: GTFS (zip / folder / .txt.gz) → compact timetable (patterns, trips sorted by first departure, services with
+  calendar_dates exceptions, footpaths for same-station and ≤ 250 m transfers) → RAPTOR rounds (walk → ride → transfer →
+  ride → walk), Pareto over number of rides. Server and client share `shared/transit/raptor.js`; the client ships the
+  packed HMRL timetable (≈ 160 KB, lossless `shared/transit/pack.js`). All times are labelled *scheduled, not live*.
+* **Tolls**: the selected route is simplified (Douglas–Peucker, ≤ 180 vertices) into an Overpass `around` polyline query
+  for `barrier=toll_booth` / `highway=toll_gantry` and `toll=yes` ways; plazas are projected onto the route, ordered by
+  distance along it, and booths on both carriageways within 350 m are merged. No fees are shown.
+* **Low bandwidth**: policy from `navigator.connection` (or manual) → max zoom 16, no low-zoom tile prefetch
+  (`prefetchZoomDelta 0`), no 3D, Overpass area 3 km and fewer POIs; server gzip + coalescing; on unmetered connections
+  the route corridor's z12–14 tiles are prefetched into the tile cache when navigation starts.
+* **Offline regions**: catalogue `web/offline/catalog.json` (9 cities); files cut by `scripts/make-region.sh`
+  (`pmtiles extract` from the Protomaps daily build) and served from `REGIONS_DIR`; the app downloads them into Cache
+  Storage with progress / cancel / delete and `offline-map.js` prefers a downloaded region that covers the map centre.
+* **Background navigation (Android)**: `BackgroundNavPlugin` starts `NavLocationService` (foreground service, type
+  `location`, persistent notification) only during GPS navigation after a one-time rationale; fixes are forwarded to the
+  same tracker. `ACCESS_BACKGROUND_LOCATION` is requested only from the optional Settings button.
+
 ## 0. v0.3 client (map-first shell)
 
 ```mermaid

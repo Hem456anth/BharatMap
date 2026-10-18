@@ -1,3 +1,25 @@
 {
-  "measured": "2026-10-18T18:46:01.627Z"
+  "measured": "2026-10-18T18:55:39.492Z",
+  "desktop": {
+    "load_ms": 1289,
+    "map_ready_ms": 4370,
+    "dom_content_loaded_ms": 1211,
+    "load_event_ms": 1265,
+    "fps_ease_2s": 2.4,
+    "js_files_loaded": 51,
+    "js_decoded_bytes": 2078433,
+    "lazy_modules_loaded_at_boot": [],
+    "renderer": "headless Chromium, SwiftShader (software GL)"
+  },
+  "mobile": {
+    "load_ms": 844,
+    "map_ready_ms": 3078,
+    "dom_content_loaded_ms": 768,
+    "load_event_ms": 823,
+    "fps_ease_2s": 7.1,
+    "js_files_loaded": 51,
+    "js_decoded_bytes": 2078433,
+    "lazy_modules_loaded_at_boot": [],
+    "renderer": "headless Chromium, SwiftShader (software GL)"
+  }
 }

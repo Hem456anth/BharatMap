@@ -1,3 +1,46 @@
+# Audit — Bharat Map v0.4 (19 Oct 2026) — final functionality audit
+
+Legend: ✅ **Implemented** (working, tested) · 🟡 **Prototype** (works, but partial / simulated / estimate / not device-tested) ·
+🔌 **Needs external dependency** (code is in place; the named dependency must be supplied) · ⛔ Not built
+
+### v0.4 features
+| Area | Feature | Status | Evidence · dependency |
+|---|---|---|---|
+| Backend | `/api/v1` provider abstraction: route, geocode, reverse, places/nearby, ev, tolls, transit, regions, providers | ✅ | `server/api-v1.js`, `server/providers/`; API tests with fake upstream (`tests/v04-api.test.js`) |
+| Backend | Env-configurable upstreams (`VALHALLA_URL`, `OSRM_URL_CAR/BIKE/FOOT`, `PHOTON_URL`, `NOMINATIM_URL`, `OVERPASS_URL`, `OCM_API_KEY`) | ✅ | unit: `providerConfig` |
+| Backend | LRU + TTL cache, per-IP token bucket (429 + Retry-After), identifying UA, 1 req/s throttle for public instances, request coalescing, timeouts, circuit breaker, fallback chains | ✅ | unit tests (clock-injected) + API test (429) |
+| Backend | gzip of JSON responses | ✅ | API test decodes gzip |
+| Backend | Production upstreams (self-hosted Valhalla / Photon / Nominatim) | 🔌 | **Needs a VM** — `docker-compose.yml` + `docs/SELF_HOSTING.md` (sizing). Defaults are the public OSM instances (dev only) |
+| Backend | Render deploy | 🔌 | `render.yaml` updated; **needs a Render account** and env values |
+| Client | Uses the server when `MAPOS_API_BASE` / Settings URL / `CLIENT_SERVICES=server`, direct public endpoints otherwise, server→direct fallback | ✅ | unit (direct paths), code review; live server path verified by curl against the real FOSSGIS Valhalla |
+| Routing | Real two-wheeler mode (Valhalla `motor_scooter`, top speed 60 km/h) with OSRM car-graph fallback (then labelled "Estimate") | ✅ | real captured Valhalla response; unit + E2E (`valhalla motor_scooter` request) |
+| Routing | Valhalla for drive/bike/walk with alternates; OSRM fallback; straight-line estimate when both fail | ✅ | unit (fallback order) |
+| Routing | Avoid tolls / avoid highways (Valhalla `use_tolls` / `use_highways` = 0); honest note when only OSRM answered | ✅ | unit + E2E (checkbox → Valhalla `auto`) |
+| Transit | GTFS loader (zip / folder / .txt.gz; stops, routes, trips, stop_times, calendar, calendar_dates) | ✅ | unit (CSV edge cases, zip reader, fixture feed) |
+| Transit | RAPTOR earliest-arrival planner: walk → ride → transfers → walk, Pareto by rides, same-station transfers | ✅ | unit on a labelled test fixture + real HMRL feed (Miyapur → Uppal = Red → Blue at Ameerpet) |
+| Transit | Hyderabad Metro (HMRL) GTFS bundled with attribution ("Contains data provided by Hyderabad Metro Rail Ltd.", HMRL terms permit redistribution, 03 Jul 2026 feed via Open Data Telangana / OpenCity) | ✅ | `server/transit/feeds/hmrl/ATTRIBUTION.txt`; E2E itinerary + attribution |
+| Transit | Client itineraries (on-device with the packed timetable, or via server), labelled "Scheduled times, not live"; nearest stops otherwise | ✅ | E2E desktop + mobile; screenshot `v04-*-01-transit-itinerary` |
+| Transit | TGSRTC buses | 🔌 | **Needs the official TGSRTC GTFS** (form download) dropped into `data/gtfs/` — loader is ready |
+| Transit | Live arrivals / delays (GTFS-RT) | 🔌 | **Needs an operator partnership** (none public) |
+| Tolls | Toll plazas on route (OSM `barrier=toll_booth`, `highway=toll_gantry`), count + ordered list + map markers, toll-road length from `toll=yes`; "fees not available" | ✅ | real NH16 route + real Overpass response (Agnampudi); unit + E2E; screenshot `v04-*-02-tolls` |
+| Tolls | Toll fees (₹) | 🔌 | **Needs a verified fee source** (NHAI fee data / licensed provider); not shown by design |
+| EV | Open Charge Map via server proxy (key never shipped), OSM fallback; connectors / power / operator / points / status | ✅ / 🔌 | OSM path ✅ (E2E with real Dwaraka Nagar data); OCM path unit-tested with a mock — **needs `OCM_API_KEY`** for live use |
+| Parking | Fee / capacity / type from OSM on the place card | ✅ | E2E (real data has few tags → "Not mapped" shown honestly) |
+| Layers | Railway stations + airports chips and overlays | ✅ | E2E (13 chips; rail overlay) |
+| Low bandwidth | Auto from `navigator.connection` (Save-Data, slow-2g/2g/3g) + manual toggle; zoom cap 16, no low-zoom prefetch, no 3D, Overpass 3 km / 25 results | ✅ | unit (policy) + E2E (toggle and auto with stubbed `navigator.connection`); screenshot `v04-mobile-04` |
+| Low bandwidth | Prefetch route-corridor tiles (z12–14) on unmetered connections when navigation starts | 🟡 | unit (tile maths); runs in the browser/PWA tile cache; in the Android WebView MapLibre does not read that cache |
+| Offline | Region catalogue (9 cities), `scripts/make-region.sh` (`pmtiles extract`), server `/regions` with Range | ✅ / 🔌 | Real Vijayawada z≤13 extract made in the sandbox (1.5 MB) and served; **needs a region host** (server disk/CDN) with the generated files for users |
+| Offline | Download manager: size, progress, cancel, delete, Cache Storage; offline map prefers a downloaded region | ✅ | unit (real PMTiles bytes, cancel, 404, wrong file) + E2E (mocked host) ; screenshot `v04-*-05-offline-regions` |
+| Offline | Offline geocoding of saved places + bundled landmarks | ✅ | unit |
+| Offline | Offline routing | 🟡 | straight-line × 1.35 estimate, labelled (unchanged) |
+| Android | Background navigation: foreground service (`location`), persistent notification, rationale UI, optional `ACCESS_BACKGROUND_LOCATION` only on request | 🟡 | Gradle build in CI; JS flow E2E-tested with a stub plugin; **not device-tested** |
+| Gestures | Two-finger tilt, rotate (+ compass label/snap-to-north tick), double-tap zoom, one-finger zoom (double-tap-drag), tuned inertial pan | ✅ / 🟡 | MapLibre handlers enabled + configured; touch gestures not automated beyond existing drag/long-press tests |
+| Motion | Sheet 280 ms `cubic-bezier(0.05,0.7,0.1,1)`, 180 ms content swap, 120 ms control fade during gestures, 100 ms press; all off with reduced motion | ✅ | CSS + `controls.js`; reduced-motion rule |
+| a11y | TalkBack labels for new controls (compass with angle, progress bars, toll list, itinerary, dialogs) | 🟡 | ARIA in DOM; not tested with TalkBack on hardware |
+| i18n | All v0.4 strings in 11 languages (en/hi/te reviewed; ta, kn, ml, bn, mr, gu, pa, or **need native review**) | 🟡 | unit (every key, no English fallback); v0.3 strings in those 8 languages still fall back to English |
+| Performance | Load time, map-ready time, FPS, JS bytes recorded in headless E2E (`docs/perf-v04.json`); Shop demo backend + admin lazy-loaded | ✅ | E2E asserts admin/mock-api are not loaded at boot |
+| Live traffic | — | 🔌 | **Needs a licensed traffic partner** (HERE / TomTom / MapmyIndia) |
+
 # Audit — Bharat Map v0.3 (18 Oct 2026)
 
 Legend: ✅ Implemented & tested · 🟡 Prototype / partial / simulated / estimate · 💰 Needs a paid or licensed data/API partner · ⛔ Not built
