@@ -7,8 +7,8 @@ android {
         applicationId "com.indiamapos.app"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode Integer.parseInt(System.getenv("VERSION_CODE") ?: "2")
-        versionName(System.getenv("VERSION_NAME") ?: "0.2.0")
+        versionCode Integer.parseInt(System.getenv("VERSION_CODE") ?: "3")
+        versionName(System.getenv("VERSION_NAME") ?: "0.3.0")
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
              // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.

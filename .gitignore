@@ -10,3 +10,5 @@ www/
 android/app/release.keystore
 *.keystore
 *.jks
+.scratch/
+web/vendor/maplibre-gl-5.js

@@ -15,7 +15,14 @@ const r = await build({ entryPoints: ['web/app.js'], bundle: true, format: 'iife
   } }] });
 let html = fs.readFileSync('web/index.html', 'utf8');
 const css = fs.readFileSync('web/styles.css', 'utf8');
-html = html.replace('<link rel="stylesheet" href="styles.css" />', `<style>${css}</style>`)
+const themeJs = fs.readFileSync('web/boot-theme.js', 'utf8');
+const iconSvg = fs.readFileSync('web/icon.svg', 'utf8');
+// The single-file demo inlines its scripts and loads MapLibre from a CDN, so the app shell's strict CSP
+// <meta> (script-src 'self') is removed here; the real app (server or Android) keeps it.
+html = html.replace(/<meta http-equiv="Content-Security-Policy"[^>]*>\n?\s*/, '')
+  .replace('<script src="boot-theme.js"></script>', () => `<script>${themeJs}</script>`)
+  .replace('href="icon.svg"', `href="data:image/svg+xml,${encodeURIComponent(iconSvg)}"`)
+  .replace('<link rel="stylesheet" href="styles.css" />', `<style>${css}</style>`)
   .replace('<link rel="manifest" href="manifest.webmanifest" />', '').replace('<script src="config.js"></script>', '')
   .replace('<script type="module" src="app.js"></script>', () => `<script>window.__MAPOS_DEMO__=true</script><script src="${MLJS}"></script><script>${r.outputFiles[0].text.replace(/<\/script/g, '<\\/script')}</script>`);
 // Standalone file loads MapLibre from a CDN (set LOCAL_VENDOR=1 to keep ./vendor paths for offline tests).

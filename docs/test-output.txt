@@ -1,278 +1,398 @@
 
-> india-mapos@0.1.0 test
-> node --no-warnings --test --test-concurrency=1 tests/unit.test.js tests/api.test.js tests/phase2.test.js
+> bharat-map@0.3.0 test
+> node --no-warnings --test --test-concurrency=1 tests/unit.test.js tests/api.test.js tests/phase2.test.js tests/v03.test.js tests/v03-api.test.js
 
 TAP version 13
 # Subtest: health + security headers
 ok 1 - health + security headers
   ---
-  duration_ms: 41.732889
+  duration_ms: 38.029057
   type: 'test'
   ...
 # Subtest: search validates input and returns sellers
 ok 2 - search validates input and returns sellers
   ---
-  duration_ms: 19.669121
+  duration_ms: 14.68246
   type: 'test'
   ...
 # Subtest: geocode, reverse, digipin, route (offline fallback), optimize
 ok 3 - geocode, reverse, digipin, route (offline fallback), optimize
   ---
-  duration_ms: 57.989093
+  duration_ms: 54.686477
   type: 'test'
   ...
 # Subtest: assistant + mobility + i18n + ONDC catalog
 ok 4 - assistant + mobility + i18n + ONDC catalog
   ---
-  duration_ms: 31.294135
+  duration_ms: 35.433226
   type: 'test'
   ...
 # Subtest: auth: register, bad login, lockout, protected routes, RBAC
 ok 5 - auth: register, bad login, lockout, protected routes, RBAC
   ---
-  duration_ms: 95.752496
+  duration_ms: 100.389024
   type: 'test'
   ...
 # Subtest: KILLER FLOW: search → order → rider assigned → live tracking → delivered; stock decremented
 ok 6 - KILLER FLOW: search → order → rider assigned → live tracking → delivered; stock decremented
   ---
-  duration_ms: 1592.693557
+  duration_ms: 1598.209524
   type: 'test'
   ...
 # Subtest: order validation: out of stock, bad qty, out of range, no drop
 ok 7 - order validation: out of stock, bad qty, out of range, no drop
   ---
-  duration_ms: 47.261946
+  duration_ms: 47.721376
   type: 'test'
   ...
 # Subtest: wholesale pickup order applies tier price; cancel restores stock
 ok 8 - wholesale pickup order applies tier price; cancel restores stock
   ---
-  duration_ms: 40.143713
+  duration_ms: 42.264166
   type: 'test'
   ...
 # Subtest: seller dashboard: KPIs, edit own product, cannot edit others
 ok 9 - seller dashboard: KPIs, edit own product, cannot edit others
   ---
-  duration_ms: 47.58025
+  duration_ms: 51.845556
   type: 'test'
   ...
 # Subtest: admin verify + fleet; malformed JSON; unknown route
 ok 10 - admin verify + fleet; malformed JSON; unknown route
   ---
-  duration_ms: 45.292817
+  duration_ms: 43.52731
   type: 'test'
   ...
 # Subtest: SQL injection attempt is inert
 ok 11 - SQL injection attempt is inert
   ---
-  duration_ms: 6.549809
+  duration_ms: 3.497241
   type: 'test'
   ...
 # Subtest: metrics endpoint exposes Prometheus counters
 ok 12 - metrics endpoint exposes Prometheus counters
   ---
-  duration_ms: 3.682893
+  duration_ms: 2.982541
   type: 'test'
   ...
 # Subtest: migrations: 002 applied, orders accept razorpay, FK intact
 ok 13 - migrations: 002 applied, orders accept razorpay, FK intact
   ---
-  duration_ms: 2.753452
+  duration_ms: 2.606813
   type: 'test'
   ...
 # Subtest: config exposes enabled integrations without secrets
 ok 14 - config exposes enabled integrations without secrets
   ---
-  duration_ms: 40.785988
+  duration_ms: 35.20569
   type: 'test'
   ...
 # Subtest: CORS allows the Capacitor WebView origin, not arbitrary sites
 ok 15 - CORS allows the Capacitor WebView origin, not arbitrary sites
   ---
-  duration_ms: 9.579197
+  duration_ms: 9.055109
   type: 'test'
   ...
 # Subtest: razorpay: order created with provider order, signature verified, bad signature rejected
 ok 16 - razorpay: order created with provider order, signature verified, bad signature rejected
   ---
-  duration_ms: 119.513279
+  duration_ms: 124.797515
   type: 'test'
   ...
 # Subtest: razorpay webhook: requires valid signature over raw body
 ok 17 - razorpay webhook: requires valid signature over raw body
   ---
-  duration_ms: 52.304926
+  duration_ms: 46.618019
   type: 'test'
   ...
 # Subtest: signature helper is constant-time safe on length mismatch
 ok 18 - signature helper is constant-time safe on length mismatch
   ---
-  duration_ms: 0.268846
+  duration_ms: 0.270831
   type: 'test'
   ...
 # Subtest: razorpay disabled deployment returns 503, never creates an order
 ok 19 - razorpay disabled deployment returns 503, never creates an order
   ---
-  duration_ms: 134.166471
+  duration_ms: 113.772688
   type: 'test'
   ...
 # Subtest: notifications: customer and seller get order + payment notifications
 ok 20 - notifications: customer and seller get order + payment notifications
   ---
-  duration_ms: 91.891719
+  duration_ms: 92.345048
   type: 'test'
   ...
 # Subtest: admin: RBAC, overview, lists, CSV report
 ok 21 - admin: RBAC, overview, lists, CSV report
   ---
-  duration_ms: 97.383616
+  duration_ms: 96.810699
   type: 'test'
   ...
 # Subtest: admin: deactivate product hides it from search and blocks ordering; reactivate restores
 ok 22 - admin: deactivate product hides it from search and blocks ordering; reactivate restores
   ---
-  duration_ms: 89.982486
+  duration_ms: 87.972003
   type: 'test'
   ...
 # Subtest: admin: disabling a user revokes their live token and login; admin cannot disable self
 ok 23 - admin: disabling a user revokes their live token and login; admin cannot disable self
   ---
-  duration_ms: 117.88366
+  duration_ms: 115.51091
   type: 'test'
   ...
 # Subtest: admin: GSTIN validation on business update
 ok 24 - admin: GSTIN validation on business update
   ---
-  duration_ms: 39.527481
+  duration_ms: 39.120913
   type: 'test'
   ...
 # Subtest: haversine: Vizag RTC to RK Beach ~2 km
 ok 25 - haversine: Vizag RTC to RK Beach ~2 km
   ---
-  duration_ms: 1.003249
+  duration_ms: 1.014247
   type: 'test'
   ...
 # Subtest: DIGIPIN matches India Post reference (Dak Bhawan → 39J-49L-L8T4)
 ok 26 - DIGIPIN matches India Post reference (Dak Bhawan → 39J-49L-L8T4)
   ---
-  duration_ms: 0.292559
+  duration_ms: 0.350373
   type: 'test'
   ...
 # Subtest: DIGIPIN round-trip within 5 m
 ok 27 - DIGIPIN round-trip within 5 m
   ---
-  duration_ms: 0.286796
+  duration_ms: 0.332561
   type: 'test'
   ...
 # Subtest: inIndia rejects outside points
 ok 28 - inIndia rejects outside points
   ---
-  duration_ms: 0.116773
+  duration_ms: 0.11577
   type: 'test'
   ...
 # Subtest: pointAlong interpolates
 ok 29 - pointAlong interpolates
   ---
-  duration_ms: 0.903704
+  duration_ms: 0.174762
   type: 'test'
   ...
 # Subtest: address: landmark + locality + pincode resolves at high confidence
 ok 30 - address: landmark + locality + pincode resolves at high confidence
   ---
-  duration_ms: 2.312345
+  duration_ms: 2.37829
   type: 'test'
   ...
 # Subtest: address: pincode-only and Telugu locality
 ok 31 - address: pincode-only and Telugu locality
   ---
-  duration_ms: 3.73761
+  duration_ms: 3.904936
   type: 'test'
   ...
 # Subtest: address: short ASCII alias does not match inside words
 ok 32 - address: short ASCII alias does not match inside words
   ---
-  duration_ms: 0.568956
+  duration_ms: 0.718822
   type: 'test'
   ...
 # Subtest: address: DIGIPIN input
 ok 33 - address: DIGIPIN input
   ---
-  duration_ms: 0.580275
+  duration_ms: 0.574934
   type: 'test'
   ...
 # Subtest: i18n: all 11 languages have every key
 ok 34 - i18n: all 11 languages have every key
   ---
-  duration_ms: 0.756149
+  duration_ms: 1.674088
   type: 'test'
   ...
 # Subtest: i18n: native query normalisation
 ok 35 - i18n: native query normalisation
   ---
-  duration_ms: 0.50894
+  duration_ms: 0.606204
   type: 'test'
   ...
 # Subtest: query parsing: price, size, wholesale
 ok 36 - query parsing: price, size, wholesale
   ---
-  duration_ms: 1.234485
+  duration_ms: 1.434115
   type: 'test'
   ...
 # Subtest: killer flow search: "LED TVs near me" returns TV sellers, nearest verified first
 ok 37 - killer flow search: "LED TVs near me" returns TV sellers, nearest verified first
   ---
-  duration_ms: 1.320357
+  duration_ms: 1.356598
   type: 'test'
   ...
 # Subtest: search filters by size and price cap; in-stock first
 ok 38 - search filters by size and price cap; in-stock first
   ---
-  duration_ms: 1.023709
+  duration_ms: 0.490784
   type: 'test'
   ...
 # Subtest: search re-centres on a named locality
 ok 39 - search re-centres on a named locality
   ---
-  duration_ms: 0.293749
+  duration_ms: 0.284679
   type: 'test'
   ...
 # Subtest: assistant intents
 ok 40 - assistant intents
   ---
-  duration_ms: 13.843997
+  duration_ms: 14.528323
   type: 'test'
   ...
 # Subtest: pricing: free delivery above ₹999, bulky fee for 43" TV, wholesale tiers
 ok 41 - pricing: free delivery above ₹999, bulky fee for 43" TV, wholesale tiers
   ---
-  duration_ms: 0.395544
+  duration_ms: 0.438453
   type: 'test'
   ...
 # Subtest: rider assignment prefers nearest suitable vehicle
 ok 42 - rider assignment prefers nearest suitable vehicle
   ---
-  duration_ms: 0.260975
+  duration_ms: 0.268393
   type: 'test'
   ...
 # Subtest: tracking progress is monotonic and ends delivered
 ok 43 - tracking progress is monotonic and ends delivered
   ---
-  duration_ms: 0.636335
+  duration_ms: 0.654846
   type: 'test'
   ...
 # Subtest: route optimisation never worse than input order
 ok 44 - route optimisation never worse than input order
   ---
-  duration_ms: 0.284913
+  duration_ms: 0.304865
   type: 'test'
   ...
-1..44
-# tests 44
+# Subtest: saved places: auth required, round-trip, normalised, isolated per user, size-capped
+ok 45 - saved places: auth required, round-trip, normalised, isolated per user, size-capped
+  ---
+  duration_ms: 174.046419
+  type: 'test'
+  ...
+# Subtest: CSP: server header equals the app-shell <meta>, and lists only the required third-party hosts
+ok 46 - CSP: server header equals the app-shell <meta>, and lists only the required third-party hosts
+  ---
+  duration_ms: 8.626101
+  type: 'test'
+  ...
+# Subtest: version 0.3 + migration 003 + map style proxy accepts only known styles
+ok 47 - version 0.3 + migration 003 + map style proxy accepts only known styles
+  ---
+  duration_ms: 4.451642
+  type: 'test'
+  ...
+# Subtest: service worker precache list only names files that exist (install would fail otherwise)
+ok 48 - service worker precache list only names files that exist (install would fail otherwise)
+  ---
+  duration_ms: 1.171366
+  type: 'test'
+  ...
+# Subtest: opening_hours: 24/7 and plain daily range
+ok 49 - opening_hours: 24/7 and plain daily range
+  ---
+  duration_ms: 1.757502
+  type: 'test'
+  ...
+# Subtest: opening_hours: weekday rules, off days, multiple ranges, overrides
+ok 50 - opening_hours: weekday rules, off days, multiple ranges, overrides
+  ---
+  duration_ms: 1.304132
+  type: 'test'
+  ...
+# Subtest: opening_hours: past midnight and unsupported syntax
+ok 51 - opening_hours: past midnight and unsupported syntax
+  ---
+  duration_ms: 0.76695
+  type: 'test'
+  ...
+# Subtest: off-route detector needs 3 consecutive fixes beyond 50 m and widens for poor accuracy
+ok 52 - off-route detector needs 3 consecutive fixes beyond 50 m and widens for poor accuracy
+  ---
+  duration_ms: 0.178935
+  type: 'test'
+  ...
+# Subtest: tracker: on-route progress, step advance, off-route after 3 fixes, arrival
+ok 53 - tracker: on-route progress, step advance, off-route after 3 fixes, arrival
+  ---
+  duration_ms: 2.179405
+  type: 'test'
+  ...
+# Subtest: projectOnRoute and step offsets
+ok 54 - projectOnRoute and step offsets
+  ---
+  duration_ms: 0.148517
+  type: 'test'
+  ...
+# Subtest: maneuver text: en / hi / te turn, roundabout, arrive
+ok 55 - maneuver text: en / hi / te turn, roundabout, arrive
+  ---
+  duration_ms: 0.698456
+  type: 'test'
+  ...
+# Subtest: landmark-enhanced instructions within 150 m only
+ok 56 - landmark-enhanced instructions within 150 m only
+  ---
+  duration_ms: 0.449464
+  type: 'test'
+  ...
+# Subtest: distance rounding
+ok 57 - distance rounding
+  ---
+  duration_ms: 13.007566
+  type: 'test'
+  ...
+# Subtest: sheet detents: heights, nearest snap, fling, jump, rubber band, keyboard
+ok 58 - sheet detents: heights, nearest snap, fling, jump, rubber band, keyboard
+  ---
+  duration_ms: 0.95345
+  type: 'test'
+  ...
+# Subtest: Overpass query builder: tags, rounded bbox, limit, validation
+ok 59 - Overpass query builder: tags, rounded bbox, limit, validation
+  ---
+  duration_ms: 0.773002
+  type: 'test'
+  ...
+# Subtest: Overpass parse: real fixture → named POIs sorted by distance
+ok 60 - Overpass parse: real fixture → named POIs sorted by distance
+  ---
+  duration_ms: 21.31469
+  type: 'test'
+  ...
+# Subtest: OSRM: URL per mode, parse alternatives + steps, fallback
+ok 61 - OSRM: URL per mode, parse alternatives + steps, fallback
+  ---
+  duration_ms: 3.310126
+  type: 'test'
+  ...
+# Subtest: geocode: local resolver (landmark, seller, DIGIPIN) and Photon/Nominatim parsing
+ok 62 - geocode: local resolver (landmark, seller, DIGIPIN) and Photon/Nominatim parsing
+  ---
+  duration_ms: 5.569474
+  type: 'test'
+  ...
+# Subtest: saved places: shortcuts, lists, recents, merge
+ok 63 - saved places: shortcuts, lists, recents, merge
+  ---
+  duration_ms: 0.698799
+  type: 'test'
+  ...
+# Subtest: i18n v0.3: every language has every key; en/hi/te are complete
+ok 64 - i18n v0.3: every language has every key; en/hi/te are complete
+  ---
+  duration_ms: 0.714612
+  type: 'test'
+  ...
+1..64
+# tests 64
 # suites 0
-# pass 44
+# pass 64
 # fail 0
 # cancelled 0
 # skipped 0
 # todo 0
-# duration_ms 3653.595175
+# duration_ms 4230.890633

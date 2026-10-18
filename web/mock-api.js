@@ -17,10 +17,10 @@ const err = (status, error) => Object.assign(new Error(error), { status, body: {
 async function route(from, to) {
   try {
     const ctl = new AbortController(); setTimeout(() => ctl.abort(), 6000);
-    const r = await fetch(`https://router.project-osrm.org/route/v1/driving/${from.lng},${from.lat};${to.lng},${to.lat}?overview=full&geometries=geojson`, { signal: ctl.signal });
+    const r = await fetch(`https://routing.openstreetmap.de/routed-car/route/v1/driving/${from.lng},${from.lat};${to.lng},${to.lat}?overview=full&geometries=geojson`, { signal: ctl.signal });
     const j = await r.json();
     const r0 = j.routes?.[0];
-    if (r0) return { engine: 'osrm-public-demo', distance_m: Math.round(r0.distance), duration_s: Math.round(r0.duration), geometry: r0.geometry };
+    if (r0) return { engine: 'osrm-fossgis', distance_m: Math.round(r0.distance), duration_s: Math.round(r0.duration), geometry: r0.geometry };
   } catch { /* ignore */ }
   return fallbackRoute(from, to);
 }
@@ -108,6 +108,11 @@ export async function mockApi(method, path, body) {
     if (body.price !== undefined) pr.price = Math.max(0, Math.round(+body.price));
     if (body.stock !== undefined) pr.stock = Math.max(0, Math.round(+body.stock));
     save(); return pr;
+  }
+  if (p === '/api/me/places') {
+    if (!S.user) throw err(401, 'auth_required');
+    if (method === 'PUT') { S.places = { ...(S.places || {}), [S.user.id]: { data: body, updated_ms: Date.now() } }; save(); return { ok: true }; }
+    return S.places?.[S.user.id] || { data: null, updated_ms: 0 };
   }
   if (p === '/api/reset') { store.removeItem(KEY); S = { businesses: structuredClone(BUSINESSES), riders: structuredClone(RIDERS), orders: [], user: null }; return { ok: true }; }
   throw err(404, 'not_found');

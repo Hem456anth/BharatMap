@@ -1,4 +1,62 @@
-# Final Audit — Bharat Map v0.1 (18 Oct 2026)
+# Audit — Bharat Map v0.3 (18 Oct 2026)
+
+Legend: ✅ Implemented & tested · 🟡 Prototype / partial / simulated / estimate · 💰 Needs a paid or licensed data/API partner · ⛔ Not built
+
+## v0.3 feature matrix (map-first app)
+| Area | Item | Status | Evidence / notes |
+|---|---|---|---|
+| Shell | Full-screen map, floating search pill, floating controls | ✅ | E2E desktop + mobile, screenshots `v03-*-01-home` |
+| Shell | Bottom sheet: peek / half / full, drag + snap + fling, tap-to-cycle, keyboard (↑ ↓ Home End), `aria-label` state | ✅ | unit (`sheet-math`), E2E keyboard + drag + fling on 390×844 |
+| Shell | Smooth camera (flyTo/easeTo/fitBounds) honouring `prefers-reduced-motion` | ✅ | `map/camera.js`; reduced motion → `jumpTo`, CSS transitions off |
+| Controls | Locate (follow → heading puck), compass (shown when rotated/tilted; resets), layers, 2D/3D | ✅ | E2E (compass visible after 3D, reset to pitch 0) |
+| Identity | Original tokens, light/dark (auto + manual), dark basemap online (OpenFreeMap dark) and offline (Protomaps dark) | ✅ | E2E dark toggle + `prefers-color-scheme: dark`; screenshots `*-14-dark`, `*-15-dark-place` |
+| Identity | 48 dp targets, WCAG AA text contrast | ✅/🟡 | Token pairs ≥ 4.5:1 (computed); not audited with an external tool or TalkBack on a device |
+| Search | Recents (device only), category chips (12), local landmark/locality/pincode/DIGIPIN/seller resolver, Photon type-ahead, Nominatim fallback | ✅ | unit (geocode parsing) + E2E (local, Photon) |
+| POIs | Real OSM POIs via Overpass: bbox ≤ 8 km, rounded, 10 min cache, 20 s server / 25 s client timeout, de-dup, ≥ 1 s spacing | ✅ | unit (query builder, parser, cache) + E2E with real captured responses |
+| Place card | Name, category, distance, address, opening hours → open/closed (simple OSM syntax; raw otherwise), phone, website, wheelchair, DIGIPIN; Directions / Save / Share / Call; Shop here | ✅ | unit (opening_hours), E2E |
+| Place card | Reverse geocode for dropped pins (long-press / right-click) | ✅ | E2E desktop right-click + mobile synthetic long-press |
+| Routing | Drive / Cycle / Walk via FOSSGIS OSRM, ≤ 3 alternatives, selected highlighted, ETA, arrival time, steps | ✅ | unit (URL + parser) + E2E (2 alternatives in fixture) |
+| Routing | Two-wheeler | 🟡 | Car graph, labelled "Estimate"; a real 2W profile needs Valhalla `motor_scooter` self-hosted |
+| Routing | ETA with traffic | 💰 | "ETA without live traffic" shown; traffic needs a licensed partner (e.g. HERE/TomTom/MapmyIndia) |
+| Routing | Transit | 🟡/💰 | Nearest metro/rail/bus stops from OSM + honest note; journey planning needs GTFS (HMRL publishes some; no live feed connected) |
+| Routing | Offline fallback | ✅ | Straight-line × 1.35, dashed line, "Offline estimate" label (E2E) |
+| Navigation | Banner (icon + distance + instruction), next-step preview, ETA/remaining strip, follow camera (bearing + pitch) | ✅ | E2E simulate; screenshots `*-09-navigation` |
+| Navigation | Voice: Web Speech (en-IN / hi-IN / te-IN), native Android TTS plugin, mute toggle, English fallback when a voice is missing | ✅/🟡 | E2E verifies utterances + language (stubbed synth); real-device audio not tested here |
+| Navigation | Landmark-enhanced instructions (seed landmarks ≤ 150 m) | ✅ | unit en/hi/te; only 9 seed landmarks — needs a curated landmark dataset to scale |
+| Navigation | Off-route (> 50 m × 3 fixes, accuracy-aware) → reroute; arrival detection | ✅ | unit + E2E (injected fixes → reroute request) |
+| Navigation | GPS via Capacitor `watchPosition` (native) / `navigator.geolocation` | ✅/🟡 | Web path E2E-tested with emulated geolocation; native path compiled in CI, not device-tested here |
+| Navigation | "Simulate drive" demo (labelled) | ✅ | E2E to arrival |
+| Navigation | Background navigation (screen off), lane guidance, speed limits, speed cameras | ⛔ | Needs a foreground service + richer data |
+| Saved | Home, Work, Favourites, custom lists; quick Home/Work directions | ✅ | unit (model/merge) + E2E (persisted) |
+| Saved | Server sync when signed in (`/api/me/places`, migration 003) | ✅ | API tests + E2E |
+| Layers | Style (Automatic / Standard / Dark), 3D buildings (OSM heights; default 8 m, labelled), rail & metro lines, EV / parking / petrol overlays | ✅ | E2E |
+| Layers | Satellite | ⛔ (by design) | No free imagery source licensed for in-app use — omitted |
+| Layers | Live traffic | 💰 | Disabled row "Needs a licensed data partner" |
+| Offline | Bundled PMTiles (Vizag 4.1 MB, Hyderabad 9.3 MB), Offline maps screen, auto-switch on network failure | ✅ | E2E: tile proxy blocked → PMTiles, zero online tile requests |
+| Offline | Downloading new regions in-app | ⛔ | Needs a tile/extract service (planetiler/Protomaps extracts on a CDN) |
+| i18n | All v0.3 strings in `shared/i18n.js`; en/hi/te complete; ta, kn, ml, bn, mr, gu, pa, or fall back to English (TODO) | ✅/🟡 | unit coverage test; native-speaker review still required |
+| a11y | Combobox search with `aria-activedescendant`, keyboard sheet, focus moved to view headings, `aria-live` nav instructions, reduced motion, forced-colors borders | ✅/🟡 | Not yet tested with TalkBack on hardware |
+| Privacy | Location only on user action; CSP restricted to required hosts; clear search history; third-party calls documented (`docs/API.md`) | ✅ | API test (header == meta), E2E |
+| Shop | v0.2 commerce (search → seller → order → rider tracking; seller/admin dashboards) moved under Shop | ✅ | E2E desktop + mobile + serverless demo |
+
+### Third-party services and their limits
+| Service | Licence / policy | Production plan |
+|---|---|---|
+| OpenFreeMap tiles | Free, OSM ODbL attribution | Self-host PMTiles on a CDN (already used offline) |
+| Overpass API (overpass-api.de) | Fair use; no heavy/automated load | Own Overpass or a POI index (PostGIS) |
+| Nominatim (OSMF) | Max 1 req/s, no autocomplete, attribution | Self-host Nominatim |
+| Photon (komoot) | Fair use | Self-host Photon |
+| FOSSGIS OSRM | Light interactive use only | Self-host OSRM/Valhalla (Valhalla for 2W + truck) |
+
+### v0.3 security notes
+- CSP: `script-src 'self'` (+ Razorpay), `connect-src` limited to the five map services, Razorpay and `*.onrender.com`; no inline scripts in the shell (theme bootstrap moved to `boot-theme.js`). `style-src 'unsafe-inline'` remains (MapLibre markers set inline styles).
+- External URLs from OSM `website` tags open with `rel="noopener noreferrer"`; only `http(s)` is linked. All OSM text is HTML-escaped.
+- `/api/me/places` is per-user, normalised and size-capped; no other user can read it.
+- The serverless single-file demo strips the CSP meta (it inlines scripts and loads MapLibre from a CDN); the real web app and the APK keep it.
+
+---
+
+# Earlier audit — Bharat Map v0.1/v0.2 (18 Oct 2026)
 
 Legend: ✅ Implemented & tested · 🟡 Prototype / partial / simulated · 🔌 External dependency · ⛔ Not built
 
@@ -9,7 +67,7 @@ Legend: ✅ Implemented & tested · 🟡 Prototype / partial / simulated · 🔌
 | Maps | Local-language labels | 🟡 | Uses OSM `name:<lang>` where present; coverage varies by area |
 | Maps | 3D tilt + extruded buildings | ✅/🔌 | Pitch toggle; extrusions come from OpenFreeMap "liberty" style |
 | Maps | Offline | 🟡 | Service worker caches app shell + viewed tiles; downloadable offline regions (PMTiles) ⛔ |
-| Maps | Turn-by-turn voice navigation | ⛔ | Route line + distance/time only |
+| Maps | Turn-by-turn voice navigation | ✅ (v0.3) | See v0.3 matrix above |
 | Maps | Survey-of-India boundaries | ⛔ | Required before public launch (RESEARCH §2) |
 | Marketplace | Business types, verified badge, rating, hours, catalogue, MRP/discount, stock, wholesale tiers | ✅ | 15 **fictional** businesses, 2 cities |
 | Marketplace | Seller onboarding/KYC/GSTIN verification | 🟡 | Admin verify endpoint only; no document workflow |

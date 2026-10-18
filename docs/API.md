@@ -1,4 +1,4 @@
-# Bharat Map REST API (v0.2)
+# Bharat Map REST API (v0.3)
 
 Base URL: `/`. JSON in/out. Auth: `Authorization: Bearer <JWT>` (HS256, 12 h). Errors: `{"error":"code"}` with HTTP status.
 Rate limit: `RATE_LIMIT_PER_MIN` per IP on `/api/*` (header `RateLimit-Remaining`, 429 when exceeded).
@@ -11,7 +11,7 @@ Every response carries `X-Request-Id`.
 | GET | `/api/health` | `{status, db, version, time}`; 503 if DB down |
 | GET | `/metrics` | Prometheus text: requests, errors, latency quantiles, per-route counts |
 | GET | `/api/i18n` | `{languages[11], strings{lang:{key:text}}}` |
-| GET | `/map/style.json`, `/map/ofm/*` | Same-origin, cached proxy of vector style/tiles (`TILE_UPSTREAM`) |
+| GET | `/map/style.json?style=liberty\|dark`, `/map/ofm/*` | Same-origin, cached proxy of vector style/tiles (`TILE_UPSTREAM`); `style=dark` selects the dark basemap (v0.3) |
 
 ## Auth
 | Method | Path | Body | Returns |
@@ -113,3 +113,38 @@ Kinds: `order_placed`, `order_accepted`, `order_rejected`, `order_delivered`, `p
 - `GET /api/admin/orders?q=&status=` · `GET /api/admin/orders/:id`
 - `GET /api/admin/reports/orders.csv?from=YYYY-MM-DD&to=YYYY-MM-DD` (CSV-injection safe)
 - `GET /api/admin/audit?limit=`
+
+## v0.3 additions
+
+### Saved places sync (auth)
+Home / Work / Favourites / custom lists are stored on the device first (localStorage `bm-saved-v1`). When the user is
+signed in to a backend server, the client merges and mirrors them here (one document per user, migration `003_saved_places.sql`).
+
+| Method | Path | Body | Returns |
+|---|---|---|---|
+| GET | `/api/me/places` | – | `{data: SavedDoc \| null, updated_ms}` |
+| PUT | `/api/me/places` | `SavedDoc` | `{ok, updated_ms}`; 400 `invalid_body`; 413 `too_large` (> 48 KB after normalisation) |
+
+```json
+{ "v": 1, "home": {"id":"osm:node/1134100309","name":"HP Petrol Station","lat":17.72059,"lng":83.32046,"address":"…"},
+  "work": null,
+  "lists": [{ "id":"favorites","name":"","items":[{"id":"local:landmark:RK Beach","name":"RK Beach","lat":17.714,"lng":83.323}] }],
+  "updated_ms": 1792345678901 }
+```
+The server normalises the document (`web/lib/saved-model.js#normalizeSaved`): unknown fields are dropped, invalid coordinates
+removed, max 20 lists × 200 places, strings length-capped.
+
+### Third-party services called directly by the client (not via this API)
+The map client (web and Android) calls these open-data services itself, only when the feature is used:
+
+| Service | Used for | What is sent |
+|---|---|---|
+| `tiles.openfreemap.org` (or this server's `/map/*` proxy) | online basemap (light `liberty`, `dark`) | tile coordinates |
+| `overpass-api.de` | category chips, POI overlays, transit stops | category + bounding box (≤ 8 km, rounded to 4 dp) |
+| `photon.komoot.io` | type-ahead suggestions | typed text (≥ 3 chars, debounced) + map-centre bias |
+| `nominatim.openstreetmap.org` | search fallback, reverse geocode of a dropped pin / place without address | typed text or the tapped coordinate |
+| `routing.openstreetmap.de` (FOSSGIS OSRM) | directions + rerouting (car, bike, foot) | origin + destination coordinates |
+
+No account data, device identifiers or location history is sent. All requests have timeouts, responses are cached in memory,
+Nominatim is spaced ≥ 1.1 s apart, Overpass ≥ 1 s. Browsers cannot set a custom User-Agent; requests carry the app's
+Origin/Referer. Production should self-host Photon/Nominatim/OSRM/Overpass (see DEPLOYMENT.md).

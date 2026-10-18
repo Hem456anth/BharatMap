@@ -2,7 +2,37 @@
   "source": "Protomaps daily planet build 2026-10-17 (OpenStreetMap data, ODbL)",
   "attribution": "© OpenStreetMap contributors · Protomaps",
   "regions": {
-    "vizag": { "file": "vizag.pmtiles", "name": "Visakhapatnam", "bbox": [83.15, 17.62, 83.42, 17.85], "maxzoom": 15 },
-    "hyderabad": { "file": "hyderabad.pmtiles", "name": "Hyderabad", "bbox": [78.30, 17.30, 78.62, 17.55], "maxzoom": 14 }
+    "vizag": {
+      "file": "vizag.pmtiles",
+      "name": "Visakhapatnam",
+      "bbox": [
+        83.15,
+        17.62,
+        83.42,
+        17.85
+      ],
+      "maxzoom": 15,
+      "size_bytes": 4110918,
+      "center": [
+        83.285,
+        17.735
+      ]
+    },
+    "hyderabad": {
+      "file": "hyderabad.pmtiles",
+      "name": "Hyderabad",
+      "bbox": [
+        78.3,
+        17.3,
+        78.62,
+        17.55
+      ],
+      "maxzoom": 14,
+      "size_bytes": 9310452,
+      "center": [
+        78.46,
+        17.425
+      ]
+    }
   }
 }

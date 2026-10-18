@@ -1,0 +1,210 @@
+{
+  "version": 0.6,
+  "generator": "Overpass API 0.7.62.11 87bfad18",
+  "osm3s": {
+    "timestamp_osm_base": "2026-10-18T16:03:26Z",
+    "copyright": "The data included in this document is from www.openstreetmap.org. The data is made available under ODbL."
+  },
+  "elements": [
+
+{
+  "type": "node",
+  "id": 2422172970,
+  "lat": 17.4375661,
+  "lon": 78.4569341,
+  "tags": {
+    "name": "Begumpet",
+    "name:fa": "بیگم پیت",
+    "name:ml": "ബേഗംപേട്ട്",
+    "name:te": "బేగంపేట్",
+    "name:ur": "بیگم پیٹ",
+    "network": "Hyderabad Metro",
+    "note": "Contributors are requested to not edit the \"network\" and the \"operator\" tags. (2023/11/08)",
+    "operator": "Hyderabad Metro Rail Limited",
+    "public_transport": "station",
+    "railway": "station",
+    "station": "subway",
+    "subway": "yes"
+  }
+},
+{
+  "type": "node",
+  "id": 6444553238,
+  "lat": 17.4417071,
+  "lon": 78.4416081,
+  "tags": {
+    "name": "S. R. Nagar",
+    "name:fa": "اس آر نگر",
+    "name:ml": "എസ് ആർ നഗർ",
+    "name:te": "ఎస్.ఆర్. నగర్",
+    "network": "Hyderabad Metro",
+    "note": "Contributors are requested to not edit the \"network\" and the \"operator\" tags. (2023/11/08)",
+    "operator": "Hyderabad Metro Rail Limited",
+    "public_transport": "station",
+    "public_transport:version": "2",
+    "railway": "station",
+    "station": "subway",
+    "subway": "yes",
+    "wikidata": "Q83175963"
+  }
+},
+{
+  "type": "node",
+  "id": 6447191882,
+  "lat": 17.4357214,
+  "lon": 78.4447933,
+  "tags": {
+    "name": "Ameerpet (Red Line)",
+    "name:fa": "امیرپیت (خط قرمز)",
+    "name:ml": "അമീർപേട്ട്",
+    "name:te": "అమీర్‌పేట్",
+    "network": "Hyderabad Metro",
+    "note": "Contributors are requested to not edit the \"network\" and the \"operator\" tags. (2023/11/08)",
+    "operator": "Hyderabad Metro Rail Limited",
+    "public_transport": "station",
+    "public_transport:version": "2",
+    "railway": "station",
+    "station": "subway",
+    "subway": "yes",
+    "wikidata": "Q56701862",
+    "wikipedia": "en:Ameerpet metro station"
+  }
+},
+{
+  "type": "node",
+  "id": 6700511122,
+  "lat": 17.4352864,
+  "lon": 78.4447834,
+  "tags": {
+    "name": "Ameerpet (Blue Line)",
+    "name:fa": "امیرپیت (خط آبی)",
+    "name:ml": "അമീർപേട്ട്",
+    "name:te": "అమీర్‌పేట్",
+    "network": "Hyderabad Metro",
+    "note": "Contributors are requested to not edit the \"network\" and the \"operator\" tags. (2023/11/08)",
+    "operator": "Hyderabad Metro Rail Limited",
+    "public_transport": "station",
+    "public_transport:version": "2",
+    "railway": "station",
+    "station": "subway",
+    "subway": "yes",
+    "wikidata": "Q56701862",
+    "wikipedia": "en:Ameerpet metro station"
+  }
+},
+{
+  "type": "node",
+  "id": 7052069766,
+  "lat": 17.4448889,
+  "lon": 78.4658749,
+  "tags": {
+    "name": "Prakash Nagar",
+    "name:fa": "پرکاش نگر",
+    "name:ml": "പ്രകാശ് നഗർ",
+    "name:te": "ప్రకాశ్‌నగర్",
+    "name:ur": "پرکاش نگر",
+    "network": "Hyderabad Metro",
+    "note": "Contributors are requested to not edit the \"network\" and the \"operator\" tags. (2023/11/08)",
+    "operator": "Hyderabad Metro Rail Limited",
+    "public_transport": "station",
+    "railway": "station",
+    "station": "subway",
+    "subway": "yes",
+    "wikidata": "Q84499965"
+  }
+},
+{
+  "type": "node",
+  "id": 7052069770,
+  "lat": 17.4369652,
+  "lon": 78.4390993,
+  "tags": {
+    "alt_name": "Taruni Madhura Nagar",
+    "name": "Madhura Nagar",
+    "name:fa": "مدهورا نگر",
+    "name:ml": "മധുര നഗർ",
+    "name:te": "మధుర నగర్",
+    "name:ur": "مدھورا نگر",
+    "network": "Hyderabad Metro",
+    "note": "Contributors are requested to not edit the \"network\" and the \"operator\" tags. (2023/11/08)",
+    "operator": "Hyderabad Metro Rail Limited",
+    "public_transport": "station",
+    "railway": "station",
+    "station": "subway",
+    "subway": "yes",
+    "wikidata": "Q63250572"
+  }
+},
+{
+  "type": "node",
+  "id": 11738179193,
+  "lat": 17.4205559,
+  "lon": 78.4561010,
+  "tags": {
+    "internet_access": "no",
+    "name": "Irrum Manzil",
+    "name:fa": "ارم منزل",
+    "name:ml": "എറം മൻസിൽ",
+    "name:te": "ఇఱం మంజిల్",
+    "name:ur": "ارم منزل",
+    "network": "Hyderabad Metro",
+    "note": "Contributors are requested to not edit the \"network\" and the \"operator\" tags. (2023/11/08)",
+    "operator": "Hyderabad Metro Rail Limited",
+    "public_transport": "station",
+    "railway": "station",
+    "station": "subway",
+    "subway": "yes",
+    "website": "https://hmrl.co.in",
+    "wheelchair": "yes",
+    "wikidata": "Q85770033"
+  }
+},
+{
+  "type": "node",
+  "id": 11738179195,
+  "lat": 17.4474042,
+  "lon": 78.4383501,
+  "tags": {
+    "internet_access": "no",
+    "name": "ESI Hospital",
+    "name:fa": "بیمارستان ای اس آی",
+    "name:ml": "ഇ.എസ്.ഐ ആശുപത്രി",
+    "name:te": "ఈ.ఎస్.ఐ ఆస్పత్రి",
+    "network": "Hyderabad Metro",
+    "note": "Contributors are requested to not edit the \"network\" and the \"operator\" tags. (2023/11/08)",
+    "operator": "Hyderabad Metro Rail Limited",
+    "public_transport": "station",
+    "railway": "station",
+    "station": "subway",
+    "subway": "yes",
+    "website": "https://hmrl.co.in",
+    "wheelchair": "yes",
+    "wikidata": "Q83008743"
+  }
+},
+{
+  "type": "node",
+  "id": 11738663633,
+  "lat": 17.4286312,
+  "lon": 78.4511322,
+  "tags": {
+    "internet_access": "no",
+    "name": "Panjagutta",
+    "name:fa": "پنجاگوتا",
+    "name:ml": "പഞ്ചഗുട്ട",
+    "name:te": "పంజాగుట్ట",
+    "name:ur": "پنجہ گٹہ",
+    "network": "Hyderabad Metro",
+    "note": "Contributors are requested to not edit the \"network\" and the \"operator\" tags. (2023/11/08)",
+    "operator": "Hyderabad Metro Rail Limited",
+    "public_transport": "station",
+    "railway": "station",
+    "station": "subway",
+    "subway": "yes",
+    "website": "https://hmrl.co.in",
+    "wheelchair": "yes"
+  }
+}
+
+  ]
+}

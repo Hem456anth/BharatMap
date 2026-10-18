@@ -1,0 +1,213 @@
+{
+  "version": 0.6,
+  "generator": "Overpass API 0.7.62.11 87bfad18",
+  "osm3s": {
+    "timestamp_osm_base": "2026-10-18T16:03:26Z",
+    "copyright": "The data included in this document is from www.openstreetmap.org. The data is made available under ODbL."
+  },
+  "elements": [
+
+{
+  "type": "way",
+  "id": 393571599,
+  "center": {
+    "lat": 17.7265675,
+    "lon": 83.3212606
+  },
+  "tags": {
+    "amenity": "parking"
+  }
+},
+{
+  "type": "way",
+  "id": 402909114,
+  "center": {
+    "lat": 17.7217323,
+    "lon": 83.2908923
+  },
+  "tags": {
+    "amenity": "parking"
+  }
+},
+{
+  "type": "way",
+  "id": 402909118,
+  "center": {
+    "lat": 17.7213352,
+    "lon": 83.2910400
+  },
+  "tags": {
+    "amenity": "parking"
+  }
+},
+{
+  "type": "way",
+  "id": 420990545,
+  "center": {
+    "lat": 17.7279672,
+    "lon": 83.3112928
+  },
+  "tags": {
+    "amenity": "parking"
+  }
+},
+{
+  "type": "way",
+  "id": 430677222,
+  "center": {
+    "lat": 17.7125283,
+    "lon": 83.3022371
+  },
+  "tags": {
+    "amenity": "parking"
+  }
+},
+{
+  "type": "way",
+  "id": 431122839,
+  "center": {
+    "lat": 17.7129344,
+    "lon": 83.2980076
+  },
+  "tags": {
+    "amenity": "parking",
+    "operator": "Dolphin Parking"
+  }
+},
+{
+  "type": "way",
+  "id": 495863585,
+  "center": {
+    "lat": 17.7200935,
+    "lon": 83.3127905
+  },
+  "tags": {
+    "amenity": "parking"
+  }
+},
+{
+  "type": "way",
+  "id": 635592482,
+  "center": {
+    "lat": 17.7123641,
+    "lon": 83.3191773
+  },
+  "tags": {
+    "amenity": "parking",
+    "parking": "surface"
+  }
+},
+{
+  "type": "way",
+  "id": 1249114808,
+  "center": {
+    "lat": 17.7227832,
+    "lon": 83.3071905
+  },
+  "tags": {
+    "amenity": "parking"
+  }
+},
+{
+  "type": "way",
+  "id": 1249184676,
+  "center": {
+    "lat": 17.7266096,
+    "lon": 83.3032285
+  },
+  "tags": {
+    "amenity": "parking",
+    "operator": "Sairam Parlour",
+    "operator:type": "private"
+  }
+},
+{
+  "type": "way",
+  "id": 1260758341,
+  "center": {
+    "lat": 17.7300927,
+    "lon": 83.3202890
+  },
+  "tags": {
+    "access": "private",
+    "amenity": "parking",
+    "fee": "no",
+    "operator": "Andhra University",
+    "surface": "paving_stones"
+  }
+},
+{
+  "type": "way",
+  "id": 1263821793,
+  "center": {
+    "lat": 17.7343451,
+    "lon": 83.3189814
+  },
+  "tags": {
+    "amenity": "parking"
+  }
+},
+{
+  "type": "way",
+  "id": 1264634827,
+  "center": {
+    "lat": 17.7130711,
+    "lon": 83.3213274
+  },
+  "tags": {
+    "amenity": "parking"
+  }
+},
+{
+  "type": "way",
+  "id": 1265069466,
+  "center": {
+    "lat": 17.7198745,
+    "lon": 83.2895640
+  },
+  "tags": {
+    "amenity": "parking"
+  }
+},
+{
+  "type": "way",
+  "id": 1265069467,
+  "center": {
+    "lat": 17.7205625,
+    "lon": 83.2883540
+  },
+  "tags": {
+    "amenity": "parking",
+    "fee": "yes",
+    "parking": "surface",
+    "payment:cash": "yes",
+    "payment:credit_cards": "yes",
+    "payment:upi": "yes",
+    "surface": "asphalt"
+  }
+},
+{
+  "type": "way",
+  "id": 1393172033,
+  "center": {
+    "lat": 17.7128501,
+    "lon": 83.2974787
+  },
+  "tags": {
+    "amenity": "parking"
+  }
+},
+{
+  "type": "way",
+  "id": 1424812904,
+  "center": {
+    "lat": 17.7265324,
+    "lon": 83.3037863
+  },
+  "tags": {
+    "amenity": "parking"
+  }
+}
+
+  ]
+}

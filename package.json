@@ -1,9 +1,9 @@
 {
   "name": "bharat-map",
-  "version": "0.1.0",
-  "description": "India-first map super-app MVP: Map \u2192 Business \u2192 Product \u2192 Delivery",
+  "version": "0.3.0",
+  "description": "India-first map super-app MVP: Map → Business → Product → Delivery",
   "scripts": {
-    "test": "node --no-warnings --test --test-concurrency=1 tests/unit.test.js tests/api.test.js tests/phase2.test.js",
+    "test": "node --no-warnings --test --test-concurrency=1 tests/unit.test.js tests/api.test.js tests/phase2.test.js tests/v03.test.js tests/v03-api.test.js",
     "e2e": "node tests/e2e.mjs",
     "load": "node tests/load.mjs",
     "vendor": "mkdir -p web/vendor && cp node_modules/maplibre-gl/dist/maplibre-gl.mjs node_modules/maplibre-gl/dist/maplibre-gl-worker.mjs node_modules/maplibre-gl/dist/maplibre-gl.css node_modules/maplibre-gl/LICENSE.txt web/vendor/",
@@ -16,10 +16,13 @@
   "author": "",
   "license": "UNLICENSED",
   "dependencies": {
+    "@capacitor-community/text-to-speech": "^6.1.0",
     "@capacitor/android": "^7.6.9",
+    "@capacitor/app": "^7.1.2",
     "@capacitor/core": "^7.6.9",
     "@capacitor/geolocation": "^7.1.8",
     "@capacitor/local-notifications": "^7.0.7",
+    "@capacitor/share": "^7.0.4",
     "express": "^4.22.3",
     "pmtiles": "^4.5.0"
   },

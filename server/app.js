@@ -13,9 +13,13 @@ import { LANGS, STRINGS } from '../shared/i18n.js';
 import { toBecknCatalog } from './services/ondc.js';
 import { createRazorpay } from './services/payments.js';
 import { mountAdmin } from './admin.js';
+import { cspString } from '../shared/csp.js';
+import { normalizeSaved } from '../web/lib/saved-model.js';
 import { notify, notifyOrderParties } from './notify.js';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+const CSP = cspString();
+export const VERSION = '0.3.0';
 
 // ---------- small infra helpers ----------
 const metrics = { requests: 0, errors: 0, byRoute: new Map(), latencyMs: [] };
@@ -51,12 +55,7 @@ export function createApp({ db = openDb(), timeScale = Number(process.env.DEMO_T
     res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
     res.setHeader('Permissions-Policy', 'geolocation=(self), camera=(), microphone=()');
     res.setHeader('Cross-Origin-Opener-Policy', 'same-origin');
-    res.setHeader('Content-Security-Policy', [
-      "default-src 'self'", "script-src 'self' https://checkout.razorpay.com", "style-src 'self' 'unsafe-inline'",
-      "img-src 'self' data: blob: https:", "font-src 'self' https: data:", "worker-src 'self' blob:",
-      "frame-src https://api.razorpay.com https://checkout.razorpay.com",
-      "connect-src 'self' https://tiles.openfreemap.org https://*.openfreemap.org https://api.razorpay.com https://lumberjack.razorpay.com",
-    ].join('; '));
+    res.setHeader('Content-Security-Policy', CSP);
     if (process.env.NODE_ENV === 'production') res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
     next();
   });
@@ -77,7 +76,7 @@ export function createApp({ db = openDb(), timeScale = Number(process.env.DEMO_T
   const allowed = (process.env.CORS_ORIGINS ?? 'https://localhost,capacitor://localhost,http://localhost').split(',').map((x) => x.trim()).filter(Boolean);
   app.use((req, res, next) => {
     const o = req.headers.origin;
-    if (o && allowed.includes(o)) { res.setHeader('Access-Control-Allow-Origin', o); res.setHeader('Vary', 'Origin'); res.setHeader('Access-Control-Allow-Headers', 'Authorization, Content-Type'); res.setHeader('Access-Control-Allow-Methods', 'GET,POST,PATCH,DELETE'); }
+    if (o && allowed.includes(o)) { res.setHeader('Access-Control-Allow-Origin', o); res.setHeader('Vary', 'Origin'); res.setHeader('Access-Control-Allow-Headers', 'Authorization, Content-Type'); res.setHeader('Access-Control-Allow-Methods', 'GET,POST,PUT,PATCH,DELETE'); }
     if (req.method === 'OPTIONS') return res.sendStatus(204);
     next();
   });
@@ -97,7 +96,8 @@ export function createApp({ db = openDb(), timeScale = Number(process.env.DEMO_T
   const TILE_UP = (process.env.TILE_UPSTREAM || 'https://tiles.openfreemap.org').replace(/\/$/, '');
   const tileCache = new Map();
   app.get(['/map/style.json', '/map/ofm/*'], async (req, res) => {
-    const upPath = req.path === '/map/style.json' ? `/styles/${process.env.MAP_STYLE || 'liberty'}` : req.path.slice('/map/ofm'.length);
+    const styleName = req.query.style === 'dark' ? 'dark' : (process.env.MAP_STYLE || 'liberty');
+    const upPath = req.path === '/map/style.json' ? `/styles/${styleName}` : req.path.slice('/map/ofm'.length);
     const key = upPath;
     const hit = tileCache.get(key);
     const send = (v) => { res.setHeader('Content-Type', v.type); res.setHeader('Cache-Control', 'public, max-age=86400'); res.end(v.body); };
@@ -120,11 +120,11 @@ export function createApp({ db = openDb(), timeScale = Number(process.env.DEMO_T
   // ---------- ops ----------
   app.get('/api/health', (_req, res) => {
     let dbOk = true; try { db.prepare('SELECT 1').get(); } catch { dbOk = false; }
-    res.status(dbOk ? 200 : 503).json({ status: dbOk ? 'ok' : 'degraded', db: dbOk, version: '0.2.0', time: new Date().toISOString() });
+    res.status(dbOk ? 200 : 503).json({ status: dbOk ? 'ok' : 'degraded', db: dbOk, version: VERSION, time: new Date().toISOString() });
   });
   // Public client configuration: which real integrations are switched on for this deployment.
   app.get('/api/config', (_req, res) => res.json({
-    version: '0.2.0',
+    version: VERSION,
     payments: { razorpay: payments.enabled, key_id: payments.keyId, mode: payments.mode, cod: true, upi_simulated: process.env.ALLOW_SIMULATED_UPI !== '0' },
     routing: process.env.OFFLINE === '1' ? 'fallback' : (process.env.OSRM_URL ? 'osrm-self-hosted' : 'osrm-public-demo'),
     llm: Boolean(process.env.LLM_API_KEY),
@@ -164,6 +164,20 @@ export function createApp({ db = openDb(), timeScale = Number(process.env.DEMO_T
     loginFails.delete(email);
     const biz = u.role === 'seller' ? db.prepare('SELECT id FROM businesses WHERE owner_id=?').get(u.id) : null;
     res.json({ token: signToken({ sub: u.id, role: u.role, name: u.name, biz: biz?.id }), user: { id: u.id, email: u.email, name: u.name, role: u.role, business_id: biz?.id || null } });
+  });
+  // Saved places sync (v0.3): one validated JSON document per user.
+  app.get('/api/me/places', requireRole(), (req, res) => {
+    const row = db.prepare('SELECT data, updated_ms FROM user_places WHERE user_id=?').get(req.user.sub);
+    res.json({ data: row ? normalizeSaved(JSON.parse(row.data)) : null, updated_ms: row?.updated_ms || 0 });
+  });
+  app.put('/api/me/places', requireRole(), (req, res) => {
+    if (!req.body || typeof req.body !== 'object' || Array.isArray(req.body)) return bad(res, 'invalid_body');
+    const data = normalizeSaved(req.body);
+    const json = JSON.stringify(data);
+    if (json.length > 48_000) return bad(res, 'too_large', 413);
+    const now = Date.now();
+    db.prepare('INSERT INTO user_places(user_id,data,updated_ms) VALUES (?,?,?) ON CONFLICT(user_id) DO UPDATE SET data=excluded.data, updated_ms=excluded.updated_ms').run(req.user.sub, json, now);
+    res.json({ ok: true, updated_ms: now });
   });
   app.get('/api/me', requireRole(), (req, res) => {
     const u = db.prepare('SELECT id,email,name,role,preferred_lang FROM users WHERE id=?').get(req.user.sub);

@@ -1,0 +1,111 @@
+{
+  "version": 0.6,
+  "generator": "Overpass API 0.7.62.11 87bfad18",
+  "osm3s": {
+    "timestamp_osm_base": "2026-10-18T16:04:30Z",
+    "copyright": "The data included in this document is from www.openstreetmap.org. The data is made available under ODbL."
+  },
+  "elements": [
+
+{
+  "type": "node",
+  "id": 4845919917,
+  "lat": 17.7131833,
+  "lon": 83.2988450,
+  "tags": {
+    "access": "yes",
+    "amenity": "charging_station",
+    "brand": "Tata power",
+    "capacity": "50",
+    "fee": "yes",
+    "operator": "Tata power",
+    "payment:cash": "yes",
+    "payment:credit_cards": "yes",
+    "payment:debit_cards": "yes",
+    "payment:upi": "yes"
+  }
+},
+{
+  "type": "node",
+  "id": 8212529301,
+  "lat": 17.7108470,
+  "lon": 83.3011276,
+  "tags": {
+    "access": "yes",
+    "amenity": "charging_station",
+    "brand": "Tata Power",
+    "capacity": "50",
+    "fee": "yes",
+    "operator": "tata power",
+    "payment:cash": "yes",
+    "payment:credit_cards": "yes",
+    "payment:debit_cards": "yes",
+    "payment:upi": "yes"
+  }
+},
+{
+  "type": "node",
+  "id": 11748976480,
+  "lat": 17.7118163,
+  "lon": 83.3174470,
+  "tags": {
+    "access": "yes",
+    "amenity": "charging_station",
+    "brand": "Tata Power",
+    "capacity": "50",
+    "fee": "yes",
+    "operator": "tata power",
+    "payment:cash": "yes",
+    "payment:credit_cards": "yes",
+    "payment:debit_cards": "yes",
+    "payment:upi": "yes"
+  }
+},
+{
+  "type": "node",
+  "id": 11818010038,
+  "lat": 17.7241475,
+  "lon": 83.3107145,
+  "tags": {
+    "access": "yes",
+    "amenity": "charging_station",
+    "brand": "tata power",
+    "capacity": "20",
+    "fee": "yes",
+    "operator": "Tata",
+    "payment:cash": "yes",
+    "payment:credit_cards": "yes",
+    "payment:debit_cards": "yes",
+    "payment:upi": "yes"
+  }
+},
+{
+  "type": "node",
+  "id": 13640389831,
+  "lat": 17.7269954,
+  "lon": 83.3071947,
+  "tags": {
+    "access": "yes",
+    "amenity": "charging_station",
+    "brand": "Zeon power",
+    "capacity": "20",
+    "fee": "yes",
+    "operator": "Zeon",
+    "payment:cash": "yes",
+    "payment:credit_cards": "yes",
+    "payment:debit_cards": "yes",
+    "payment:upi": "yes"
+  }
+},
+{
+  "type": "node",
+  "id": 14110771703,
+  "lat": 17.7216493,
+  "lon": 83.3071150,
+  "tags": {
+    "amenity": "charging_station"
+  }
+}
+
+  ]
+}

@@ -1,6 +1,62 @@
 # Architecture
 
-## 1. MVP (as built)
+## 0. v0.3 client (map-first shell)
+
+```mermaid
+flowchart TB
+  subgraph Shell["web/shell.js — ctx (map, state, t(), emit/on)"]
+    SHEET[ui/sheet.js<br/>3 detents · drag/fling · keyboard<br/>view router + back stack]
+    SEARCH[ui/search.js<br/>pill · combobox · recents · categories · markers]
+    PLACE[ui/place.js<br/>place card · dropped pin · share/save/call]
+    DIR[ui/directions.js<br/>modes · alternatives · steps · transit stops]
+    NAV[nav/navigation.js<br/>banner · ETA · follow camera · reroute · arrival]
+    SAVED[ui/saved.js<br/>Home/Work/lists · recents · server sync]
+    PANELS[ui/panels.js<br/>layers · offline maps · settings]
+    CTRL[ui/controls.js<br/>locate/heading puck · compass · 2D/3D · long-press]
+    STYLE[map/style.js<br/>online/offline · light/dark · overlays · auto-offline]
+    CAM[map/camera.js<br/>reduced-motion aware fly/ease/fit]
+  end
+  subgraph Pure["pure, unit-tested"]
+    OH[lib/opening-hours.js]
+    SM[ui/sheet-math.js]
+    TR[nav/tracker.js<br/>projection · off-route · step offsets]
+    MAN[nav/maneuver.js<br/>localized text · icons · landmark matcher]
+    MODEL[lib/saved-model.js]
+    QB[services/*: query/URL builders + parsers]
+  end
+  subgraph Net["services/ (net.js: timeout · cache · spacing · de-dup)"]
+    OVP[(Overpass)]
+    PH[(Photon)]
+    NOM[(Nominatim)]
+    OSRM[(FOSSGIS OSRM car/bike/foot)]
+  end
+  APP["app.js<br/>map instance · Shop (commerce) · auth"] --> Shell
+  SEARCH --> OVP & PH & NOM
+  PLACE --> NOM
+  DIR --> OSRM & OVP
+  NAV --> OSRM
+  NAV --> VOICE[nav/voice.js<br/>speechSynthesis / Android TTS]
+  NAV --> GEO[native.js watchPosition<br/>Capacitor Geolocation or navigator.geolocation]
+  STYLE --> OFM[("OpenFreeMap liberty/dark")] & PMT[("bundled PMTiles<br/>Protomaps light/dark")]
+  SAVED --> API[/api/me/places/]
+```
+
+* **One map, one sheet.** `app.js` owns the MapLibre instance and the commerce code (now the *Shop* view inside the sheet);
+  `shell.js` builds a small context object and hands it to each module. Modules talk through `ctx.emit/on` events
+  (`view`, `view-leave`, `lang`, `theme`, `location`, `mapstyle`, `nav`) instead of importing each other's internals.
+* **Overlays survive style switches.** `map/style.js` re-adds Bharat Map layers (`bm-routes`, `bm-pois`, `bm-buildings-3d`,
+  `bm-transit`) on every `style.load`, detecting the vector schema (OpenMapTiles online vs Protomaps offline).
+* **Auto-offline.** A failed style load or ≥ 6 tile errors in 15 s (or the browser `offline` event) switches to the bundled
+  PMTiles region; the `online` event switches back unless the user forced offline.
+* **Navigation pipeline.** Position fix (GPS or simulator) → `tracker.update()` (snap to route, along-distance, next
+  maneuver, remaining distance/time, off-route counter, arrival) → banner + ETA + camera → voice on maneuver change and
+  again ≤ 60 m before it (≤ 25 m walking). Off-route for 3 consecutive fixes > 50 m (widened by poor accuracy) → new OSRM
+  route from the current fix.
+* **Privacy.** Location is requested only by the locate button, “Directions” from your location, or navigation. CSP
+  (`shared/csp.js`) is identical in the server header and the app-shell `<meta>`; the Android build adds only its
+  configured backend.
+
+## 1. MVP (as built in v0.1–v0.2)
 
 ```mermaid
 flowchart LR

@@ -1,5 +1,6 @@
-// Bharat Map web client. Talks to the REST API; falls back to an in-browser
-// backend (mock-api.js) when served statically without a server.
+// Bharat Map web client. Map-first shell (shell.js + ui/, nav/, services/) with the commerce flow
+// (products → seller → order → rider tracking, seller/admin dashboards) under "Shop".
+// Talks to the REST API; falls back to an in-browser backend (mock-api.js) when there is no server.
 import { store } from './shared/storage.js';
 import * as maplibregl from './vendor/maplibre-gl.mjs';
 import { LANGS, t as tr } from './shared/i18n.js';
@@ -7,8 +8,10 @@ import { CITIES } from './shared/seed.js';
 import { mockApi, mockLogout } from './mock-api.js';
 import { priceOrder } from './shared/logistics.js';
 import { haversineKm } from './shared/geo.js';
-import { isNative, currentPosition, deviceNotify, ensureNotifyPermission } from './native.js';
+import { isNative, deviceNotify, ensureNotifyPermission } from './native.js';
 import { initAdmin, loadAdmin } from './admin.js';
+import { createShell } from './shell.js';
+import { BUSINESSES } from './shared/seed.js';
 
 const $ = (s, el = document) => el.querySelector(s);
 const $$ = (s, el = document) => [...el.querySelectorAll(s)];
@@ -20,7 +23,7 @@ const state = {
   city: store.getItem('mapos-city') || 'vizag',
   me: null, token: store.getItem('mapos-token') || null, user: JSON.parse(store.getItem('mapos-user') || 'null'),
   results: [], cart: null, drop: null, demo: false, markers: [], mobMarkers: [], trackTimer: null, stream: null,
-  config: null, offline: store.getItem('mapos-offline') === '1', lastNotif: Number(store.getItem('mapos-last-notif') || 0), notifTimer: null,
+  config: null, lastNotif: Number(store.getItem('mapos-last-notif') || 0), notifTimer: null,
 };
 // Backend base URL: '' = same origin (server-hosted web). The Android app has no same-origin server,
 // so it uses the URL saved in Settings or baked in at build time (www/config.js → window.__MAPOS_CONFIG__).
@@ -54,8 +57,7 @@ function toast(msg) { const el = $('#toast'); el.textContent = msg; el.classList
 // ---------------- i18n ----------------
 function applyLang() {
   document.documentElement.lang = state.lang;
-  $('#q').placeholder = tr(state.lang, 'search');
-  $$('[data-i18n]').forEach((el) => { el.textContent = tr(state.lang, el.dataset.i18n); });
+  shell?.applyI18n();
   $('#authBtn').textContent = state.user ? `${tr(state.lang, 'logout')} (${state.user.role})` : tr(state.lang, 'login');
   $('#placeBtn').textContent = tr(state.lang, 'place_order');
   renderResults();
@@ -63,69 +65,32 @@ function applyLang() {
 
 // ---------------- Map ----------------
 const center = () => state.me || CITIES[state.city].center;
-function onlineStyle() {
-  // Server-hosted web uses the same-origin tile proxy; app/standalone builds talk to OpenFreeMap directly.
-  return window.__MAPOS_DEMO__ || location.protocol === 'file:' || isNative() || apiBase() ? 'https://tiles.openfreemap.org/styles/liberty' : '/map/style.json';
-}
-async function applyMapStyle() {
-  let style = onlineStyle(), offlineOn = false;
-  if (state.offline || navigator.onLine === false) {
-    try { const m = await import('./offline-map.js'); style = await m.offlineStyle(maplibregl, state.city, state.lang); offlineOn = true; } catch (e) { toast(`Offline map unavailable: ${e.message}`); }
-  }
-  map.setStyle(style, { diff: false });
-  map.once('styledata', () => { addRouteLayers(); if (!offlineOn) setLabelLanguage(); });
-  const b = $('#offBtn'); if (b) { b.setAttribute('aria-pressed', String(offlineOn)); b.title = offlineOn ? 'Offline map on (bundled OpenStreetMap data)' : 'Use offline map'; }
-  updateBadge(offlineOn);
-}
+// Start with an empty style; the shell's style manager picks online/offline + light/dark once the mode is known.
 const map = new maplibregl.Map({
   container: 'map',
-  style: onlineStyle(),
-  center: [CITIES[state.city].center.lng, CITIES[state.city].center.lat], zoom: 12.5, attributionControl: { compact: true },
+  style: { version: 8, sources: {}, layers: [] },
+  center: [CITIES[state.city].center.lng, CITIES[state.city].center.lat], zoom: 13, attributionControl: { compact: true },
+  dragRotate: true, pitchWithRotate: true, maxPitch: 70,
 });
-map.addControl(new maplibregl.NavigationControl({ visualizePitch: true }), 'bottom-right');
-map.addControl(new maplibregl.ScaleControl({ unit: 'metric' }), 'bottom-right');
-let meMarker = null, dropMarker = null, riderMarker = null;
+map.addControl(new maplibregl.ScaleControl({ unit: 'metric' }), 'top-left');
+let dropMarker = null, riderMarker = null;
+let shell = null;
 if (window.ResizeObserver) new ResizeObserver(() => map.resize()).observe(document.getElementById('map'));
 
-let lastRoute = null;
-function addRouteLayers() {
-  if (map.getSource('route')) return;
-  map.addSource('route', { type: 'geojson', data: lastRoute ? { type: 'Feature', geometry: lastRoute, properties: {} } : { type: 'FeatureCollection', features: [] } });
-  map.addLayer({ id: 'route-casing', type: 'line', source: 'route', paint: { 'line-color': '#0b5543', 'line-width': 8, 'line-opacity': 0.35 }, layout: { 'line-cap': 'round', 'line-join': 'round' } });
-  map.addLayer({ id: 'route', type: 'line', source: 'route', paint: { 'line-color': '#0f6e56', 'line-width': 5 }, layout: { 'line-cap': 'round', 'line-join': 'round' } });
-}
-map.on('load', () => {
-  addRouteLayers();
-  // Prefer local-language labels where OSM has them (name:te, name:hi, ...), fall back to name.
-  setLabelLanguage();
-});
-function setLabelLanguage() {
-  if (!map.isStyleLoaded()) return;
-  for (const l of map.getStyle().layers) {
-    if (l.type === 'symbol' && l.layout?.['text-field']) {
-      try { map.setLayoutProperty(l.id, 'text-field', ['coalesce', ['get', `name:${state.lang}`], ['get', 'name:en'], ['get', 'name']]); } catch { /* some layers use other fields */ }
-    }
-  }
-}
+// state.me is the commerce search origin (a default point in the city until the user shares location).
 function setMe(p) {
   state.me = p;
-  if (!meMarker) { const el = document.createElement('div'); el.className = 'me'; el.setAttribute('aria-label', 'Your location'); meMarker = new maplibregl.Marker({ element: el }); }
-  meMarker.setLngLat([p.lng, p.lat]).addTo(map);
-  if (!state.drop) setDrop({ ...p, label: 'Current location' });
+  if (!state.drop) setDrop({ ...p, label: p.real ? 'Current location' : 'Default drop point (drag 📍 or type an address)' }, { show: false });
 }
-function setDrop(p) {
+function setDrop(p, { show = true } = {}) {
   state.drop = p;
+  if (!show) return;
   if (!dropMarker) { const el = document.createElement('div'); el.className = 'drop'; el.textContent = '📍'; dropMarker = new maplibregl.Marker({ element: el, draggable: true, anchor: 'bottom' }); dropMarker.on('dragend', () => { const ll = dropMarker.getLngLat(); state.drop = { lat: ll.lat, lng: ll.lng, label: 'Pinned on map' }; updateQuote(); }); }
   dropMarker.setLngLat([p.lng, p.lat]).addTo(map);
 }
 function drawRoute(geometry) {
-  lastRoute = geometry || null;
-  const src = map.getSource('route'); if (!src) return;
-  src.setData(geometry ? { type: 'Feature', geometry, properties: {} } : { type: 'FeatureCollection', features: [] });
-  if (geometry?.coordinates?.length) {
-    const b = geometry.coordinates.reduce((bb, c) => bb.extend(c), new maplibregl.LngLatBounds(geometry.coordinates[0], geometry.coordinates[0]));
-    map.fitBounds(b, { padding: { top: 60, bottom: 60, left: window.innerWidth > 820 ? 60 : 30, right: 60 }, maxZoom: 15 });
-  }
+  shell.style.setRoutes(geometry ? { type: 'FeatureCollection', features: [{ type: 'Feature', geometry, properties: { selected: true, fallback: geometry.coordinates?.length === 2 } }] } : null);
+  if (geometry?.coordinates?.length) shell.cam.fit(geometry.coordinates, { maxZoom: 15 });
 }
 function clearMarkers(list) { list.forEach((m) => m.remove()); list.length = 0; }
 function plotResults() {
@@ -142,21 +107,20 @@ function plotResults() {
     pts.push([r.business.lng, r.business.lat]);
   });
   if (state.me) pts.push([state.me.lng, state.me.lat]);
-  if (pts.length > 1) map.fitBounds(pts.reduce((b, c) => b.extend(c), new maplibregl.LngLatBounds(pts[0], pts[0])), { padding: 70, maxZoom: 15 });
-  else if (pts.length) map.flyTo({ center: pts[0], zoom: 15 });
+  if (pts.length) shell.cam.fit(pts, { maxZoom: 15 });
 }
 function selectResult(i) {
   $$('.card').forEach((c) => c.classList.remove('sel'));
   state.markers.forEach((m, j) => m.getElement().classList.toggle('sel', i === j));
   const card = $(`#res-${i}`); if (card) { card.classList.add('sel'); card.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); }
-  const r = state.results[i]; map.flyTo({ center: [r.business.lng, r.business.lat], zoom: 15.5 });
+  const r = state.results[i]; shell.cam.fly({ center: [r.business.lng, r.business.lat], zoom: 15.5 });
 }
 
 // ---------------- Search ----------------
 async function runSearch(q) {
   if (!q) return;
   showTab('explore');
-  $('#q').value = q;
+  $('#shopQ').value = q;
   $('#summary').textContent = '…';
   const c = center();
   try {
@@ -168,7 +132,7 @@ async function runSearch(q) {
     if (res.intent?.wholesale) parts.push(tr(state.lang, 'wholesale'));
     if (res.intent?.maxPrice) parts.push(`≤ ${inr(res.intent.maxPrice)}`);
     $('#summary').textContent = parts.join(' · ');
-    if (!res.count && res.places?.length) { const p = res.places[0]; map.flyTo({ center: [p.lng, p.lat], zoom: 15 }); $('#summary').textContent = `📍 ${p.name}`; }
+    if (!res.count && res.places?.length) { const p = res.places[0]; shell.cam.fly({ center: [p.lng, p.lat], zoom: 15 }); $('#summary').textContent = `📍 ${p.name}`; }
     renderResults(); plotResults();
   } catch (e) { $('#summary').textContent = `Search failed: ${e.message}`; }
 }
@@ -194,29 +158,11 @@ $('#results').addEventListener('click', async (e) => {
   const add = e.target.closest('[data-add]');
   if (add) { const [i, pid] = add.dataset.add.split(':'); addToCart(state.results[+i], pid); return; }
   const dir = e.target.closest('[data-dir]');
-  if (dir) { const b = state.results[+dir.dataset.dir].business; const c = center(); const r = await api('GET', `/api/route?from_lat=${c.lat}&from_lng=${c.lng}&to_lat=${b.lat}&to_lng=${b.lng}`); drawRoute(r.geometry); toast(`${(r.distance_m / 1000).toFixed(1)} km · ${Math.round(r.duration_s / 60)} min (${r.engine})`); return; }
+  if (dir) { const b = state.results[+dir.dataset.dir].business; shell.directions.open({ id: `seller:${b.id}`, seller_id: b.id, kind: 'seller', name: b.name, lat: b.lat, lng: b.lng, address: b.address }); return; }
   const card = e.target.closest('.card'); if (card) selectResult(+card.id.split('-')[1]);
 });
 
-// Typeahead suggestions from the local place index (debounced)
-let sugT;
-$('#q').addEventListener('input', (e) => {
-  clearTimeout(sugT);
-  const v = e.target.value.trim();
-  if (v.length < 2) { $('#suggest').hidden = true; return; }
-  sugT = setTimeout(async () => {
-    try {
-      const c = center();
-      const r = await api('GET', `/api/search?q=${encodeURIComponent(v)}&lat=${c.lat}&lng=${c.lng}&city=${state.city}`);
-      const items = [...(r.places || []).map((p) => ({ label: `📍 ${p.name}${p.pincode ? ` · ${p.pincode}` : ''}`, place: p })), ...r.results.slice(0, 4).map((x) => ({ label: `🏪 ${x.business.name}`, q: v }))];
-      $('#suggest').innerHTML = items.map((it, i) => `<li role="option" data-i="${i}">${esc(it.label)}</li>`).join('');
-      $('#suggest').hidden = !items.length;
-      $('#suggest').onclick = (ev) => { const it = items[+ev.target.dataset.i]; $('#suggest').hidden = true; if (it?.place) { map.flyTo({ center: [it.place.lng, it.place.lat], zoom: 15 }); setMe({ lat: it.place.lat, lng: it.place.lng }); } else runSearch(v); };
-    } catch { /* ignore */ }
-  }, 220);
-});
-document.addEventListener('click', (e) => { if (!e.target.closest('.search')) $('#suggest').hidden = true; });
-$('#searchForm').addEventListener('submit', (e) => { e.preventDefault(); $('#suggest').hidden = true; runSearch($('#q').value.trim()); });
+$('#shopForm').addEventListener('submit', (e) => { e.preventDefault(); runSearch($('#shopQ').value.trim()); });
 $$('[data-q]').forEach((b) => b.addEventListener('click', () => runSearch(b.dataset.q)));
 
 // ---------------- Cart & checkout ----------------
@@ -373,7 +319,7 @@ $('#chatForm').addEventListener('submit', async (e) => {
     if (r.action?.type === 'search') { state.results = r.action.result.results; renderResults(); plotResults(); $('#summary').textContent = r.reply; }
     if (r.action?.type === 'route' && r.action.route) { drawRoute(r.action.route.geometry); $('#chat').insertAdjacentHTML('beforeend', `<div class="msg bot">${(r.action.route.distance_m / 1000).toFixed(1)} km · ~${Math.round(r.action.route.duration_s / 60)} min by road (${esc(r.action.route.engine)}).</div>`); }
     if (r.action?.type === 'mobility') plotMobility(r.action.items);
-    if (r.action?.type === 'geocode') { const b = r.action.result.best; setDrop({ lat: b.lat, lng: b.lng, label: v }); map.flyTo({ center: [b.lng, b.lat], zoom: 16 }); }
+    if (r.action?.type === 'geocode') { const b = r.action.result.best; setDrop({ lat: b.lat, lng: b.lng, label: v }); shell.cam.fly({ center: [b.lng, b.lat], zoom: 16 }); }
   } catch (err) { $('#chat').insertAdjacentHTML('beforeend', `<div class="msg bot">Sorry, that failed (${esc(err.message)}).</div>`); }
   $('#chat').lastElementChild.scrollIntoView({ behavior: 'smooth' });
 });
@@ -383,7 +329,7 @@ const MOB_ICON = { metro: '🚇', rail: '🚆', bus: '🚌', airport: '✈️', 
 function plotMobility(items) {
   clearMarkers(state.mobMarkers);
   items.forEach((m) => { const el = document.createElement('div'); el.className = 'mk mob'; el.textContent = `${MOB_ICON[m.kind] || '•'} ${m.name.slice(0, 26)}`; state.mobMarkers.push(new maplibregl.Marker({ element: el }).setLngLat([m.lng, m.lat]).addTo(map)); });
-  if (items.length) { const pts = items.map((m) => [m.lng, m.lat]); map.fitBounds(pts.reduce((b, c) => b.extend(c), new maplibregl.LngLatBounds(pts[0], pts[0])), { padding: 80, maxZoom: 15 }); }
+  if (items.length) shell.cam.fit(items.map((m) => [m.lng, m.lat]), { maxZoom: 15 });
 }
 $('#mobChips').addEventListener('click', async (e) => {
   const b = e.target.closest('[data-kind]'); if (!b) return;
@@ -399,7 +345,7 @@ $('#geoForm').addEventListener('submit', async (e) => {
   if (!r.best) { $('#geoOut').textContent = 'No match.'; return; }
   const comp = Object.entries(r.local.components).map(([k, v]) => `${k}: ${v}`).join(' · ');
   $('#geoOut').innerHTML = `<b>${Math.round(r.best.confidence * 100)}% confidence</b> · ±${r.best.precision_m} m · via ${esc(r.best.source)} · DIGIPIN <b>${esc(r.best.digipin)}</b><br>${esc(comp)}<br><span class="small">${esc((r.local.explanation || []).join(' '))}</span>`;
-  setDrop({ lat: r.best.lat, lng: r.best.lng, label: $('#geoIn').value }); map.flyTo({ center: [r.best.lng, r.best.lat], zoom: 16 });
+  setDrop({ lat: r.best.lat, lng: r.best.lng, label: $('#geoIn').value }); shell.cam.fly({ center: [r.best.lng, r.best.lat], zoom: 16 });
 });
 
 // ---------------- Seller dashboard ----------------
@@ -427,11 +373,12 @@ function signOut() {
   state.user = null; state.token = null; store.removeItem('mapos-token'); store.removeItem('mapos-user'); if (state.demo) mockLogout();
   clearInterval(state.notifTimer); $('#bellBtn').hidden = true; $('#adminTab').hidden = true;
   applyLang(); loadOrders(); $('#sellerView').innerHTML = '<p class="muted">Sign in as a seller to manage price, stock and orders.</p><button class="btn" id="demoSeller">Use demo seller (Vizag Digital World)</button>';
-  if (!$('[data-pane=admin]').hidden) showTab('explore');
+  if (!$('[data-pane=admin]').hidden) showTab('explore', { open: false });
 }
 function afterSignIn() {
   $('#adminTab').hidden = state.user?.role !== 'admin';
   startNotifications();
+  shell?.saved.pull();
 }
 function openAuth(email) { $('#email').value = email || 'customer@mapos.demo'; $('#authErr').textContent = ''; $('#authDlg').showModal(); }
 $('#authBtn').addEventListener('click', () => {
@@ -446,12 +393,13 @@ $('#authForm').addEventListener('submit', async (e) => {
     state.token = r.token; state.user = r.user;
     store.setItem('mapos-token', r.token); store.setItem('mapos-user', JSON.stringify(r.user));
     $('#authDlg').close(); applyLang(); toast(`Signed in as ${r.user.role}`); afterSignIn();
-    if (r.user.role === 'seller') { showTab('seller'); loadSeller(); } else if (r.user.role === 'admin') showTab('admin'); else loadOrders();
+    if (r.user.role === 'seller') { showTab('seller'); loadSeller(); } else if (r.user.role === 'admin') showTab('admin'); else if (shell?.views.current === 'shop') loadOrders();
   } catch (err) { $('#authErr').textContent = err.message === 'invalid_credentials' ? 'Wrong email or password.' : err.message === 'too_many_attempts' ? 'Too many attempts. Wait 5 minutes.' : err.message; }
 });
 
 // ---------------- Tabs, controls, boot ----------------
-function showTab(name) {
+function showTab(name, { open = true } = {}) {
+  if (open && shell && shell.views.current !== 'shop') shell.views.show('shop');
   $$('.tabs [role=tab]').forEach((b) => b.setAttribute('aria-selected', String(b.dataset.tab === name)));
   $$('.tabpane').forEach((p) => { p.hidden = p.dataset.pane !== name; });
   if (name === 'orders') loadOrders();
@@ -486,16 +434,13 @@ $('#bellBtn').addEventListener('click', async () => {
 $('#notifBody').addEventListener('click', (e) => { const b = e.target.closest('[data-ntrack]'); if (b) { $('#notifDlg').close(); showTab('orders'); track(b.dataset.ntrack); } });
 
 // ---------------- Settings (backend URL, offline maps, mode) ----------------
-function updateBadge(offlineOn = state.offline) {
+function updateBadge() {
   const b = $('#modeBadge');
-  const parts = [];
-  if (state.demo) parts.push(isNative() ? 'On-device mode: no backend connected · fictional sellers' : 'Demo mode: in-browser backend · fictional sellers');
-  if (offlineOn) parts.push('Offline map: bundled OSM data (© OpenStreetMap contributors · Protomaps)');
-  else parts.push('Map © OpenStreetMap contributors / OpenFreeMap');
-  b.hidden = !(state.demo || offlineOn); b.textContent = parts.join(' · ');
+  b.hidden = !state.demo;
+  b.textContent = state.demo ? (isNative() ? 'On-device mode · fictional demo sellers' : 'Demo mode · in-browser backend · fictional sellers') : '';
 }
 $('#setBtn').addEventListener('click', () => {
-  $('#apiUrl').value = apiBase(); $('#setOffline').checked = state.offline;
+  $('#apiUrl').value = apiBase(); $('#setOffline').checked = shell.style.forceOffline;
   $('#setInfo').textContent = state.demo ? 'Status: on-device mode (no backend).' : `Status: connected to ${apiBase() || location.origin} · v${state.config?.version || '?'} · payments: ${state.config?.payments?.razorpay ? `Razorpay ${state.config.payments.mode}` : 'COD/UPI-simulated only'}`;
   $('#setDlg').showModal();
 });
@@ -509,44 +454,58 @@ $('#setForm').addEventListener('submit', async (e) => {
     try { const r = await fetch(`${url}/api/health`, { cache: 'no-store' }); const j = await r.json(); if (j.status !== 'ok') throw new Error('unhealthy'); } catch { $('#setInfo').textContent = 'Could not reach that server. Check the URL and that CORS allows this app.'; return; }
   }
   store.setItem('mapos-api', url);
-  state.offline = $('#setOffline').checked; store.setItem('mapos-offline', state.offline ? '1' : '0');
   if (state.token && url !== (store.getItem('mapos-api-prev') || '')) signOut();
   store.setItem('mapos-api-prev', url);
-  $('#setDlg').close(); toast('Settings saved'); await detectMode(); applyMapStyle(); updateBadge(); runSearch($('#q').value || 'LED TVs near me');
+  $('#setDlg').close(); toast('Settings saved'); await detectMode(); shell.style.setForceOffline($('#setOffline').checked); updateBadge();
 });
 $$('.tabs [role=tab]').forEach((b) => b.addEventListener('click', () => showTab(b.dataset.tab)));
-$('.grab').addEventListener('click', () => $('#panel').classList.toggle('full'));
-$('#locBtn').addEventListener('click', async () => {
-  $('#locBtn').setAttribute('aria-busy', 'true');
-  try {
-    const p = await currentPosition(); setMe(p); map.flyTo({ center: [p.lng, p.lat], zoom: 15 });
-    if (p.lat < 6 || p.lat > 38 || p.lng < 68 || p.lng > 98) toast('You appear to be outside India; sellers here are India-only.');
-  } catch (e) { toast(e.code === 'denied' ? 'Location permission denied. Enable it in Android Settings → Apps → Bharat Map. Using city centre.' : 'Could not get your location. Using city centre.'); }
-  finally { $('#locBtn').removeAttribute('aria-busy'); }
-});
-$('#offBtn').addEventListener('click', () => { state.offline = !state.offline; store.setItem('mapos-offline', state.offline ? '1' : '0'); applyMapStyle(); });
-window.addEventListener('offline', () => { toast('You are offline. Switching to the bundled offline map.'); applyMapStyle(); });
-window.addEventListener('online', () => { toast('Back online.'); if (!state.offline) applyMapStyle(); startNotifications(); });
-let threeD = false;
-$('#tdBtn').addEventListener('click', () => { threeD = !threeD; map.easeTo({ pitch: threeD ? 60 : 0, bearing: threeD ? -20 : 0, duration: 800 }); $('#tdBtn').setAttribute('aria-pressed', String(threeD)); });
 $('#lang').innerHTML = LANGS.map((l) => `<option value="${l.code}">${l.name}</option>`).join('');
 $('#lang').value = state.lang;
-$('#lang').addEventListener('change', (e) => { state.lang = e.target.value; store.setItem('mapos-lang', state.lang); applyLang(); setLabelLanguage(); });
+$('#lang').addEventListener('change', (e) => {
+  state.lang = e.target.value; store.setItem('mapos-lang', state.lang); applyLang();
+  if (shell.style.offline) shell.style.apply({ reason: 'lang' }); else shell.style.setLabelLanguage();
+});
 $('#city').value = state.city;
-$('#city').addEventListener('change', (e) => { state.city = e.target.value; store.setItem('mapos-city', state.city); if (state.offline || navigator.onLine === false) applyMapStyle(); state.me = null; state.drop = null; const c = CITIES[state.city].center; setMe(c); map.flyTo({ center: [c.lng, c.lat], zoom: 12.5 }); state.results = []; renderResults(); clearMarkers(state.markers); $('#summary').textContent = ''; });
+$('#city').addEventListener('change', (e) => {
+  state.city = e.target.value; store.setItem('mapos-city', state.city);
+  if (shell.style.offline) shell.style.apply({ reason: 'city' });
+  state.me = null; state.drop = null; const c = CITIES[state.city].center; setMe(c);
+  shell.cam.fly({ center: [c.lng, c.lat], zoom: 13 }); state.results = []; renderResults(); clearMarkers(state.markers); $('#summary').textContent = '';
+});
+
+// Shop entry points (home tile, "Shop here" on a place card, "Search products" suggestions).
+async function openShop({ q, sellerId } = {}) {
+  shell.views.show('shop', { detent: 'half' });
+  showTab('explore');
+  if (!q && !sellerId) { if (!state.results.length) runSearch('LED TVs near me'); return; }
+  await runSearch(q || 'LED TVs near me');
+  if (sellerId) {
+    let i = state.results.findIndex((r) => r.business.id === sellerId);
+    if (i < 0) { const b = BUSINESSES.find((x) => x.id === sellerId); if (b?.products[0]) { await runSearch(b.products[0].name); i = state.results.findIndex((r) => r.business.id === sellerId); } }
+    if (i >= 0) selectResult(i);
+  }
+}
 
 (async function boot() {
   await detectMode();
+  shell = createShell({ map, maplibregl, state, api, apiBase, toast, onShop: (o) => openShop(o) });
+  $('#openShop').addEventListener('click', () => openShop());
+  shell.on('view', ({ name }) => {
+    if (name === 'home') { clearMarkers(state.markers); clearMarkers(state.mobMarkers); }
+    if (name === 'shop' && state.results.length) plotResults();
+  });
   initAdmin({ api, apiBase, token: () => state.token, toast, root: $('#adminView'), isDemo: () => state.demo });
   if ($('[name=pay][value=razorpay]')) $('[name=pay][value=razorpay]').closest('label').hidden = !state.config?.payments?.razorpay;
   if (state.config?.payments && !state.config.payments.upi_simulated) $('[name=pay][value=upi_simulated]').closest('label').hidden = true;
   updateBadge();
-  if (state.offline || navigator.onLine === false) applyMapStyle();
+  await shell.style.apply({ reason: 'boot' });
   if (state.user) afterSignIn();
-  // Default location: a point in Dwaraka Nagar (Vizag) or Ameerpet (Hyderabad) so "near me" works without GPS.
+  // Default commerce origin: Dwaraka Nagar (Vizag) / Ameerpet (Hyderabad), so "near me" works without GPS.
   setMe(state.city === 'vizag' ? { lat: 17.7289, lng: 83.3050 } : { lat: 17.4375, lng: 78.4483 });
   applyLang();
-  const q = new URLSearchParams(location.search).get('q');
-  runSearch(q || 'LED TVs near me');
+  shell.on('location', (fix) => { state.me = { lat: fix.lat, lng: fix.lng, real: true }; });
+  const qs = new URLSearchParams(location.search);
+  if (qs.get('q')) openShop({ q: qs.get('q') });
+  if (qs.get('cat')) shell.search.openCategory(qs.get('cat'));
   if ('serviceWorker' in navigator && !state.demo && !isNative()) navigator.serviceWorker.register('sw.js').catch(() => {});
 })();

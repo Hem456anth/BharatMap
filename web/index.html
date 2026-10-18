@@ -1,107 +1,221 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" data-theme="light">
 <head>
   <meta charset="utf-8" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://checkout.razorpay.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; worker-src 'self' blob:; frame-src https://api.razorpay.com https://checkout.razorpay.com; connect-src 'self' https://tiles.openfreemap.org https://overpass-api.de https://nominatim.openstreetmap.org https://photon.komoot.io https://routing.openstreetmap.de https://api.razorpay.com https://lumberjack.razorpay.com https://*.onrender.com; object-src 'none'; base-uri 'self'; form-action 'self'" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <title>Bharat Map — Map → Business → Product → Delivery</title>
-  <meta name="description" content="India-first map super-app: find nearby shops, wholesalers and products, compare prices, order with delivery, and track it live. Multilingual, built on OpenStreetMap." />
-  <meta name="theme-color" content="#0f6e56" />
+  <title>Bharat Map: maps, directions & local shops for India</title>
+  <meta name="description" content="Bharat Map: an India-first map with search, real places from OpenStreetMap, turn-by-turn navigation with landmark directions in Indian languages, offline maps, and local shopping with delivery." />
+  <meta name="theme-color" content="#2F3A8F" />
+  <meta name="color-scheme" content="light dark" />
   <meta property="og:title" content="Bharat Map" />
-  <meta property="og:description" content="Search “LED TVs near me”, compare verified sellers, order and track delivery on one map." />
+  <meta property="og:description" content="Search places, get landmark-led directions in your language, and shop from local sellers on one map." />
   <meta property="og:type" content="website" />
   <link rel="manifest" href="manifest.webmanifest" />
   <script src="config.js"></script>
-  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cpath fill='%230f6e56' d='M32 2C19 2 9 12 9 25c0 17 23 37 23 37s23-20 23-37C55 12 45 2 32 2z'/%3E%3Ccircle cx='32' cy='25' r='9' fill='%23ffb400'/%3E%3C/svg%3E" />
+  <script src="boot-theme.js"></script>
+  <link rel="icon" href="icon.svg" type="image/svg+xml" />
   <link rel="stylesheet" href="vendor/maplibre-gl.css" />
   <link rel="stylesheet" href="styles.css" />
   <script type="application/ld+json">{"@context":"https://schema.org","@type":"WebApplication","name":"Bharat Map","applicationCategory":"TravelApplication","operatingSystem":"Web, Android","inLanguage":["en","hi","te","ta","kn","ml","bn","mr","gu","pa","or"]}</script>
 </head>
 <body>
-  <a class="skip" href="#panel">Skip to results</a>
-  <header class="topbar" role="banner">
-    <div class="brand" aria-label="Bharat Map"><span class="pin" aria-hidden="true"></span><b>Bharat</b><small>Map</small></div>
-    <form id="searchForm" class="search" role="search" autocomplete="off">
-      <label for="q" class="sr">Search</label>
-      <input id="q" name="q" type="search" placeholder="Search places, shops, products…" enterkeyhint="search" />
-      <button type="submit" class="btn primary" aria-label="Search">⌕</button>
-      <ul id="suggest" class="suggest" role="listbox" hidden></ul>
+  <a class="skip" href="#sheetBody" data-i18n="sheet_label">Map panel</a>
+
+  <div id="map" role="application" aria-label="Map. Long-press or right-click to drop a pin; arrow keys pan, plus and minus zoom."></div>
+
+  <!-- Floating search pill -->
+  <div class="topfloat" id="topfloat">
+    <form id="searchForm" class="pill" role="search" autocomplete="off">
+      <span class="pill-mark" data-icon="brand" aria-hidden="true"></span>
+      <label for="q" class="sr" data-i18n="search_map">Search places or DIGIPIN</label>
+      <input id="q" type="search" data-i18n-ph="search_map" placeholder="Search places or DIGIPIN" enterkeyhint="search"
+        role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="suggest" />
+      <button type="button" id="clearQ" class="icon-btn" hidden data-i18n-aria="clear" aria-label="Clear" data-icon="close"></button>
+      <button type="button" id="menuBtn" class="icon-btn avatar" data-i18n-aria="menu" aria-label="Menu and settings" data-icon="menu"></button>
+      <ul id="suggest" class="suggest" role="listbox" hidden aria-label="Suggestions"></ul>
     </form>
-    <div class="top-actions">
-      <label for="lang" class="sr">Language</label>
-      <select id="lang" aria-label="Language"></select>
-      <select id="city" aria-label="City"><option value="vizag">Visakhapatnam</option><option value="hyderabad">Hyderabad</option></select>
-      <button id="bellBtn" class="btn ghost icon" type="button" hidden aria-label="Notifications">🔔<span id="bellCount" class="count"></span></button>
-      <button id="setBtn" class="btn ghost icon" type="button" aria-label="Settings" title="Settings">⚙</button>
-      <button id="authBtn" class="btn ghost" type="button">Sign in</button>
+    <div id="offlineChip" class="status-chip" hidden role="status"></div>
+  </div>
+
+  <!-- Floating map controls -->
+  <div class="mapctl" id="mapctl" role="toolbar" aria-label="Map controls" aria-orientation="vertical">
+    <button id="locBtn" class="fab" data-i18n-aria="locate" aria-label="Show my location" aria-pressed="false" data-icon="locate"></button>
+    <button id="compassBtn" class="fab" data-i18n-aria="compass" aria-label="Reset map to north" data-icon="compass"></button>
+    <button id="layersBtn" class="fab" data-i18n-aria="layers" aria-label="Map layers" data-icon="layers"></button>
+    <button id="tdBtn" class="fab fab-text" data-i18n-aria="view_3d" aria-label="Switch to 3D view" aria-pressed="false">3D</button>
+  </div>
+  <button id="searchAreaBtn" class="search-area" hidden data-i18n="search_area">Search this area</button>
+  <div id="modeBadge" class="badge" hidden></div>
+  <button id="cartBtn" class="cartfab" hidden aria-label="Open cart"><span data-icon="bag"></span> <span id="cartCount">0</span> · <span id="cartTotal"></span></button>
+
+  <!-- Draggable bottom sheet (peek / half / full) -->
+  <section id="sheet" class="sheet" data-detent="half" aria-labelledby="sheetTitle">
+    <button id="sheetHandle" class="sheet-handle" type="button" aria-label="Panel size: half height" aria-controls="sheetBody"><span aria-hidden="true"></span></button>
+    <h2 id="sheetTitle" class="sr" data-i18n="sheet_label">Map panel</h2>
+    <div id="sheetBody" class="sheet-body" tabindex="-1">
+
+      <!-- HOME -->
+      <div class="view" data-view="home">
+        <div class="chiprow" id="cats" role="list" aria-label="Find nearby"></div>
+        <div class="section">
+          <div class="section-h"><h3 data-i18n="saved">Saved places</h3></div>
+          <div class="shortcuts" id="shortcuts"></div>
+          <div id="savedLists"></div>
+        </div>
+        <div class="section">
+          <div class="section-h"><h3 data-i18n="recents">Recent</h3><button class="link" id="clearRecents" data-i18n="clear">Clear</button></div>
+          <ul class="rows" id="recents"></ul>
+        </div>
+        <div class="section">
+          <button class="tile" id="openShop"><span class="tile-ic" data-icon="bag"></span><span><b data-i18n="shop">Shop</b><small data-i18n="shop_desc">Products, prices &amp; delivery from local sellers</small></span><span data-icon="chev"></span></button>
+          <button class="tile" id="openOffline"><span class="tile-ic" data-icon="download"></span><span><b data-i18n="offline_maps">Offline maps</b><small id="offlineSummary"></small></span><span data-icon="chev"></span></button>
+          <button class="tile" id="openSettings"><span class="tile-ic" data-icon="gear"></span><span><b data-i18n="settings">Settings</b><small data-i18n="privacy">Privacy</small></span><span data-icon="chev"></span></button>
+        </div>
+        <p class="attrib small muted" id="attribText">Map data © OpenStreetMap contributors</p>
+      </div>
+
+      <!-- CATEGORY / SEARCH RESULTS -->
+      <div class="view" data-view="results" hidden>
+        <header class="view-h"><button class="icon-btn" data-back data-i18n-aria="back" aria-label="Back" data-icon="back"></button><h3 id="resTitle"></h3><button class="icon-btn" data-home data-i18n-aria="close" aria-label="Close" data-icon="close"></button></header>
+        <p id="resMeta" class="muted small" role="status" aria-live="polite"></p>
+        <ul id="poiList" class="rows"></ul>
+        <p class="small muted" data-i18n="osm_credit">Data © OpenStreetMap contributors</p>
+      </div>
+
+      <!-- PLACE CARD -->
+      <div class="view" data-view="place" hidden>
+        <header class="view-h"><button class="icon-btn" data-back data-i18n-aria="back" aria-label="Back" data-icon="back"></button><h3 id="placeTitle" tabindex="-1"></h3><button class="icon-btn" data-home data-i18n-aria="close" aria-label="Close" data-icon="close"></button></header>
+        <div id="placeCard"></div>
+      </div>
+
+      <!-- DIRECTIONS -->
+      <div class="view" data-view="directions" hidden>
+        <header class="view-h"><button class="icon-btn" data-back data-i18n-aria="back" aria-label="Back" data-icon="back"></button><h3 data-i18n="directions">Directions</h3><button class="icon-btn" data-home data-i18n-aria="close" aria-label="Close" data-icon="close"></button></header>
+        <div id="dirBody"></div>
+      </div>
+
+      <!-- SAVED LIST -->
+      <div class="view" data-view="list" hidden>
+        <header class="view-h"><button class="icon-btn" data-back data-i18n-aria="back" aria-label="Back" data-icon="back"></button><h3 id="listTitle"></h3><button class="icon-btn" data-home data-i18n-aria="close" aria-label="Close" data-icon="close"></button></header>
+        <ul id="listItems" class="rows"></ul>
+      </div>
+
+      <!-- LAYERS -->
+      <div class="view" data-view="layers" hidden>
+        <header class="view-h"><button class="icon-btn" data-back data-i18n-aria="back" aria-label="Back" data-icon="back"></button><h3 data-i18n="layers">Map layers</h3><button class="icon-btn" data-home data-i18n-aria="close" aria-label="Close" data-icon="close"></button></header>
+        <div id="layersBody"></div>
+      </div>
+
+      <!-- OFFLINE MAPS -->
+      <div class="view" data-view="offline" hidden>
+        <header class="view-h"><button class="icon-btn" data-back data-i18n-aria="back" aria-label="Back" data-icon="back"></button><h3 data-i18n="offline_maps">Offline maps</h3><button class="icon-btn" data-home data-i18n-aria="close" aria-label="Close" data-icon="close"></button></header>
+        <div id="offlineBody"></div>
+      </div>
+
+      <!-- SETTINGS -->
+      <div class="view" data-view="settings" hidden>
+        <header class="view-h"><button class="icon-btn" data-back data-i18n-aria="back" aria-label="Back" data-icon="back"></button><h3 data-i18n="settings">Settings</h3><button class="icon-btn" data-home data-i18n-aria="close" aria-label="Close" data-icon="close"></button></header>
+        <div class="form">
+          <fieldset class="seg-field"><legend data-i18n="appearance">Appearance</legend>
+            <div class="seg" id="themeSeg" role="radiogroup">
+              <label><input type="radio" name="theme" value="auto" /><span data-i18n="theme_auto">Match device</span></label>
+              <label><input type="radio" name="theme" value="light" /><span data-i18n="theme_light">Light</span></label>
+              <label><input type="radio" name="theme" value="dark" /><span data-i18n="theme_dark">Dark</span></label>
+            </div>
+          </fieldset>
+          <label for="lang" data-i18n="language">Language</label>
+          <select id="lang"></select>
+          <label for="city" data-i18n="city">City</label>
+          <select id="city"><option value="vizag">Visakhapatnam</option><option value="hyderabad">Hyderabad</option></select>
+          <label class="switch"><input type="checkbox" id="voiceDefault" checked /><span data-i18n="voice">Voice guidance</span></label>
+          <h4 data-i18n="account">Account</h4>
+          <div class="row"><button id="authBtn" class="btn" type="button">Sign in</button><button id="bellBtn" class="btn icon" type="button" hidden aria-label="Notifications"><span data-icon="bell"></span><span id="bellCount" class="count"></span></button><button id="setBtn" class="btn" type="button" data-i18n="server">Backend server</button></div>
+          <h4 data-i18n="privacy">Privacy</h4>
+          <p class="small muted" data-i18n="privacy_note"></p>
+          <button id="clearHistory" class="btn" type="button" data-i18n="clear_history">Clear search history</button>
+          <p class="small muted" id="aboutLine"></p>
+        </div>
+      </div>
+
+      <!-- SHOP (commerce: products → seller → order → rider tracking; seller & admin dashboards) -->
+      <div class="view" data-view="shop" hidden>
+        <header class="view-h"><button class="icon-btn" data-back data-i18n-aria="back" aria-label="Back" data-icon="back"></button><h3 data-i18n="shop">Shop</h3><button class="icon-btn" data-home data-i18n-aria="close" aria-label="Close" data-icon="close"></button></header>
+        <form id="shopForm" class="shopsearch" role="search" autocomplete="off">
+          <label for="shopQ" class="sr">Search products</label>
+          <input id="shopQ" type="search" data-i18n-ph="search" placeholder="Search places, shops, products…" enterkeyhint="search" />
+          <button type="submit" class="btn primary" aria-label="Search products" data-icon="search"></button>
+        </form>
+        <nav class="tabs" role="tablist" aria-label="Shop sections">
+          <button role="tab" data-tab="explore" aria-selected="true">Products</button>
+          <button role="tab" data-tab="assistant" aria-selected="false" data-i18n="assistant">Ask Bharat Map</button>
+          <button role="tab" data-tab="mobility" aria-selected="false" data-i18n="mobility">Mobility</button>
+          <button role="tab" data-tab="orders" aria-selected="false">Orders</button>
+          <button role="tab" data-tab="seller" aria-selected="false" data-i18n="dashboard">Seller dashboard</button>
+          <button role="tab" data-tab="admin" aria-selected="false" id="adminTab" hidden>Admin</button>
+        </nav>
+        <div class="tabpane" data-pane="explore" role="tabpanel">
+          <div class="chips" aria-label="Quick searches">
+            <button class="chip" data-q="LED TVs near me">LED TVs near me</button>
+            <button class="chip" data-q="cheapest 43 inch tv under 30k">43" TV under ₹30k</button>
+            <button class="chip" data-q="wholesale led tv suppliers">Wholesale TVs</button>
+            <button class="chip" data-q="biryani">Biryani</button>
+            <button class="chip" data-q="दूध मेरे पास">दूध मेरे पास</button>
+            <button class="chip" data-q="టీవీ దగ్గర">టీవీ దగ్గర</button>
+          </div>
+          <div id="summary" class="summary" aria-live="polite"></div>
+          <div id="results" class="results"></div>
+        </div>
+        <div class="tabpane" data-pane="assistant" role="tabpanel" hidden>
+          <div id="chat" class="chat" aria-live="polite">
+            <div class="msg bot">Ask me anything in your language: “Find LED TV suppliers in Gajuwaka for bulk”, “route from RTC Complex to RK Beach”, “nearest EV charging”, or paste a landmark address.</div>
+          </div>
+          <form id="chatForm" class="chatform"><label for="chatIn" class="sr">Message</label><input id="chatIn" placeholder="Ask Bharat Map…" /><button class="btn primary">Send</button></form>
+        </div>
+        <div class="tabpane" data-pane="mobility" role="tabpanel" hidden>
+          <div class="chips" id="mobChips">
+            <button class="chip" data-kind="metro">Metro</button><button class="chip" data-kind="rail">Rail</button><button class="chip" data-kind="bus">Bus</button>
+            <button class="chip" data-kind="airport">Airport</button><button class="chip" data-kind="ev">EV charging</button><button class="chip" data-kind="parking">Parking</button><button class="chip" data-kind="toll">Tolls</button>
+          </div>
+          <label class="toggle"><input type="checkbox" id="liveOsm" /> Include live OpenStreetMap data (EV, parking)</label>
+          <div id="mobList" class="results"></div>
+          <h3>Address intelligence</h3>
+          <form id="geoForm" class="chatform"><label for="geoIn" class="sr">Address</label><input id="geoIn" placeholder="e.g. Shop 4, opp. CMR Central, MVP Colony, Vizag 530017" /><button class="btn">Locate</button></form>
+          <div id="geoOut" class="summary"></div>
+        </div>
+        <div class="tabpane" data-pane="orders" role="tabpanel" hidden>
+          <div id="tracking"></div>
+          <div id="orderList" class="results"></div>
+        </div>
+        <div class="tabpane" data-pane="admin" role="tabpanel" hidden><div id="adminView"></div></div>
+        <div class="tabpane" data-pane="seller" role="tabpanel" hidden>
+          <div id="sellerView"><p class="muted">Sign in as a seller to manage price, stock and orders.</p><button class="btn" id="demoSeller">Use demo seller (Vizag Digital World)</button></div>
+        </div>
+      </div>
     </div>
-  </header>
+  </section>
 
-  <main class="layout">
-    <section id="panel" class="panel" aria-label="Side panel" tabindex="-1">
-      <div class="grab" aria-hidden="true"></div>
-      <nav class="tabs" role="tablist">
-        <button role="tab" data-tab="explore" aria-selected="true">Explore</button>
-        <button role="tab" data-tab="assistant" aria-selected="false" data-i18n="assistant">Ask Bharat Map</button>
-        <button role="tab" data-tab="mobility" aria-selected="false" data-i18n="mobility">Mobility</button>
-        <button role="tab" data-tab="orders" aria-selected="false">Orders</button>
-        <button role="tab" data-tab="seller" aria-selected="false" data-i18n="dashboard">Seller dashboard</button>
-        <button role="tab" data-tab="admin" aria-selected="false" id="adminTab" hidden>Admin</button>
-      </nav>
-
-      <div class="tabpane" data-pane="explore" role="tabpanel">
-        <div class="chips" aria-label="Quick searches">
-          <button class="chip" data-q="LED TVs near me">📺 LED TVs near me</button>
-          <button class="chip" data-q="cheapest 43 inch tv under 30k">💸 43" TV under ₹30k</button>
-          <button class="chip" data-q="wholesale led tv suppliers">🏭 Wholesale TVs</button>
-          <button class="chip" data-q="biryani">🍛 Biryani</button>
-          <button class="chip" data-q="दूध मेरे पास">🥛 दूध मेरे पास</button>
-          <button class="chip" data-q="టీవీ దగ్గర">📺 టీవీ దగ్గర</button>
-        </div>
-        <div id="summary" class="summary" aria-live="polite"></div>
-        <div id="results" class="results"></div>
+  <!-- Full-screen turn-by-turn navigation -->
+  <section id="nav" class="nav" hidden aria-label="Navigation">
+    <div class="nav-banner">
+      <div class="nav-icon" id="navIcon" aria-hidden="true"></div>
+      <div class="nav-main">
+        <div class="nav-dist" id="navDist"></div>
+        <div class="nav-instr" id="navInstr"></div>
       </div>
-
-      <div class="tabpane" data-pane="assistant" role="tabpanel" hidden>
-        <div id="chat" class="chat" aria-live="polite">
-          <div class="msg bot">Ask me anything in your language: “Find LED TV suppliers in Gajuwaka for bulk”, “route from RTC Complex to RK Beach”, “nearest EV charging”, or paste a landmark address.</div>
-        </div>
-        <form id="chatForm" class="chatform"><label for="chatIn" class="sr">Message</label><input id="chatIn" placeholder="Ask Bharat Map…" /><button class="btn primary">Send</button></form>
+    </div>
+    <div class="nav-next" id="navNext" hidden><span data-i18n="nav_then">Then</span> <span id="navNextIcon" aria-hidden="true"></span> <span id="navNextText"></span></div>
+    <div id="navSim" class="sim-badge" hidden><span data-i18n="sim_badge">Simulation</span> <button id="simSpeed" class="link" type="button"></button></div>
+    <div id="navLive" class="sr" aria-live="assertive" aria-atomic="true"></div>
+    <div class="nav-strip">
+      <button id="navMute" class="fab" aria-pressed="false" data-i18n-aria="nav_mute" aria-label="Mute voice guidance" data-icon="volume"></button>
+      <div class="nav-eta" id="navEta" role="status">
+        <b id="navArrive"></b><span id="navRemain"></span>
       </div>
-
-      <div class="tabpane" data-pane="mobility" role="tabpanel" hidden>
-        <div class="chips" id="mobChips">
-          <button class="chip" data-kind="metro">🚇 Metro</button><button class="chip" data-kind="rail">🚆 Rail</button><button class="chip" data-kind="bus">🚌 Bus</button>
-          <button class="chip" data-kind="airport">✈️ Airport</button><button class="chip" data-kind="ev">⚡ EV charging</button><button class="chip" data-kind="parking">🅿️ Parking</button><button class="chip" data-kind="toll">🛣️ Tolls</button>
-        </div>
-        <label class="toggle"><input type="checkbox" id="liveOsm" /> Include live OpenStreetMap data (EV, parking)</label>
-        <div id="mobList" class="results"></div>
-        <h3>Address intelligence</h3>
-        <form id="geoForm" class="chatform"><label for="geoIn" class="sr">Address</label><input id="geoIn" placeholder="e.g. Shop 4, opp. CMR Central, MVP Colony, Vizag 530017" /><button class="btn">Locate</button></form>
-        <div id="geoOut" class="summary"></div>
-      </div>
-
-      <div class="tabpane" data-pane="orders" role="tabpanel" hidden>
-        <div id="tracking"></div>
-        <div id="orderList" class="results"></div>
-      </div>
-
-      <div class="tabpane" data-pane="admin" role="tabpanel" hidden><div id="adminView"></div></div>
-      <div class="tabpane" data-pane="seller" role="tabpanel" hidden>
-        <div id="sellerView"><p class="muted">Sign in as a seller to manage price, stock and orders.</p><button class="btn" id="demoSeller">Use demo seller (Vizag Digital World)</button></div>
-      </div>
-    </section>
-
-    <section class="mapwrap" aria-label="Map">
-      <div id="map" role="application" aria-label="Interactive map"></div>
-      <div class="mapctl">
-        <button id="locBtn" class="fab" aria-label="Use my location" title="Use my location">◎</button>
-        <button id="tdBtn" class="fab" aria-label="Toggle 3D" title="Toggle 3D">3D</button>
-        <button id="offBtn" class="fab" aria-label="Offline map" aria-pressed="false" title="Use offline map">⤓</button>
-      </div>
-      <button id="cartBtn" class="cartfab" hidden aria-label="Open cart">🛒 <span id="cartCount">0</span> · <span id="cartTotal"></span></button>
-      <div id="modeBadge" class="badge" hidden></div>
-    </section>
-  </main>
+      <button id="navOverview" class="fab" data-i18n-aria="nav_overview" aria-label="Overview" data-icon="route"></button>
+      <button id="navEnd" class="btn danger" data-i18n="nav_end">End</button>
+    </div>
+  </section>
 
   <dialog id="cartDlg" aria-labelledby="cartTitle">
     <form method="dialog" class="dlg">
@@ -141,13 +255,23 @@
 
   <dialog id="setDlg" aria-labelledby="setTitle">
     <form id="setForm" class="dlg">
-      <h2 id="setTitle">Settings</h2>
+      <h2 id="setTitle">Backend server</h2>
       <label for="apiUrl">Backend server URL</label>
       <input id="apiUrl" type="url" inputmode="url" placeholder="https://your-mapos-server.onrender.com" autocomplete="off" />
       <p class="muted small">Leave empty for on-device mode (works offline with fictional demo sellers; no real accounts or payments).</p>
       <label class="toggle"><input type="checkbox" id="setOffline" /> Always use the offline map (Visakhapatnam &amp; Hyderabad bundled)</label>
       <p id="setInfo" class="small" role="status"></p>
       <div class="row end"><button type="button" class="btn ghost" id="setClose">Close</button><button class="btn primary">Save</button></div>
+    </form>
+  </dialog>
+
+  <dialog id="listDlg" aria-labelledby="listDlgTitle">
+    <form id="listForm" class="dlg">
+      <h2 id="listDlgTitle" data-i18n="save">Save</h2>
+      <div id="listChoices" class="rows"></div>
+      <label for="newListName" data-i18n="add_list">New list</label>
+      <div class="row"><input id="newListName" maxlength="60" /><button type="button" class="btn" id="newListBtn" data-i18n="add_list">New list</button></div>
+      <div class="row end"><button type="button" class="btn ghost" id="listDlgClose" data-i18n="done">Done</button></div>
     </form>
   </dialog>
 

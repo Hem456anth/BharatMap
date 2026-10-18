@@ -35,7 +35,7 @@ after(() => server.close());
 
 test('migrations: 002 applied, orders accept razorpay, FK intact', () => {
   const v = db.prepare('SELECT version FROM schema_migrations ORDER BY version').all().map((r) => r.version);
-  assert.deepEqual(v, ['001_init.sql', '002_payments_notifications.sql']);
+  assert.deepEqual(v.slice(0, 2), ['001_init.sql', '002_payments_notifications.sql']); // later migrations (003+) may follow
   assert.equal(db.prepare('PRAGMA foreign_key_check').all().length, 0);
   assert.ok(db.prepare("SELECT sql FROM sqlite_master WHERE name='orders'").get().sql.includes("'razorpay'"));
 });

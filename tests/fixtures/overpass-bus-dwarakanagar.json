@@ -1,0 +1,502 @@
+{
+  "version": 0.6,
+  "generator": "Overpass API 0.7.62.11 87bfad18",
+  "osm3s": {
+    "timestamp_osm_base": "2026-10-18T16:02:21Z",
+    "copyright": "The data included in this document is from www.openstreetmap.org. The data is made available under ODbL."
+  },
+  "elements": [
+
+{
+  "type": "node",
+  "id": 1465008132,
+  "lat": 17.7228599,
+  "lon": 83.2908589,
+  "tags": {
+    "bench": "yes",
+    "bus": "yes",
+    "highway": "bus_stop",
+    "name": "Visakhapatnam Railway Station",
+    "name:te": "విశాఖపట్నం రైల్వే స్టేషన్",
+    "operator": "APSRTC",
+    "public_transport": "platform",
+    "shelter": "yes"
+  }
+},
+{
+  "type": "node",
+  "id": 1474041919,
+  "lat": 17.7121701,
+  "lon": 83.3024586,
+  "tags": {
+    "bus": "yes",
+    "highway": "bus_stop",
+    "local_ref": "Jagadamba Stop",
+    "name": "Jagadamba",
+    "name:te": "జగదాంబ",
+    "public_transport": "platform"
+  }
+},
+{
+  "type": "node",
+  "id": 1811267986,
+  "lat": 17.7223754,
+  "lon": 83.3076067,
+  "tags": {
+    "bus": "yes",
+    "highway": "bus_stop",
+    "local_ref": "GVMC bus stop",
+    "name": "GVMC",
+    "public_transport": "platform"
+  }
+},
+{
+  "type": "node",
+  "id": 1811347313,
+  "lat": 17.7229823,
+  "lon": 83.3071441,
+  "tags": {
+    "highway": "bus_stop",
+    "local_ref": "dwaraka bus stand city bus stop",
+    "name": "Dwaraka bus stand city bus stop"
+  }
+},
+{
+  "type": "node",
+  "id": 1815811154,
+  "lat": 17.7236639,
+  "lon": 83.3178184,
+  "tags": {
+    "bus": "yes",
+    "highway": "bus_stop",
+    "name": "Siripuram Junction",
+    "public_transport": "platform",
+    "shelter": "yes"
+  }
+},
+{
+  "type": "node",
+  "id": 1815835992,
+  "lat": 17.7246962,
+  "lon": 83.3198626,
+  "tags": {
+    "highway": "bus_stop",
+    "name": "Siripuram (towards Pedda Waltair)"
+  }
+},
+{
+  "type": "node",
+  "id": 2332910442,
+  "lat": 17.7435478,
+  "lon": 83.3156935,
+  "tags": {
+    "bus": "yes",
+    "highway": "bus_stop",
+    "name": "Seethammadhara",
+    "public_transport": "platform"
+  }
+},
+{
+  "type": "node",
+  "id": 2332910445,
+  "lat": 17.7433179,
+  "lon": 83.3144918,
+  "tags": {
+    "highway": "bus_stop",
+    "name": "Seethammadhara"
+  }
+},
+{
+  "type": "node",
+  "id": 3921525381,
+  "lat": 17.7336080,
+  "lon": 83.2881297,
+  "tags": {
+    "bus": "yes",
+    "highway": "bus_stop",
+    "public_transport": "platform"
+  }
+},
+{
+  "type": "node",
+  "id": 3921525801,
+  "lat": 17.7336653,
+  "lon": 83.2878218,
+  "tags": {
+    "highway": "bus_stop"
+  }
+},
+{
+  "type": "node",
+  "id": 3929866660,
+  "lat": 17.7207619,
+  "lon": 83.3034116,
+  "tags": {
+    "bus": "yes",
+    "highway": "bus_stop",
+    "public_transport": "platform"
+  }
+},
+{
+  "type": "node",
+  "id": 3929870658,
+  "lat": 17.7290046,
+  "lon": 83.3066665,
+  "tags": {
+    "bus": "yes",
+    "highway": "bus_stop",
+    "public_transport": "platform"
+  }
+},
+{
+  "type": "node",
+  "id": 3969897597,
+  "lat": 17.7263501,
+  "lon": 83.3237474,
+  "tags": {
+    "bench": "yes",
+    "bus": "yes",
+    "covered": "yes",
+    "highway": "bus_stop",
+    "name": "Andhra University",
+    "public_transport": "platform",
+    "shelter": "yes"
+  }
+},
+{
+  "type": "node",
+  "id": 4052917910,
+  "lat": 17.7229682,
+  "lon": 83.3072582,
+  "tags": {
+    "highway": "bus_stop"
+  }
+},
+{
+  "type": "node",
+  "id": 4052917920,
+  "lat": 17.7232722,
+  "lon": 83.3073839,
+  "tags": {
+    "bus": "yes",
+    "highway": "bus_stop",
+    "mapillary": "811361679806838",
+    "name": "APSRTC Complex South City Bus Stop",
+    "public_transport": "platform"
+  }
+},
+{
+  "type": "node",
+  "id": 4052917925,
+  "lat": 17.7232932,
+  "lon": 83.3071251,
+  "tags": {
+    "bus": "yes",
+    "highway": "bus_stop",
+    "public_transport": "platform"
+  }
+},
+{
+  "type": "node",
+  "id": 4305483049,
+  "lat": 17.7203974,
+  "lon": 83.3142225,
+  "tags": {
+    "highway": "bus_stop"
+  }
+},
+{
+  "type": "node",
+  "id": 9740746804,
+  "lat": 17.7366117,
+  "lon": 83.3084926,
+  "tags": {
+    "bus": "yes",
+    "highway": "bus_stop",
+    "name": "Gurudwara",
+    "name:te": "గురుద్వార్",
+    "operator": "APSRTC",
+    "public_transport": "platform"
+  }
+},
+{
+  "type": "node",
+  "id": 10831955029,
+  "lat": 17.7362338,
+  "lon": 83.3203240,
+  "tags": {
+    "amenity": "bus_station",
+    "bus": "yes",
+    "check_date": "2024-03-18",
+    "name": "APSRTC Bus Stand, Maddilapalem",
+    "name:te": "మద్దిలపాలెం బస్ స్టాండ్",
+    "operator": "APSRTC",
+    "public_transport": "station"
+  }
+},
+{
+  "type": "node",
+  "id": 10831955033,
+  "lat": 17.7246903,
+  "lon": 83.3089085,
+  "tags": {
+    "bus": "yes",
+    "highway": "bus_stop",
+    "name": "Asilmetta Bus Stop",
+    "public_transport": "platform"
+  }
+},
+{
+  "type": "node",
+  "id": 10831955035,
+  "lat": 17.7240234,
+  "lon": 83.3079579,
+  "tags": {
+    "amenity": "bus_station",
+    "bus": "yes",
+    "name": "APSRTC City Bus Terminal",
+    "public_transport": "station"
+  }
+},
+{
+  "type": "node",
+  "id": 10831955037,
+  "lat": 17.7365186,
+  "lon": 83.3077063,
+  "tags": {
+    "amenity": "bus_station",
+    "bus": "yes",
+    "name": "Gurudwara",
+    "name:te": "గురుద్వార్",
+    "operator": "APSRTC",
+    "public_transport": "station"
+  }
+},
+{
+  "type": "node",
+  "id": 10834383548,
+  "lat": 17.7113423,
+  "lon": 83.3183078,
+  "tags": {
+    "amenity": "bus_station",
+    "bus": "yes",
+    "name": "RK Beach",
+    "operator": "APSRTC",
+    "public_transport": "station"
+  }
+},
+{
+  "type": "node",
+  "id": 11609588995,
+  "lat": 17.7234734,
+  "lon": 83.3046776,
+  "tags": {
+    "bus": "yes",
+    "highway": "bus_stop",
+    "name": "LIC",
+    "public_transport": "platform",
+    "source": "local knowledge"
+  }
+},
+{
+  "type": "node",
+  "id": 11609593380,
+  "lat": 17.7239079,
+  "lon": 83.3055991,
+  "tags": {
+    "bus": "yes",
+    "highway": "bus_stop",
+    "name": "APSRTC Complex West Bus Stop",
+    "public_transport": "platform",
+    "source": "survey"
+  }
+},
+{
+  "type": "node",
+  "id": 11647277520,
+  "lat": 17.7369039,
+  "lon": 83.3070417,
+  "tags": {
+    "bus": "yes",
+    "highway": "bus_stop",
+    "name": "Gurudwara",
+    "public_transport": "platform"
+  }
+},
+{
+  "type": "node",
+  "id": 11726451616,
+  "lat": 17.7198559,
+  "lon": 83.2875779,
+  "tags": {
+    "bus": "yes",
+    "highway": "bus_stop",
+    "name": "Gnanapuram",
+    "public_transport": "platform"
+  }
+},
+{
+  "type": "node",
+  "id": 11726451621,
+  "lat": 17.7210917,
+  "lon": 83.2869877,
+  "tags": {
+    "bus": "yes",
+    "highway": "bus_stop",
+    "name": "Gnanapuram",
+    "operator": "APSRTC",
+    "public_transport": "platform"
+  }
+},
+{
+  "type": "node",
+  "id": 11726451622,
+  "lat": 17.7180036,
+  "lon": 83.2891605,
+  "tags": {
+    "bus": "yes",
+    "highway": "bus_stop",
+    "name": "Convent Junction",
+    "operator": "APSRTC",
+    "public_transport": "platform"
+  }
+},
+{
+  "type": "node",
+  "id": 11726451627,
+  "lat": 17.7179431,
+  "lon": 83.2890157,
+  "tags": {
+    "bus": "yes",
+    "highway": "bus_stop",
+    "name": "Convent Junction",
+    "operator": "APSRTC",
+    "public_transport": "platform"
+  }
+},
+{
+  "type": "node",
+  "id": 11739951543,
+  "lat": 17.7355643,
+  "lon": 83.3208149,
+  "tags": {
+    "bus": "yes",
+    "highway": "bus_stop",
+    "name": "Maddilapalem",
+    "name:te": "మద్దిలపాలెం",
+    "public_transport": "platform"
+  }
+},
+{
+  "type": "node",
+  "id": 11740884409,
+  "lat": 17.7307705,
+  "lon": 83.3158887,
+  "tags": {
+    "bus": "yes",
+    "highway": "bus_stop",
+    "name": "Bullayya College",
+    "public_transport": "platform"
+  }
+},
+{
+  "type": "node",
+  "id": 11741875834,
+  "lat": 17.7278055,
+  "lon": 83.3114480,
+  "tags": {
+    "bus": "yes",
+    "highway": "bus_stop",
+    "name": "Rama Talkies",
+    "name:te": "రామా టాకీస్",
+    "operator": "APSRTC",
+    "public_transport": "platform"
+  }
+},
+{
+  "type": "node",
+  "id": 11775389955,
+  "lat": 17.7237999,
+  "lon": 83.3066698,
+  "tags": {
+    "amenity": "bus_station",
+    "bus": "yes",
+    "name": "APSRTC Non - Stop Bus Terminal",
+    "public_transport": "station"
+  }
+},
+{
+  "type": "node",
+  "id": 12364878520,
+  "lat": 17.7204867,
+  "lon": 83.3031519,
+  "tags": {
+    "bus": "yes",
+    "highway": "bus_stop",
+    "public_transport": "platform"
+  }
+},
+{
+  "type": "node",
+  "id": 12438429654,
+  "lat": 17.7387709,
+  "lon": 83.2932658,
+  "tags": {
+    "highway": "bus_stop",
+    "name": "Port Hospital"
+  }
+},
+{
+  "type": "node",
+  "id": 12441119183,
+  "lat": 17.7300267,
+  "lon": 83.3146953,
+  "tags": {
+    "bus": "yes",
+    "highway": "bus_stop",
+    "public_transport": "platform"
+  }
+},
+{
+  "type": "node",
+  "id": 12531596095,
+  "lat": 17.7407425,
+  "lon": 83.2994417,
+  "tags": {
+    "bench": "yes",
+    "highway": "bus_stop",
+    "name": "Akayyapalem North",
+    "shelter": "yes"
+  }
+},
+{
+  "type": "node",
+  "id": 12532234399,
+  "lat": 17.7353625,
+  "lon": 83.2881805,
+  "tags": {
+    "bus": "yes",
+    "highway": "bus_stop",
+    "name": "Thatichetlapalem",
+    "public_transport": "platform"
+  }
+},
+{
+  "type": "node",
+  "id": 12618255448,
+  "lat": 17.7219335,
+  "lon": 83.2912803,
+  "tags": {
+    "bench": "yes",
+    "bus": "yes",
+    "highway": "bus_stop",
+    "name": "Visakhapatnam Railway Station",
+    "name:te": "విశాఖపట్నం రైల్వే స్టేషన్",
+    "operator": "APSRTC",
+    "public_transport": "platform",
+    "shelter": "yes"
+  }
+}
+
+  ]
+}

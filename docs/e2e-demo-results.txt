@@ -1,5 +1,6 @@
-PASS demo: search renders
+PASS demo: shell boots, Shop search renders
 PASS demo: in-browser backend active
 PASS demo: order placed
 PASS demo: tracking progresses
+PASS demo: category search (Overpass fixture)
 PASS demo: page errors 0 

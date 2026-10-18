@@ -11,7 +11,7 @@ export async function offlineRegions() {
   if (!regions) regions = await (await fetch('offline/regions.json')).json();
   return regions;
 }
-export async function offlineStyle(maplibregl, city, lang = 'en') {
+export async function offlineStyle(maplibregl, city, lang = 'en', flavor = 'light') {
   const meta = await offlineRegions();
   const region = meta.regions[city];
   if (!region) throw new Error(`no_offline_region:${city}`);
@@ -28,9 +28,9 @@ export async function offlineStyle(maplibregl, city, lang = 'en') {
   return {
     version: 8,
     glyphs: `${base()}offline/fonts/{fontstack}/{range}.pbf`,
-    sprite: `${base()}offline/sprites/light`,
+    sprite: `${base()}offline/sprites/${flavor === 'dark' ? 'dark' : 'light'}`,
     sources: { protomaps: { type: 'vector', url: `pmtiles://${region.file}`, attribution: meta.attribution } },
-    layers: layers('protomaps', namedFlavor('light'), { lang: supported.includes(lang) ? lang : 'en' }),
+    layers: layers('protomaps', namedFlavor(flavor === 'dark' ? 'dark' : 'light'), { lang: supported.includes(lang) ? lang : 'en' }),
   };
 }
 export function insideRegion(meta, city, p) {
