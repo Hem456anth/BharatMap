@@ -92,3 +92,10 @@ Title/description/OG tags, JSON-LD `WebApplication`, theme colour, manifest + ic
 
 ## 9. Verdict
 A working, tested MVP of the core loop (find → compare → order → dispatch → track) with India-specific address intelligence and 11-language UX, built only on legitimate open data. Not production-launch-ready until: real sellers/inventory, payments, rider app with GPS, self-hosted map stack with Survey-of-India boundaries, cookie-based auth, Redis/PostGIS, DPDP compliance, and native-speaker i18n review.
+
+## v0.2 audit (2026-10-18)
+- `npm test`: **44/44 pass** (32 v0.1 + 12 new: migration 002 integrity, Razorpay order/verify/webhook with stubbed HTTP, disabled-payments 503, notifications, admin RBAC/overview/CSV, product deactivation, user disable revokes live JWT, GSTIN validation, Capacitor CORS).
+- Chromium E2E against server: **21/21 pass** (desktop + mobile), 0 console errors; new steps: offline map renders bundled PMTiles with zero online tile requests, admin dashboard (verify seller, products, users, audit, CSV download), notifications bell, settings URL validation.
+- Migration 002 verified on a v0.1 database with existing orders: rows and order_items preserved, `PRAGMA foreign_key_check` clean, cascades still active.
+- Security changes: production refuses to seed without `ADMIN_PASSWORD` (≥12 chars); disabled users lose access immediately; Razorpay signatures checked with constant-time compare; webhook verified over raw bytes; CSV export guards against formula injection; CSP extended only for checkout.razorpay.com; Android `allowBackup=false`, cleartext disabled.
+- APK: built in CI (GitHub Actions, x86 runner). The Hark sandbox is aarch64, where Google ships no Android build-tools, so no APK is built locally.

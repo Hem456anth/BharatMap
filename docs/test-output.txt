@@ -1,206 +1,278 @@
 
 > india-mapos@0.1.0 test
-> node --no-warnings --test --test-concurrency=1 tests/unit.test.js tests/api.test.js
+> node --no-warnings --test --test-concurrency=1 tests/unit.test.js tests/api.test.js tests/phase2.test.js
 
 TAP version 13
 # Subtest: health + security headers
 ok 1 - health + security headers
   ---
-  duration_ms: 39.453233
+  duration_ms: 41.732889
   type: 'test'
   ...
 # Subtest: search validates input and returns sellers
 ok 2 - search validates input and returns sellers
   ---
-  duration_ms: 15.408978
+  duration_ms: 19.669121
   type: 'test'
   ...
 # Subtest: geocode, reverse, digipin, route (offline fallback), optimize
 ok 3 - geocode, reverse, digipin, route (offline fallback), optimize
   ---
-  duration_ms: 52.393286
+  duration_ms: 57.989093
   type: 'test'
   ...
 # Subtest: assistant + mobility + i18n + ONDC catalog
 ok 4 - assistant + mobility + i18n + ONDC catalog
   ---
-  duration_ms: 48.358887
+  duration_ms: 31.294135
   type: 'test'
   ...
 # Subtest: auth: register, bad login, lockout, protected routes, RBAC
 ok 5 - auth: register, bad login, lockout, protected routes, RBAC
   ---
-  duration_ms: 103.912431
+  duration_ms: 95.752496
   type: 'test'
   ...
 # Subtest: KILLER FLOW: search → order → rider assigned → live tracking → delivered; stock decremented
 ok 6 - KILLER FLOW: search → order → rider assigned → live tracking → delivered; stock decremented
   ---
-  duration_ms: 1595.414426
+  duration_ms: 1592.693557
   type: 'test'
   ...
 # Subtest: order validation: out of stock, bad qty, out of range, no drop
 ok 7 - order validation: out of stock, bad qty, out of range, no drop
   ---
-  duration_ms: 46.677608
+  duration_ms: 47.261946
   type: 'test'
   ...
 # Subtest: wholesale pickup order applies tier price; cancel restores stock
 ok 8 - wholesale pickup order applies tier price; cancel restores stock
   ---
-  duration_ms: 40.86222
+  duration_ms: 40.143713
   type: 'test'
   ...
 # Subtest: seller dashboard: KPIs, edit own product, cannot edit others
 ok 9 - seller dashboard: KPIs, edit own product, cannot edit others
   ---
-  duration_ms: 49.071114
+  duration_ms: 47.58025
   type: 'test'
   ...
 # Subtest: admin verify + fleet; malformed JSON; unknown route
 ok 10 - admin verify + fleet; malformed JSON; unknown route
   ---
-  duration_ms: 43.64648
+  duration_ms: 45.292817
   type: 'test'
   ...
 # Subtest: SQL injection attempt is inert
 ok 11 - SQL injection attempt is inert
   ---
-  duration_ms: 9.412471
+  duration_ms: 6.549809
   type: 'test'
   ...
 # Subtest: metrics endpoint exposes Prometheus counters
 ok 12 - metrics endpoint exposes Prometheus counters
   ---
-  duration_ms: 2.803788
+  duration_ms: 3.682893
+  type: 'test'
+  ...
+# Subtest: migrations: 002 applied, orders accept razorpay, FK intact
+ok 13 - migrations: 002 applied, orders accept razorpay, FK intact
+  ---
+  duration_ms: 2.753452
+  type: 'test'
+  ...
+# Subtest: config exposes enabled integrations without secrets
+ok 14 - config exposes enabled integrations without secrets
+  ---
+  duration_ms: 40.785988
+  type: 'test'
+  ...
+# Subtest: CORS allows the Capacitor WebView origin, not arbitrary sites
+ok 15 - CORS allows the Capacitor WebView origin, not arbitrary sites
+  ---
+  duration_ms: 9.579197
+  type: 'test'
+  ...
+# Subtest: razorpay: order created with provider order, signature verified, bad signature rejected
+ok 16 - razorpay: order created with provider order, signature verified, bad signature rejected
+  ---
+  duration_ms: 119.513279
+  type: 'test'
+  ...
+# Subtest: razorpay webhook: requires valid signature over raw body
+ok 17 - razorpay webhook: requires valid signature over raw body
+  ---
+  duration_ms: 52.304926
+  type: 'test'
+  ...
+# Subtest: signature helper is constant-time safe on length mismatch
+ok 18 - signature helper is constant-time safe on length mismatch
+  ---
+  duration_ms: 0.268846
+  type: 'test'
+  ...
+# Subtest: razorpay disabled deployment returns 503, never creates an order
+ok 19 - razorpay disabled deployment returns 503, never creates an order
+  ---
+  duration_ms: 134.166471
+  type: 'test'
+  ...
+# Subtest: notifications: customer and seller get order + payment notifications
+ok 20 - notifications: customer and seller get order + payment notifications
+  ---
+  duration_ms: 91.891719
+  type: 'test'
+  ...
+# Subtest: admin: RBAC, overview, lists, CSV report
+ok 21 - admin: RBAC, overview, lists, CSV report
+  ---
+  duration_ms: 97.383616
+  type: 'test'
+  ...
+# Subtest: admin: deactivate product hides it from search and blocks ordering; reactivate restores
+ok 22 - admin: deactivate product hides it from search and blocks ordering; reactivate restores
+  ---
+  duration_ms: 89.982486
+  type: 'test'
+  ...
+# Subtest: admin: disabling a user revokes their live token and login; admin cannot disable self
+ok 23 - admin: disabling a user revokes their live token and login; admin cannot disable self
+  ---
+  duration_ms: 117.88366
+  type: 'test'
+  ...
+# Subtest: admin: GSTIN validation on business update
+ok 24 - admin: GSTIN validation on business update
+  ---
+  duration_ms: 39.527481
   type: 'test'
   ...
 # Subtest: haversine: Vizag RTC to RK Beach ~2 km
-ok 13 - haversine: Vizag RTC to RK Beach ~2 km
+ok 25 - haversine: Vizag RTC to RK Beach ~2 km
   ---
-  duration_ms: 1.100545
+  duration_ms: 1.003249
   type: 'test'
   ...
 # Subtest: DIGIPIN matches India Post reference (Dak Bhawan → 39J-49L-L8T4)
-ok 14 - DIGIPIN matches India Post reference (Dak Bhawan → 39J-49L-L8T4)
+ok 26 - DIGIPIN matches India Post reference (Dak Bhawan → 39J-49L-L8T4)
   ---
-  duration_ms: 0.460529
+  duration_ms: 0.292559
   type: 'test'
   ...
 # Subtest: DIGIPIN round-trip within 5 m
-ok 15 - DIGIPIN round-trip within 5 m
+ok 27 - DIGIPIN round-trip within 5 m
   ---
-  duration_ms: 0.424412
+  duration_ms: 0.286796
   type: 'test'
   ...
 # Subtest: inIndia rejects outside points
-ok 16 - inIndia rejects outside points
+ok 28 - inIndia rejects outside points
   ---
-  duration_ms: 0.144929
+  duration_ms: 0.116773
   type: 'test'
   ...
 # Subtest: pointAlong interpolates
-ok 17 - pointAlong interpolates
+ok 29 - pointAlong interpolates
   ---
-  duration_ms: 0.213936
+  duration_ms: 0.903704
   type: 'test'
   ...
 # Subtest: address: landmark + locality + pincode resolves at high confidence
-ok 18 - address: landmark + locality + pincode resolves at high confidence
+ok 30 - address: landmark + locality + pincode resolves at high confidence
   ---
-  duration_ms: 3.596644
+  duration_ms: 2.312345
   type: 'test'
   ...
 # Subtest: address: pincode-only and Telugu locality
-ok 19 - address: pincode-only and Telugu locality
+ok 31 - address: pincode-only and Telugu locality
   ---
-  duration_ms: 3.98692
+  duration_ms: 3.73761
   type: 'test'
   ...
 # Subtest: address: short ASCII alias does not match inside words
-ok 20 - address: short ASCII alias does not match inside words
+ok 32 - address: short ASCII alias does not match inside words
   ---
-  duration_ms: 0.661865
+  duration_ms: 0.568956
   type: 'test'
   ...
 # Subtest: address: DIGIPIN input
-ok 21 - address: DIGIPIN input
+ok 33 - address: DIGIPIN input
   ---
-  duration_ms: 0.595018
+  duration_ms: 0.580275
   type: 'test'
   ...
 # Subtest: i18n: all 11 languages have every key
-ok 22 - i18n: all 11 languages have every key
+ok 34 - i18n: all 11 languages have every key
   ---
-  duration_ms: 0.757307
+  duration_ms: 0.756149
   type: 'test'
   ...
 # Subtest: i18n: native query normalisation
-ok 23 - i18n: native query normalisation
+ok 35 - i18n: native query normalisation
   ---
-  duration_ms: 0.658673
+  duration_ms: 0.50894
   type: 'test'
   ...
 # Subtest: query parsing: price, size, wholesale
-ok 24 - query parsing: price, size, wholesale
+ok 36 - query parsing: price, size, wholesale
   ---
-  duration_ms: 1.462757
+  duration_ms: 1.234485
   type: 'test'
   ...
 # Subtest: killer flow search: "LED TVs near me" returns TV sellers, nearest verified first
-ok 25 - killer flow search: "LED TVs near me" returns TV sellers, nearest verified first
+ok 37 - killer flow search: "LED TVs near me" returns TV sellers, nearest verified first
   ---
-  duration_ms: 1.535906
+  duration_ms: 1.320357
   type: 'test'
   ...
 # Subtest: search filters by size and price cap; in-stock first
-ok 26 - search filters by size and price cap; in-stock first
+ok 38 - search filters by size and price cap; in-stock first
   ---
-  duration_ms: 1.260744
+  duration_ms: 1.023709
   type: 'test'
   ...
 # Subtest: search re-centres on a named locality
-ok 27 - search re-centres on a named locality
+ok 39 - search re-centres on a named locality
   ---
-  duration_ms: 0.367403
+  duration_ms: 0.293749
   type: 'test'
   ...
 # Subtest: assistant intents
-ok 28 - assistant intents
+ok 40 - assistant intents
   ---
-  duration_ms: 14.655077
+  duration_ms: 13.843997
   type: 'test'
   ...
 # Subtest: pricing: free delivery above ₹999, bulky fee for 43" TV, wholesale tiers
-ok 29 - pricing: free delivery above ₹999, bulky fee for 43" TV, wholesale tiers
+ok 41 - pricing: free delivery above ₹999, bulky fee for 43" TV, wholesale tiers
   ---
-  duration_ms: 0.473858
+  duration_ms: 0.395544
   type: 'test'
   ...
 # Subtest: rider assignment prefers nearest suitable vehicle
-ok 30 - rider assignment prefers nearest suitable vehicle
+ok 42 - rider assignment prefers nearest suitable vehicle
   ---
-  duration_ms: 0.361714
+  duration_ms: 0.260975
   type: 'test'
   ...
 # Subtest: tracking progress is monotonic and ends delivered
-ok 31 - tracking progress is monotonic and ends delivered
+ok 43 - tracking progress is monotonic and ends delivered
   ---
-  duration_ms: 0.646983
+  duration_ms: 0.636335
   type: 'test'
   ...
 # Subtest: route optimisation never worse than input order
-ok 32 - route optimisation never worse than input order
+ok 44 - route optimisation never worse than input order
   ---
-  duration_ms: 0.308229
+  duration_ms: 0.284913
   type: 'test'
   ...
-1..32
-# tests 32
+1..44
+# tests 44
 # suites 0
-# pass 32
+# pass 44
 # fail 0
 # cancelled 0
 # skipped 0
 # todo 0
-# duration_ms 2471.378894
+# duration_ms 3653.595175
