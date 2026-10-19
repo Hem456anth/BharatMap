@@ -42,7 +42,7 @@ jobs:
         run: |
           PORT=8080 LOG_REQUESTS=0 node --no-warnings server/index.js > server.log 2>&1 &
           for i in $(seq 1 30); do curl -sf localhost:8080/api/health && break; sleep 1; done
-      - name: E2E v0.3–v0.5 (desktop + mobile; third-party map services served from fixtures, OSM Notes API mocked)
+      - name: E2E v0.3–v0.7 (desktop + mobile; third-party map services served from fixtures, OSM Notes API mocked)
         run: CHROME=$(which google-chrome || which chromium) node tests/e2e.mjs
       - uses: actions/upload-artifact@v4
         if: always()
@@ -54,7 +54,7 @@ jobs:
     needs: test
     env:
       HAS_KEYSTORE: ${{ secrets.ANDROID_KEYSTORE_B64 != '' }}
-      VER: 0.5.${{ github.run_number }}
+      VER: 0.7.${{ github.run_number }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -87,7 +87,7 @@ jobs:
         working-directory: android
         env:
           VERSION_CODE: ${{ github.run_number }}
-          VERSION_NAME: 0.5.${{ github.run_number }}
+          VERSION_NAME: 0.7.${{ github.run_number }}
           ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
           ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
           ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
@@ -161,10 +161,10 @@ jobs:
         if: github.ref == 'refs/heads/main'
         env: { GH_TOKEN: "${{ github.token }}" }
         run: |
-          FEATURES="Bharat Map 0.5 (sprint ${{ github.run_number }}): device tiers (Lite/Balanced/Full from device memory, CPU and network), offline search v2 over every bundled city (OSM Telugu/Hindi/Tamil/Kannada/… names, Latin↔Indic transliteration, pincodes, DIGIPIN), India road hints (take the flyover, stay on the service road, narrow road ahead, time-restriction badge), Indic guidance-voice picker. Earlier 0.5: lane guidance (OSRM/Valhalla lanes), speed-limit sign + overspeed chime (OSM maxspeed via Valhalla/Overpass; never shown when unknown), navigation sounds, sunrise/sunset day-night driving style, junction view, permission explainers + privacy dashboard (DPDP), report a map problem (OpenStreetMap notes) and 2-hour community incidents, geo:/bharatmap:// deep links + share links, commute card, multi-stop routes, offline maps for 11 cities with an offline place index, voice search, live location and list sharing."
+          FEATURES="Bharat Map 0.7 (build ${{ github.run_number }}): place-card service panels for 12 place types with every value labelled Live / Scheduled / Estimate / Link-out / Demo / Unavailable (no fabricated prices, fares, showtimes or ETAs); a catalogue of 92 Indian providers, each honestly classified, with new link-outs for Bharat Taxi, Yatri Sathi, Swiggy Dineout, ParkMate, Highway Delite, ChargeZone, KSRTC (Karnataka, Kerala), TNSTC, Noida/Ahmedabad/Lucknow/Kanpur/Kolkata metros, DMart Ready and JioMart through a link-out screen that names the destination; Hyderabad Metro scheduled departures from HMRL GTFS; Uber universal link with pickup/drop; online orders now wait as pending payment on a separate payment screen (Razorpay, plus Cashfree / PhonePe / Paytm prototype adapters, enabled only by server keys; without keys it says Payments not configured and nothing is charged; no upi:// intents); live traffic only with a TomTom/HERE key (otherwise Live traffic unavailable); truck routing via Valhalla truck costing; ONDC buyer prototype behind a flag (demo catalogue, not the ONDC network); admin Listings for place verification and provider links. Earlier: device tiers, offline search v2, India road hints, Indic voices, lane guidance, speed limits, offline maps for 11 cities, voice search, live location sharing."
           if [ -f "out/bharat-map-$VER.apk" ]; then
             ASSETS="out/bharat-map-$VER.apk out/bharat-map-$VER-debug.apk"
-            INSTALL="Install bharat-map-$VER.apk - the signed RELEASE build (not debuggable, no R8/minification). IMPORTANT: it is signed with the Bharat Map release key, which differs from the debug key used by earlier builds (0.5.12 and older), so Android will refuse to update over a debug install - uninstall the old debug build once, then install this APK (Install unknown apps must be allowed). Future release builds will update in place. bharat-map-$VER-debug.apk is the debug build, for troubleshooting only."
+            INSTALL="Install bharat-map-$VER.apk - the signed RELEASE build (not debuggable, no R8/minification). IMPORTANT: it is signed with the Bharat Map release key, which differs from the debug key used by earlier builds (0.5.12 and older; 0.5.13 and later use the release key), so Android will refuse to update over a debug install - uninstall the old debug build once, then install this APK (Install unknown apps must be allowed). Future release builds will update in place. bharat-map-$VER-debug.apk is the debug build, for troubleshooting only."
           else
             ASSETS="out/bharat-map-$VER-debug.apk"
             INSTALL="Release signing secrets (ANDROID_KEYSTORE_B64 etc.) were not available to this run; the release-key-signed APK, if any, is attached separately after offline signing."

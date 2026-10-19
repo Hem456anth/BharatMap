@@ -59,6 +59,8 @@ export function progress(order, nowMs = Date.now(), timeScale = RULES.demoTimeSc
   const elapsed = ((nowMs - order.created_ms) / 1000) * timeScale;
   const pick = order.business ? { lat: order.business.lat, lng: order.business.lng } : null;
   if (['cancelled', 'rejected'].includes(order.status)) return { status: order.status, position: pick, fraction: 0, eta_s: null };
+  // v0.7: not confirmed until a verified payment — nothing moves, no ETA.
+  if (order.status === 'pending_payment') return { status: 'pending_payment', position: pick, fraction: 0, eta_s: null };
   if (order.fulfilment === 'pickup') {
     const ready = elapsed >= RULES.pickPackSec;
     return { status: order.status === 'completed' ? 'completed' : ready ? 'ready_for_pickup' : 'accepted', position: pick, fraction: ready ? 1 : elapsed / RULES.pickPackSec, eta_s: Math.max(0, Math.round((RULES.pickPackSec - elapsed) / timeScale)) };

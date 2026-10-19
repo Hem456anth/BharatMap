@@ -14,8 +14,10 @@ const browser = await chromium.launch({ executablePath: process.env.CHROME || '/
 const results = [];
 const step = async (name, fn) => {
   if (ONLY && !ONLY.test(name) && !/map-first|performance/.test(name)) return;
+  if (ONLY && process.env.E2E_SKIP_PERF && /performance/.test(name) && !ONLY.test(name)) return; // chunked runs: perf measured once
   const t = Date.now();
   try { await fn(); results.push(`PASS ${name} (${Date.now() - t} ms)`); } catch (e) { results.push(`FAIL ${name}: ${e.message.split('\n')[0]}`); console.log(`FAIL ${name}`, e.message.split('\n').slice(0, 3).join(' | ')); }
+  if (process.env.E2E_LOG) fs.appendFileSync(process.env.E2E_LOG, `${results[results.length - 1]}\n`); // incremental log for chunked runs
 };
 const assert = (c, m) => { if (!c) throw new Error(m); };
 
@@ -247,7 +249,8 @@ for (const vp of [{ name: 'desktop', width: 1366, height: 820 }, { name: 'mobile
       await page.click('#layersBtn');
       await waitView(page, 'layers');
       assert(await page.isDisabled('#lyrTraffic'), 'traffic disabled');
-      assert(/licensed data partner/.test(await page.textContent('#layersBody')), 'traffic note');
+      await page.waitForFunction(() => /licensed data partner|Live traffic unavailable/.test(document.querySelector('#layersBody').textContent), null, { timeout: 5000 }).catch(() => {}); // v0.7: provider state replaces the static note
+      assert(/licensed data partner|Live traffic unavailable/.test(await page.textContent('#layersBody')), 'traffic note');
       await page.check('#lyrTransit');
       assert(await page.evaluate(() => window.__bm.ctx.map.getLayoutProperty('bm-transit', 'visibility')) === 'visible', 'transit layer');
       await page.check('[data-ov=ev]');
@@ -371,6 +374,20 @@ for (const vp of [{ name: 'desktop', width: 1366, height: 820 }, { name: 'mobile
       if (before) { await page.click('[data-verify][data-v="1"]'); await page.waitForFunction((n) => document.querySelectorAll('[data-verify][data-v="1"]').length === n - 1, before); }
       await page.click('[data-asec=products]'); await page.waitForSelector('[data-pactive]');
       await page.click('[data-asec=users]'); await page.waitForSelector('[data-urole]');
+      // v0.7 listings: save a listing, add a provider link (starts unverified), verify it.
+      await page.click('[data-asec=listings]'); await page.waitForSelector('[data-lform]');
+      await page.fill('[data-lform] [name=place_id]', 'seller:b1'); await page.selectOption('[data-lform] [name=verification]', 'verified');
+      await page.click('[data-lform] button.primary');
+      await page.waitForFunction(() => document.querySelector('[data-lform] [name=place_id]')?.value === '' && document.querySelector('#listingTable tr[data-place="seller:b1"]')); // re-rendered after save
+      const linkUrl = `https://example.org/menu?e2e=${Date.now()}`;
+      await page.fill('[data-pform] [name=place_id]', 'seller:b1'); await page.selectOption('[data-pform] [name=kind]', 'menu');
+      await page.fill('[data-pform] [name=label]', 'E2E menu'); await page.fill('[data-pform] [name=url]', linkUrl);
+      await page.click('[data-pform] button.primary');
+      await page.waitForFunction(() => [...document.querySelectorAll('#linkTable tr.off')].some((r) => /E2E menu/.test(r.textContent)));
+      const lid = await page.$$eval('#linkTable tr[data-link]', (rows) => rows.find((r) => /E2E menu/.test(r.textContent)).dataset.link);
+      await page.check(`[data-lkver="${lid}"]`); await page.waitForSelector(`#linkTable tr[data-link="${lid}"]:not(.off)`);
+      await page.screenshot({ path: `${OUT}/v07-desktop-06-admin-listings.png` });
+      page.once('dialog', (d) => d.accept()); await page.click(`[data-lkdel="${lid}"]`); await page.waitForFunction((id) => !document.querySelector(`#linkTable tr[data-link="${id}"]`), lid);
       await page.click('[data-asec=overview]'); await page.waitForSelector('[data-csv]');
       const [dl] = await Promise.all([page.waitForEvent('download', { timeout: 10000 }), page.click('[data-csv]')]);
       const head = fs.readFileSync(await dl.path(), 'utf8').split('\n')[0];
@@ -858,6 +875,8 @@ async function startVizagSim(page, to, { kmh = 30, startAt = null } = {}) {
   await page.waitForSelector('#nav:not([hidden])');
   if (startAt) {
     await page.waitForFunction(() => window.__bm.ctx.nav.hints.events?.length, null, { timeout: 15000 });
+    // The previous route's hint events can still be present for a moment: wait until the wanted event exists.
+    await page.waitForFunction(`(() => { try { return Number.isFinite((${startAt.toString()})()); } catch { return false; } })()`, null, { timeout: 15000 });
     const m = await page.evaluate(startAt);
     await page.evaluate(({ m, kmh }) => { const c = window.__bm.ctx; const r = c.nav.route; const to = c.directions.state.to; c.nav.end({ silent: true }); c.nav.setSimSpeedKmh(kmh); c.nav.start(r, { mode: 'drive', dest: to, simulate: true, simStartM: m }); }, { m, kmh });
     await page.waitForSelector('#nav:not([hidden])');
@@ -955,6 +974,113 @@ for (const vp of [{ name: 'desktop', width: 1366, height: 820 }, { name: 'mobile
     await page.selectOption('#voicePick', '');
     assert((await page.evaluate(() => localStorage.getItem('bm-guidance-voice'))) === null, 'automatic restored');
     const real = errors.filter((e) => !/ERR_INTERNET_DISCONNECTED/.test(e)); // the offline-search step turns the network off on purpose
+    assert(!real.length, `console errors: ${real.slice(0, 2).join(' | ')}`);
+  });
+  await ctx.close();
+}
+
+// ---------------- v0.7: place-card service panels, link-out interstitial, order → separate payment screen ----------------
+const shot7 = (page, name) => page.screenshot({ path: `${OUT}/v07-${name}.png` });
+const PARADISE = { id: 'osm:node/9000000001', name: 'Paradise Biryani', lat: 17.4416, lng: 78.4873, tags: { amenity: 'restaurant', cuisine: 'biryani', website: 'https://www.paradisebiryani.com', opening_hours: 'Mo-Su 11:00-23:00' } };
+const AMEERPET = { id: 'osm:node/9000000002', name: 'Ameerpet', lat: 17.4357214, lng: 78.4447933, tags: { railway: 'station', station: 'subway', name: 'Ameerpet', network: 'Hyderabad Metro' } };
+const V7_INIT = `globalThis.__BM_NOW__ = '2026-10-21T10:00:00+05:30'; window.__BM_LINKOUT_TEST__ = [];`;
+for (const vp of [{ name: 'desktop', width: 1366, height: 820 }, { name: 'mobile', width: 390, height: 844, isMobile: true }]) {
+  const { ctx, page, errors } = await newPage(vp, { init: V7_INIT });
+  const V = vp.name;
+  const panelReady = (type) => page.waitForFunction((t) => { const p = document.querySelector('#pcServices .sv-panel'); return p && p.dataset.type === t && p.getAttribute('aria-busy') === 'false'; }, type, { timeout: 20000 });
+  await step(`v07 ${V}: restaurant panel — labelled rows, Swiggy link-out through the interstitial (host named, unverified flagged)`, async () => {
+    await boot(page);
+    await page.evaluate((p) => window.__bm.ctx.place.open(p), PARADISE);
+    await panelReady('restaurant');
+    const labels = await page.$$eval('#pcServices [data-label]', (e) => e.map((x) => x.dataset.label));
+    assert(labels.includes('linkout') && labels.includes('unavailable'), `labels ${labels}`);
+    assert(/Menu/.test(await page.textContent('#pcServices')) && !/₹/.test(await page.textContent('#pcServices [data-sec]')), 'no fabricated prices');
+    await page.click('[data-sva=swiggy]');
+    await page.waitForSelector('#linkoutDlg[open]');
+    const body = await page.textContent('#loBody');
+    assert(/www\.swiggy\.com/.test(body) && /not verified/i.test(body), body);
+    await shot7(page, `${V}-01-restaurant-linkout`);
+    await page.click('#loGo');
+    const urls = await page.evaluate(() => window.__BM_LINKOUT_TEST__);
+    assert(urls.length === 1 && urls[0].startsWith('https://www.swiggy.com/search?query=Paradise'), urls.join());
+    assert(await page.isVisible('[data-sva=p-magicpin]') || await page.$('[data-sva=p-magicpin]'), 'magicpin from the provider catalogue');
+  });
+  await step(`v07 ${V}: metro station — Scheduled departures from the bundled HMRL GTFS, WhatsApp ticket link-out, live arrivals Unavailable`, async () => {
+    await page.evaluate((p) => window.__bm.ctx.place.open(p), AMEERPET);
+    await panelReady('station');
+    await page.waitForFunction(() => document.querySelectorAll('#pcServices [data-sec=departures] [data-label=scheduled]').length >= 2, null, { timeout: 20000 });
+    const txt = await page.textContent('#pcServices');
+    assert(/Scheduled/.test(txt) && /(Red|Blue) line/.test(txt) && /Live arrivals/.test(txt), txt.slice(0, 300));
+    assert(!(await page.$('#pcServices [data-sec=departures] [data-label=live]')), 'never Live without a feed');
+    assert(await page.$('[data-sva=hmrl-wa]'), 'HMRL WhatsApp ticket action');
+    await shot7(page, `${V}-02-metro-departures`);
+  });
+  await step(`v07 ${V}: ride — Estimate ETA (no fare) + Uber universal link with pickup/drop`, async () => {
+    await page.evaluate(() => { window.__bm.ctx.myLoc = { lat: 17.4375, lng: 78.4483, accuracy: 10, ts: Date.now() }; });
+    await page.evaluate((p) => window.__bm.ctx.place.open(p), PARADISE);
+    await panelReady('restaurant');
+    await page.click('#svRide summary');
+    await page.waitForFunction(() => document.querySelector('#svRide [data-row=eta] [data-label=estimate]'), null, { timeout: 20000 });
+    const fare = await page.textContent('#svRide [data-row=fare]');
+    assert(/Unavailable|Shown in the ride app/.test(fare) && !/₹/.test(fare), fare);
+    await page.click('[data-sva=uber]');
+    await page.waitForSelector('#linkoutDlg[open]');
+    assert(/m\.uber\.com/.test(await page.textContent('#loBody')), 'host named');
+    await shot7(page, `${V}-03-ride-uber`);
+    await page.click('#loGo');
+    const u = (await page.evaluate(() => window.__BM_LINKOUT_TEST__)).pop();
+    assert(u.startsWith('https://m.uber.com/ul/?action=setPickup') && /pickup\[latitude\]=17\.437/.test(decodeURIComponent(u)) && /dropoff\[latitude\]=17\.441/.test(decodeURIComponent(u)), u);
+    assert(/BluSmart/.test(await page.textContent('#svRide')), 'BluSmart shown as Unavailable');
+    await home(page);
+  });
+  await step(`v07 ${V}: Demo shop order → separate payment screen (pending_payment, "Payments not configured", never paid) → COD order → tracking`, async () => {
+    await page.click('#openShop'); await waitView(page, 'shop');
+    await page.fill('#shopQ', 'LED TVs near me'); await page.press('#shopQ', 'Enter');
+    await page.waitForSelector('[data-add]:not([disabled])', { timeout: 20000 });
+    await page.click('[data-add]:not([disabled])');
+    await page.click('#cartBtn'); await page.waitForSelector('#cartDlg[open]');
+    await page.check('[name=ful][value=pickup]'); await page.check('[name=pay][value=online]');
+    await page.click('#placeBtn');
+    await page.waitForSelector('#authDlg[open]'); await page.click('#authForm button.primary');
+    await page.waitForFunction(() => !document.querySelector('#authDlg').open);
+    await page.click('#cartBtn'); await page.waitForSelector('#cartDlg[open]');
+    await page.check('[name=ful][value=pickup]'); await page.check('[name=pay][value=online]');
+    await page.click('#placeBtn');
+    await waitView(page, 'payment');
+    await page.waitForSelector('[data-testid=payNotConfigured]', { timeout: 15000 });
+    const hash = await page.evaluate(() => location.hash);
+    assert(/^#\/pay\/ord_/.test(hash), hash);
+    const id = hash.slice(6);
+    const o = await page.evaluate(async (oid) => (await fetch(`/api/orders/${oid}`, { headers: { Authorization: `Bearer ${localStorage.getItem('mapos-token')}` } })).json(), id);
+    assert(o.status === 'pending_payment' && o.payment_status === 'pending_payment' && o.demo === true, JSON.stringify({ s: o.status, p: o.payment_status }));
+    assert(/Demo/.test(await page.textContent('#payBody')), 'Demo label on the payment screen');
+    const tryPay = await page.evaluate(async (oid) => (await fetch('/api/payments/orders', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${localStorage.getItem('mapos-token')}` }, body: JSON.stringify({ order_id: oid, gateway: 'razorpay' }) })).status, id);
+    assert(tryPay === 503, `payments_not_configured expected, got ${tryPay}`);
+    await shot7(page, `${V}-04-payment-not-configured`);
+    await page.click('[data-pay-track]');
+    await page.waitForFunction(() => /Pending payment/.test(document.querySelector('#tracking')?.textContent || ''), null, { timeout: 15000 });
+    await page.waitForTimeout(2500);
+    const still = await page.evaluate(async (oid) => (await fetch(`/api/orders/${oid}/track`, { headers: { Authorization: `Bearer ${localStorage.getItem('mapos-token')}` } })).json(), id);
+    assert(still.status === 'pending_payment' && still.fraction === 0, 'no tracking progress before verified payment');
+    // COD order: confirmed at once, Demo-labelled tracking runs.
+    await page.click('[data-tab=explore]').catch(() => {});
+    await page.fill('#shopQ', 'LED TVs near me'); await page.press('#shopQ', 'Enter');
+    await page.waitForSelector('[data-add]:not([disabled])', { timeout: 20000 });
+    await page.click('[data-add]:not([disabled])');
+    await page.click('#cartBtn'); await page.waitForSelector('#cartDlg[open]');
+    await page.check('[name=ful][value=pickup]'); await page.check('[name=pay][value=cod]');
+    await page.click('#placeBtn');
+    await page.waitForFunction(() => /Ready for pickup|Seller packing|Order placed/.test(document.querySelector('#tracking')?.textContent || ''), null, { timeout: 20000 });
+    assert(await page.$('#tracking [data-prov=demo]'), 'Demo label on tracking');
+    await shot7(page, `${V}-05-cod-tracking-demo`);
+  });
+  await step(`v07 ${V}: traffic honesty — Layers says "Live traffic unavailable" (no provider key) and the toggle is disabled`, async () => {
+    await page.evaluate(() => window.__bm.ctx.views.show('layers', { detent: 'full' }));
+    await page.waitForSelector('#trafficState[data-traffic=unavailable]');
+    assert(/Live traffic unavailable/.test(await page.textContent('#trafficState')), 'copy');
+    assert(await page.isDisabled('#lyrTraffic'), 'toggle disabled');
+    await home(page);
+    const real = errors.filter((e) => !/ERR_INTERNET_DISCONNECTED|ERR_FAILED|Failed to load resource/.test(e));
     assert(!real.length, `console errors: ${real.slice(0, 2).join(' | ')}`);
   });
   await ctx.close();

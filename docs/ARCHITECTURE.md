@@ -1,5 +1,57 @@
 # Architecture
 
+## v0.7 — place-card service panels, provider catalogue, payments
+
+```mermaid
+flowchart LR
+  subgraph Client["Client (web + Android WebView)"]
+    PLACE2["ui/place.js<br/>place card"]
+    SP["ui/service-panel.js<br/>12 panel types · labelled rows<br/>Live / Scheduled / Estimate / Demo / Unavailable"]
+    BUILD["shared/services/build.js<br/>buildServicePanel · buildRidePanel<br/>honesty self-check"]
+    CAT["shared/services/catalog.js<br/>92 providers · class + reason + evidence"]
+    LO["ui/linkout.js<br/>interstitial: names host, flags unverified"]
+    PAY["ui/payment.js<br/>#/pay/:orderId payment screen"]
+    TRF["ui/traffic.js<br/>Live traffic only with a provider"]
+    ONDCUI["ui/ondc.js<br/>ONDC prototype (flagged)"]
+    ADM["admin.js → Listings<br/>place verification · provider links"]
+  end
+  subgraph Server["Bharat Map server"]
+    SAPI["services-api.js<br/>/api/v1/places/:id/services · /api/v1/integrations<br/>/api/v1/traffic/* · /api/v1/ondc/prototype/*<br/>/api/v1/courier/* (stubs) · /api/admin/place-services · /api/admin/provider-links"]
+    INTEG["integrations/index.js<br/>adapter status per provider · env upgrades"]
+    PAYS["payments/index.js<br/>Razorpay (functional) · Cashfree · PhonePe · Paytm (prototype)"]
+    ORD["app.js /api/orders<br/>online → pending_payment"]
+    GTFS2["transit/ HMRL GTFS<br/>Scheduled departures"]
+    DB[("SQLite · migration 005<br/>orders (pending_payment) · place_services · provider_links")]
+  end
+  subgraph Ext["External (only when configured)"]
+    GW[(Payment gateways<br/>keys server-side)]
+    TT[(TomTom / HERE traffic<br/>TRAFFIC_PROVIDER)]
+    PROVW[(Provider sites/apps<br/>link-out only)]
+  end
+  PLACE2 --> SP --> BUILD --> CAT
+  SP -->|server mode| SAPI
+  SP --> LO --> PROVW
+  SAPI --> INTEG --> CAT
+  SAPI --> GTFS2
+  SAPI --> DB
+  ADM --> SAPI
+  ORD --> DB
+  PAY -->|POST /api/payments/orders · verify| PAYS --> GW
+  GW -->|signed webhook| PAYS --> DB
+  TRF -->|/api/v1/traffic/tiles proxy| SAPI --> TT
+```
+
+* **Order → payment.** An online order is created `pending_payment` (not confirmed, no rider). The separate payment screen
+  asks the server to create the gateway order (amount from our DB); only a server-verified payment (signature or
+  server-to-server status re-check, webhook as backstop) flips it to paid and starts tracking. No keys → "Payments not
+  configured"; COD is unaffected.
+* **Truthful panels.** Every row carries a source and a freshness label. `buildServicePanel` runs an honesty self-check
+  (no Live without a feed, Demo never Live, no amounts without a live quote) that the tests run over every sample place.
+* **Admin links.** Links an admin adds are stored unverified and reach the public panel only after verification; all
+  changes are audited.
+* **Truck routing.** `/api/v1/route?mode=truck` uses Valhalla truck costing (`truck_height/width/length/weight/axle_load`,
+  `truck_hazmat`); if Valhalla is unreachable it returns a labelled fallback and never substitutes a car route.
+
 ## v0.4 — integrated map-services backend
 
 ```mermaid

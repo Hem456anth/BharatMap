@@ -1,3 +1,53 @@
+# Bharat Map v0.7 — Test report
+
+Run date: 20 Oct 2026 (IST), aarch64 sandbox, Chromium 129 headless (SwiftShader). Raw outputs: `docs/test-output.txt`
+(npm test), `docs/e2e-results.txt` (Chromium E2E). New screenshots: `docs/screenshots/v07-*.png`.
+
+## Summary
+| Suite | Result |
+|---|---|
+| Unit + API (`npm test`, node:test) | **166 / 166 pass** (141 from v0.1–0.5.11 + 25 new: `tests/v07.test.js` 15, `tests/v07-api.test.js` 10) |
+| Browser E2E (`tests/e2e.mjs`, desktop 1366×820 + mobile 390×844) | **112 / 112 pass** locally — 106 steps + 6 console-error checks (102 regression + 10 new v0.7 steps); 0 console errors. Run in chunks (`ONLY=<regex>`) because of the sandbox's ~115 s command limit; see "Harness" below |
+| CI | _filled in after the push — see the "CI and release" section_ |
+
+### New unit + API tests (25)
+`tests/v07.test.js` (15): tag → panel mapping for all 12 panel types; **honesty self-check** over every sample panel (no Live
+without a feed, Demo never Live, no amounts without a live quote); catalogue providers per panel; ride panel (Estimate ETA,
+fare Unavailable, Uber deep link, Bharat Taxi / Yatri Sathi by region, BluSmart Unavailable with no link); Uber universal link
+builder; catalogue completeness + generated matrix is current; station panel Scheduled departures from HMRL GTFS; GTFS zone
+fares; landmark address resolution; "Also here" Overpass query/parser; truck costing; payment adapters enabled only by env
+keys with locally computed signature/checksum vectors; pending_payment orders never move; integrations registry (no secrets);
+i18n v0.7 coverage.
+`tests/v07-api.test.js` (10): no gateway keys → order `pending_payment`, "not configured", nothing paid; with a (mocked)
+gateway: server-created payment order with the DB amount, failed verification keeps pending, verified payment confirms;
+Cashfree webhook signature; `/api/v1/places/:id/services`; `/api/v1/integrations`; traffic honesty; admin listings + provider
+links (RBAC, audit, only verified links public); ONDC prototype flow; truck routing + courier stubs; landmark address endpoint.
+
+### New E2E steps (10) + extended admin step
+`v07 desktop|mobile`: restaurant panel + Swiggy link-out through the interstitial; metro station Scheduled departures +
+WhatsApp ticket link-out; ride Estimate ETA + Uber universal link; Demo shop order → separate payment screen ("Payments not
+configured", never paid) → COD order → tracking; traffic honesty in Layers. The existing desktop admin step now also saves a
+listing, adds a provider link (stored unverified), verifies it and deletes it (`v07-desktop-06-admin-listings.png`).
+
+### Fixes in this round
+- `tests/v07-api.test.js`: pickup orders may be auto-accepted, so the three order tests accept status `placed` or `accepted`;
+  the truck-route test now uses the same `from_lat/from_lng/to_lat/to_lng` params as the other `/api/v1/route` tests.
+- `tests/v03-api.test.js`: package version check moved to `0.7.x`.
+- E2E `layers sheet`: accepts the v0.7 traffic-provider copy ("Live traffic unavailable") as well as the older note.
+- E2E `startVizagSim`: waited only for "some" hint events, so the service-road step could read the previous route's events
+  (race after the flyover step). It now waits until the requested event exists.
+- E2E harness: `E2E_LOG=<file>` appends each result as it finishes and `E2E_SKIP_PERF=1` skips the forced performance step in
+  chunked `ONLY` runs (both opt-in; a full run is unchanged).
+
+### Harness
+The full E2E run takes longer than the sandbox's command limit, so it was run as 14 chunks against one server. A chunked step
+can depend on state from earlier steps, so each chunk included its prerequisites. The per-step timings for the v0.3–v0.5
+chunks were lost when the sandbox restarted mid-run; those lines in `docs/e2e-results.txt` are marked as such. All of them
+passed in this session. CI runs the full suite in one go.
+
+### Known gaps
+No real Android device run; no payment-gateway sandbox; no ONDC network; no traffic key. See `docs/KNOWN_LIMITATIONS.md`.
+
 # Bharat Map 0.5.13 — release APK
 
 Run date: 19 Oct 2026 (IST). First **release** build (previous releases shipped only a debug-signed APK).

@@ -1,3 +1,31 @@
+# Audit — Bharat Map v0.7 (20 Oct 2026) — place-card service panels, provider catalogue, payments
+
+Legend as below (✅ implemented · 🟡 prototype · 🔌 needs external dependency · ⛔ not built). Everything from 0.5.11 keeps its status.
+
+| Area | Feature | Status | Evidence · dependency |
+|---|---|---|---|
+| Place card | **Service panels** for 12 panel types (restaurant, cinema, station, grocery, ride, hotel, fuel (incl. EV), parking (incl. tolls), health, retail (incl. Demo sellers), courier, venue); every row labelled Live / Scheduled / Estimate / Link-out / Demo / Unavailable with its source | ✅ | `shared/services/build.js`, `web/ui/service-panel.js`; honesty self-check in unit tests over every sample; E2E `v07-*-01…03` |
+| Catalogue | **92 providers** classified Functional 6 · Deep link 1 · Prototype 6 · Partner-pending 10 · Link-out 64 · Unavailable 4 · Demo 1, each with reason + evidence | ✅ | `shared/services/catalog.js`, generated `docs/INTEGRATION_MATRIX.md` (test-checked), `docs/INTEGRATIONS.md` §18 |
+| Link-outs | Interstitial names the destination host and flags unverified links; new: Bharat Taxi, Yatri Sathi, Dineout→Swiggy, ParkMate, Highway Delite, ChargeZone, KSRTC (Karnataka / Kerala), TNSTC, NMRC, GMRC, UPMRC Lucknow/Kanpur, Kolkata Metro, DMart Ready, JioMart | ✅ | `web/ui/linkout.js`; E2E restaurant link-out. App hand-off on a device not tested |
+| Transit | Hyderabad Metro **Scheduled** departures (HMRL GTFS); WhatsApp QR ticket link; GTFS zone fares; other metros catalogue ticketing or info only | ✅ | `shared/services/departures.js`; unit + API + E2E `v07-*-02` |
+| Rides | Estimate ETA (routing), fare Unavailable, Uber universal link with pickup/drop (`UBER_CLIENT_ID`), Ola only with an affiliate token, BluSmart Unavailable | ✅ | unit + E2E `v07-*-03` |
+| Payments | Online order → `pending_payment` → separate payment screen `#/pay/<id>`; server-created gateway order (DB amount); server-side verification + signed webhook; no keys → "Payments not configured"; no `upi://` intents | ✅ / 🟡 | `server/payments/index.js`, `web/ui/payment.js`, migration 005. Razorpay functional with keys (fixtures); **Cashfree / PhonePe / Paytm prototype**, never run against a live sandbox |
+| Traffic | Live traffic only with `TRAFFIC_PROVIDER` + TomTom/HERE key via a server tile proxy; otherwise "Live traffic unavailable" | ✅ / 🔌 | `web/ui/traffic.js`, `/api/v1/traffic/*`; API test with a mocked provider; no key in this build |
+| Routing | Truck routing via Valhalla truck costing (dimensions/weight/hazmat); no car route substituted on failure; toll fees unknown | ✅ / 🟡 | `shared/valhalla.js`, `/api/v1/route?mode=truck`; unit + API (mocked Valhalla) |
+| ONDC | Buyer prototype (`ONDC_PROTOTYPE=1`): Beckn-shaped search/select/init/confirm/status against Bharat's demo catalogue | 🟡 | `server/services-api.js`, `web/ui/ondc.js`; not the ONDC network, no signing |
+| Address | Landmark address resolution (opposite/beside/near anchors) from the offline index | 🟡 | `shared/address.js`, `/api/v1/address/resolve`; one synthetic fixture |
+| Admin | **Listings**: place verification (unverified/pending/verified/rejected) and provider links (add → unverified → verify / delete), RBAC + audit | ✅ | `web/admin.js`, `/api/admin/place-services`, `/api/admin/provider-links`; API test + E2E admin step |
+| Courier | Shiprocket / Delhivery stubs → `501 partner-pending` | ⛔ (stub) | API test |
+| i18n | `shared/i18n-v07.js`: en/hi/te full; honesty labels in 11 languages | 🟡 | hi/te need native review |
+
+### Tests (v0.7)
+- `npm test`: **166 / 166 pass** (141 + 25 new: `tests/v07.test.js` 15, `tests/v07-api.test.js` 10).
+- Chromium E2E: **112 / 112 pass** locally (chunked); see `docs/TEST-REPORT.md`.
+
+### Remaining gaps (v0.7)
+- No real-device run of the v0.7 APK; no payment-gateway sandbox run; no ONDC network; no traffic key — `docs/KNOWN_LIMITATIONS.md`.
+- Showtimes, hotel rates, fuel prices, ride fares and live metro arrivals stay Unavailable (no licensed feeds).
+
 # Audit — Bharat Map sprint 0.5.11 (19 Oct 2026) — device tiers, offline search v2, India road hints, Indic voices
 
 Legend as below (✅ implemented · 🟡 prototype · 🔌 needs external dependency · ⛔ not built). Everything from v0.5 keeps its status.

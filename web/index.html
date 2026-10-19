@@ -2,7 +2,7 @@
 <html lang="en" data-theme="light">
 <head>
   <meta charset="utf-8" />
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://checkout.razorpay.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; worker-src 'self' blob:; frame-src https://api.razorpay.com https://checkout.razorpay.com; connect-src 'self' https://tiles.openfreemap.org https://overpass-api.de https://nominatim.openstreetmap.org https://photon.komoot.io https://routing.openstreetmap.de https://valhalla1.openstreetmap.de https://api.openstreetmap.org https://api.razorpay.com https://lumberjack.razorpay.com https://*.onrender.com; object-src 'none'; base-uri 'self'; form-action 'self'" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://checkout.razorpay.com https://sdk.cashfree.com https://secure.paytmpayments.com https://securestage.paytmpayments.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; worker-src 'self' blob:; frame-src https://api.razorpay.com https://checkout.razorpay.com https://sdk.cashfree.com https://api.cashfree.com https://sandbox.cashfree.com https://secure.paytmpayments.com https://securestage.paytmpayments.com; connect-src 'self' https://tiles.openfreemap.org https://overpass-api.de https://nominatim.openstreetmap.org https://photon.komoot.io https://routing.openstreetmap.de https://valhalla1.openstreetmap.de https://api.openstreetmap.org https://api.razorpay.com https://lumberjack.razorpay.com https://api.cashfree.com https://sandbox.cashfree.com https://secure.paytmpayments.com https://securestage.paytmpayments.com https://*.onrender.com; object-src 'none'; base-uri 'self'; form-action 'self' https://api.cashfree.com https://sandbox.cashfree.com https://secure.paytmpayments.com https://securestage.paytmpayments.com" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <title>Bharat Map: maps, directions & local shops for India</title>
   <meta name="description" content="Bharat Map: an India-first map with search, real places from OpenStreetMap, turn-by-turn navigation with landmark directions in Indian languages, offline maps, and local shopping with delivery." />
@@ -89,6 +89,12 @@
       <div class="view" data-view="place" hidden>
         <header class="view-h"><button class="icon-btn" data-back data-i18n-aria="back" aria-label="Back" data-icon="back"></button><h3 id="placeTitle" tabindex="-1"></h3><button class="icon-btn" data-home data-i18n-aria="close" aria-label="Close" data-icon="close"></button></header>
         <div id="placeCard"></div>
+      </div>
+
+      <!-- PAYMENT (v0.7): separate secure screen, route #/pay/<orderId> -->
+      <div class="view" data-view="payment" hidden>
+        <header class="view-h"><button class="icon-btn" data-back data-i18n-aria="back" aria-label="Back" data-icon="back"></button><h3 data-i18n="pay_title" tabindex="-1">Secure payment</h3><button class="icon-btn" data-home data-i18n-aria="close" aria-label="Close" data-icon="close"></button></header>
+        <div id="payBody" class="pay-body"></div>
       </div>
 
       <!-- DIRECTIONS -->
@@ -268,13 +274,23 @@
       <div class="row"><input id="dropAddr" placeholder="Near RTC Complex, Dwaraka Nagar" /><button type="button" class="btn" id="dropLocate">Set</button></div>
       <p id="dropInfo" class="muted small"></p>
       <fieldset class="row"><legend>Payment</legend>
-        <label><input type="radio" name="pay" value="cod" checked /> Cash on delivery</label>
-        <label><input type="radio" name="pay" value="upi_simulated" /> UPI (simulated)</label>
-        <label hidden><input type="radio" name="pay" value="razorpay" /> UPI / Card / Netbanking (Razorpay)</label>
+        <label><input type="radio" name="pay" value="cod" checked /> <span data-i18n="pay_cod">Cash on delivery</span></label>
+        <label><input type="radio" name="pay" value="online" /> <span data-i18n="pay_online">Pay online (secure payment screen)</span></label>
       </fieldset>
       <div id="quote" class="quote"></div>
       <div class="row end"><button value="cancel" class="btn ghost">Close</button><button id="placeBtn" type="button" class="btn primary">Place order</button></div>
     </form>
+  </dialog>
+
+  <dialog id="linkoutDlg" class="lo-dlg" aria-labelledby="loTitle" aria-describedby="loBody">
+    <h3 id="loTitle">Leaving Bharat Map</h3>
+    <div id="loBody"></div>
+    <div class="row end"><button type="button" class="btn ghost" id="loCancel">Stay here</button><button type="button" class="btn primary" id="loGo">Continue</button></div>
+  </dialog>
+  <dialog id="ondcDlg" aria-labelledby="ondcTitle">
+    <h3 id="ondcTitle">ONDC (prototype)</h3>
+    <div id="ondcBody"></div>
+    <div class="row end"><button type="button" class="btn ghost" id="ondcClose">Close</button></div>
   </dialog>
 
   <dialog id="authDlg" aria-labelledby="authTitle">

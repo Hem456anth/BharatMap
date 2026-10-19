@@ -36,8 +36,16 @@ export function mountApiV1(app, { root, db = null, now, providers = createProvid
     const via = String(req.query.via || '').split(';').filter(Boolean).slice(0, 8).map((x) => { const [a, b] = x.split(','); return pt(a, b); });
     if (via.some((x) => !x)) return bad(res, 'invalid_via');
     const opts = { via, avoidTolls: req.query.avoid_tolls === '1', avoidHighways: req.query.avoid_highways === '1', alternates: req.query.alternatives === '0' ? 0 : 2 };
+    if (mode === 'truck') {
+      // v0.7 truck routing: Valhalla truck costing (dimensions in metres, weights in tonnes). Tolls stay "plazas on route, fee unknown".
+      const t = {}; for (const k of ['height', 'width', 'length', 'weight', 'axle_load']) { const v = num(req.query[`truck_${k}`]); if (Number.isFinite(v) && v > 0 && v < 100) t[k] = v; }
+      if (req.query.truck_hazmat === '1') t.hazmat = true;
+      opts.truck = t;
+    }
     res.setHeader('Cache-Control', 'private, max-age=60');
-    res.json(await providers.route(mode, from, to, opts));
+    const out = await providers.route(mode, from, to, opts);
+    if (mode === 'truck') out.tolls_note = 'Toll plazas on route are listed by POST /api/v1/tolls; fees are unknown (no open fee data).';
+    res.json(out);
   }));
   r.get('/geocode', wrap(async (req, res) => {
     const q = String(req.query.q || '').trim().slice(0, 200);
@@ -99,6 +107,8 @@ export function mountApiV1(app, { root, db = null, now, providers = createProvid
   });
   if (db) mountCommunity(r, { db, ...(now ? { now } : {}) });
   r.get('/providers', (_req, res) => res.json({ providers: providers.status(), transit: transit.feeds() }));
+  // v0.7 routes (services, integrations, address, traffic, ONDC prototype) are mounted later by server/services-api.js.
+  r.use((req, res, next) => (app.locals.v1Extra ? app.locals.v1Extra(req, res, next) : next()));
   r.use((_req, res) => bad(res, 'not_found', 404));
   app.use('/api/v1', r);
   // Region files (PMTiles) with HTTP Range support for partial reads and resumable downloads.

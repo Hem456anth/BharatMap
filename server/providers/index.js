@@ -17,7 +17,7 @@ import { haversineKm } from '../../shared/geo.js';
 import { segmentsFromValhallaTrace, segmentsFromOverpassWays, buildMaxspeedQuery, coverage, scaleSegments } from '../../shared/maxspeed.js';
 import { lineLengthM, simplify } from '../../shared/polyline.js';
 
-export const MODES = ['drive', 'two', 'bike', 'walk'];
+export const MODES = ['drive', 'two', 'bike', 'walk', 'truck'];
 const PUBLIC = {
   valhalla: 'https://valhalla1.openstreetmap.de',
   osrm: { drive: 'https://routing.openstreetmap.de/routed-car', bike: 'https://routing.openstreetmap.de/routed-bike', walk: 'https://routing.openstreetmap.de/routed-foot' },
@@ -59,6 +59,7 @@ export function createProviders({ env = process.env, fetchImpl, now, sleep, time
   }
   async function viaOsrm(mode, from, to, opts) {
     offline();
+    if (mode === 'truck') throw new Error('osrm_no_truck_profile'); // OSRM has no truck costing: never pretend a car route is a truck route
     const prof = mode === 'two' ? 'drive' : mode;
     const c6 = (x) => Math.round(x * 1e6) / 1e6;
     const via = opts.via || [];
@@ -71,14 +72,14 @@ export function createProviders({ env = process.env, fetchImpl, now, sleep, time
   /** Route with fallbacks: Valhalla ⇄ OSRM, then a labelled straight-line estimate. */
   async function route(mode, from, to, opts = {}) {
     if (!MODES.includes(mode)) throw new Error(`unknown_mode:${mode}`);
-    const valhallaFirst = cfg.valhalla.configured || mode === 'two' || opts.avoidTolls || opts.avoidHighways;
+    const valhallaFirst = cfg.valhalla.configured || mode === 'two' || mode === 'truck' || opts.avoidTolls || opts.avoidHighways;
     const steps = valhallaFirst ? [['valhalla', () => viaValhalla(mode, from, to, opts)], ['osrm', () => viaOsrm(mode, from, to, opts)]]
       : [['osrm', () => viaOsrm(mode, from, to, opts)], ['valhalla', () => viaValhalla(mode, from, to, opts)]];
     try {
       const r = await withFallback(steps);
       return { mode, provider: r.provider, ...r.value, fallback: false, tried: r.tried };
     } catch (e) {
-      return { mode, provider: 'straight-line', engine: 'fallback-straight-line', estimate: true, fallback: true, routes: fallbackRoutes(mode, from, to, opts.via || []), tried: e.tried || [], error: 'routing_unavailable' };
+      return { mode, provider: 'straight-line', engine: 'fallback-straight-line', estimate: true, fallback: true, routes: fallbackRoutes(mode === 'truck' ? 'drive' : mode, from, to, opts.via || []).map((r) => ({ ...r, mode })), tried: e.tried || [], error: 'routing_unavailable' };
     }
   }
 

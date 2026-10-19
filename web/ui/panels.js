@@ -29,13 +29,16 @@ export function initPanels(ctx) {
       <h4>${esc(ctx.t('overlays'))}</h4>
       ${OVERLAYS.map(([id, color]) => `<label class="switch"><input type="checkbox" data-ov="${id}" ${on.has(id) ? 'checked' : ''}/><span><b><i class="swatch" style="background:${color}"></i>${esc(ctx.t(`cat_${id}`))}</b><small>Overpass · OpenStreetMap</small></span></label>`).join('')}
       <p id="ovStatus" class="small muted" role="status"></p>
-      ${sw('lyrTraffic', 'traffic', false, ctx.t('traffic_note'), true)}
+      ${sw('lyrTraffic', 'traffic', ctx.traffic?.state.on, ctx.traffic?.state.available ? ctx.tf('traffic_on_note', { provider: ctx.traffic.state.name }) : ctx.t('traffic_unavailable_note'), !ctx.traffic?.state.available)}
+      <p id="trafficState" class="small ${ctx.traffic?.state.available ? '' : 'warn'}" role="status" data-traffic="${ctx.traffic?.state.available ? 'live' : 'unavailable'}">${ctx.traffic?.state.available ? `<span class="hl hl-live"><i aria-hidden="true">●</i>${esc(ctx.t('label_live'))}</span> ${esc(ctx.traffic.state.name)}` : `<span class="hl hl-na"><i aria-hidden="true">⊘</i>${esc(ctx.t('label_unavailable'))}</span> ${esc(ctx.t('traffic_unavailable'))}`}</p>
       ${sw('lyrLowBw', 'low_bw', ctx.bw.policy.active, ctx.bw.policy.active && ctx.bw.policy.reason !== 'manual' ? ctx.t('low_bw_auto') : ctx.t('low_bw_note'))}
       ${sw('lyrOffline', 'offline_always', st.forceOffline, st.offline ? ctx.t('offline_using') : '')}`;
     $('layersBody').querySelectorAll('[name=mapstyle]').forEach((r) => { r.onchange = () => st.setPref(r.value); });
     $('lyr3d').onchange = (e) => st.set3D(e.target.checked);
     $('lyrTransit').onchange = (e) => st.setTransit(e.target.checked);
     $('lyrOffline').onchange = (e) => st.setForceOffline(e.target.checked);
+    $('lyrTraffic').onchange = (e) => ctx.traffic?.set(e.target.checked);
+    if (ctx.traffic && !ctx.traffic.state.checked) ctx.traffic.check().then(() => { if (ctx.views.current === 'layers') renderLayers(); });
     $('lyrLowBw').onchange = (e) => { ctx.bw.set(e.target.checked ? 'on' : 'off'); renderLayers(); };
     if (ctx.bw.policy.active) { const b = $('lyr3d'); b.disabled = true; b.setAttribute('aria-disabled', 'true'); }
     $('layersBody').querySelectorAll('[data-ov]').forEach((c) => { c.onchange = () => { if (c.checked) on.add(c.dataset.ov); else on.delete(c.dataset.ov); store.setItem('bm-overlays', [...on].join(',')); refreshOverlays(); }; });

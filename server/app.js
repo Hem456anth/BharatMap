@@ -17,11 +17,14 @@ import { cspString } from '../shared/csp.js';
 import { normalizeSaved } from '../web/lib/saved-model.js';
 import { notify, notifyOrderParties } from './notify.js';
 import { mountApiV1 } from './api-v1.js';
+import { createPayments } from './payments/index.js';
+import { mountServices } from './services-api.js';
+import { BUSINESSES } from '../shared/seed.js';
 import zlib from 'node:zlib';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const CSP = cspString();
-export const VERSION = '0.5.0';
+export const VERSION = '0.7.0';
 
 // ---------- small infra helpers ----------
 const metrics = { requests: 0, errors: 0, byRoute: new Map(), latencyMs: [] };
@@ -43,7 +46,8 @@ const point = (lat, lng) => { const p = { lat: num(lat), lng: num(lng) }; return
 const bad = (res, msg, code = 400) => res.status(code).json({ error: msg });
 const str = (v, max = 300) => (typeof v === 'string' ? v.trim().slice(0, max) : '');
 
-export function createApp({ db = openDb(), timeScale = Number(process.env.DEMO_TIME_SCALE || RULES.demoTimeScale), payments = createRazorpay(), providers, transit, now } = {}) {
+export function createApp({ db = openDb(), timeScale = Number(process.env.DEMO_TIME_SCALE || RULES.demoTimeScale), payments = createRazorpay(), paymentAdapters, env = process.env, providers, transit, now } = {}) {
+  const pay = createPayments({ env, razorpay: payments, adapters: paymentAdapters });
   seed(db);
   const app = express();
   app.disable('x-powered-by');
@@ -83,7 +87,7 @@ export function createApp({ db = openDb(), timeScale = Number(process.env.DEMO_T
     next();
   });
   // rawBody kept for webhook signature verification (Razorpay signs the exact bytes).
-  app.use(express.json({ limit: '64kb', verify: (req, _res, buf) => { if (req.url.startsWith('/api/payments/razorpay/webhook')) req.rawBody = buf.toString('utf8'); } }));
+  app.use(express.json({ limit: '64kb', verify: (req, _res, buf) => { if (/^\/api\/payments\/[a-z]+\/webhook/.test(req.url)) req.rawBody = buf.toString('utf8'); } }));
   app.use('/api', rateLimiter({ max: Number(process.env.RATE_LIMIT_PER_MIN || 240) }));
   app.use(authOptional);
   // Stateless JWTs are re-checked against the users table so an admin can disable an account immediately.
@@ -148,10 +152,11 @@ export function createApp({ db = openDb(), timeScale = Number(process.env.DEMO_T
   // Public client configuration: which real integrations are switched on for this deployment.
   app.get('/api/config', (_req, res) => res.json({
     version: VERSION,
-    payments: { razorpay: payments.enabled, key_id: payments.keyId, mode: payments.mode, cod: true, upi_simulated: process.env.ALLOW_SIMULATED_UPI !== '0' },
+    payments: { razorpay: payments.enabled, key_id: payments.keyId, mode: payments.mode, cod: true, upi_simulated: process.env.ALLOW_SIMULATED_UPI === '1', online: pay.publicConfig() },
     routing: process.env.OFFLINE === '1' ? 'fallback' : (process.env.VALHALLA_URL ? 'valhalla-self-hosted' : process.env.OSRM_URL ? 'osrm-self-hosted' : 'osrm-public-demo'),
     services: { v1: true, valhalla: !!process.env.VALHALLA_URL, ev_ocm: !!process.env.OCM_API_KEY, transit_feeds: v1.transit.feeds().map((f) => f.id) },
     llm: Boolean(process.env.LLM_API_KEY),
+    integrations: app.locals.svc?.integrations.clientConfig() || null,
   }));
   app.get('/metrics', (_req, res) => {
     const l = [...metrics.latencyMs].sort((a, b) => a - b);
@@ -290,12 +295,19 @@ export function createApp({ db = openDb(), timeScale = Number(process.env.DEMO_T
   });
 
   // ---------- orders ----------
-  app.post('/api/orders', requireRole('customer', 'admin'), async (req, res) => {
+  // Order creation, shared by the Shop (POST /api/orders) and the ONDC prototype confirm (server/services-api.js).
+  // Online payment never confirms here: the order is created as 'pending_payment' and only a VERIFIED gateway payment
+  // (see /api/payments/*) moves it to 'placed'. Returns { code, body }.
+  async function placeOrder(user, input, { source = 'shop' } = {}) {
+    const req = { user, body: input };
+    const out = { code: 201, body: null };
+    const res = { status(c) { out.code = c; return this; }, json(b) { out.body = b; return out; } };
     const businessId = str(req.body?.business_id, 40);
     const fulfilment = req.body?.fulfilment === 'pickup' ? 'pickup' : 'delivery';
-    const payment = ['upi_simulated', 'razorpay'].includes(req.body?.payment_method) ? req.body.payment_method : 'cod';
+    const payment = ['upi_simulated', 'razorpay', 'online'].includes(req.body?.payment_method) ? req.body.payment_method : 'cod';
     if (payment === 'razorpay' && !payments.enabled) return bad(res, 'payments_not_configured', 503);
-    if (payment === 'upi_simulated' && process.env.ALLOW_SIMULATED_UPI === '0') return bad(res, 'simulated_payments_disabled');
+    // Simulated UPI never marks anything paid and is off unless explicitly enabled for demos.
+    if (payment === 'upi_simulated' && process.env.ALLOW_SIMULATED_UPI !== '1') return bad(res, 'simulated_payments_disabled');
     const items = Array.isArray(req.body?.items) ? req.body.items.slice(0, 30) : [];
     const drop = fulfilment === 'delivery' ? point(req.body?.drop?.lat, req.body?.drop?.lng) : null;
     if (!items.length) return bad(res, 'items_required');
@@ -333,28 +345,35 @@ export function createApp({ db = openDb(), timeScale = Number(process.env.DEMO_T
     try {
       const dec = db.prepare('UPDATE products SET stock = stock - ?, updated_at = datetime(\'now\') WHERE id = ? AND stock >= ?');
       for (const l of priced.lines) { const r = dec.run(l.qty, l.product_id, l.qty); if (r.changes !== 1) throw Object.assign(new Error('stock_race'), { code: 409 }); }
-      db.prepare(`INSERT INTO orders(id,customer_id,business_id,rider_id,fulfilment,status,payment_method,payment_status,subtotal,delivery_fee,handling_fee,total,drop_lat,drop_lng,drop_address,route_json,created_ms)
-        VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`).run(id, req.user.sub, biz.id, rider?.id || null, fulfilment, 'placed', payment, payment === 'upi_simulated' ? 'paid_simulated' : payment === 'razorpay' ? 'awaiting_payment' : 'pending', priced.subtotal, priced.delivery_fee, priced.handling_fee, priced.total, drop?.lat ?? null, drop?.lng ?? null, str(req.body?.drop_address, 300) || null, routeObj ? JSON.stringify(routeObj) : null, nowMs);
+      const online = payment === 'online' || payment === 'razorpay';
+      db.prepare(`INSERT INTO orders(id,customer_id,business_id,rider_id,fulfilment,status,payment_method,payment_status,subtotal,delivery_fee,handling_fee,total,drop_lat,drop_lng,drop_address,route_json,created_ms,source)
+        VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`).run(id, req.user.sub, biz.id, rider?.id || null, fulfilment, online ? 'pending_payment' : 'placed', payment, payment === 'upi_simulated' ? 'simulated_not_paid' : payment === 'razorpay' ? 'awaiting_payment' : payment === 'online' ? 'pending_payment' : 'pending', priced.subtotal, priced.delivery_fee, priced.handling_fee, priced.total, drop?.lat ?? null, drop?.lng ?? null, str(req.body?.drop_address, 300) || null, routeObj ? JSON.stringify(routeObj) : null, nowMs, source);
       const insI = db.prepare('INSERT INTO order_items(order_id,product_id,name,qty,unit_price) VALUES (?,?,?,?,?)');
       for (const l of priced.lines) insI.run(id, l.product_id, l.name, l.qty, l.unit_price);
-      db.prepare('INSERT INTO order_events(order_id,status,note) VALUES (?,?,?)').run(id, 'placed', rider ? `rider ${rider.id} (${rider.vehicle}) assigned` : 'pickup order');
+      db.prepare('INSERT INTO order_events(order_id,status,note) VALUES (?,?,?)').run(id, online ? 'pending_payment' : 'placed', `${rider ? `rider ${rider.id} (${rider.vehicle}) reserved` : 'pickup order'}${online ? ' · awaiting verified payment' : ''}${source !== 'shop' ? ` · via ${source}` : ''}`);
       if (rider) db.prepare('UPDATE riders SET available=0 WHERE id=?').run(rider.id);
       db.prepare('INSERT INTO audit_log(user_id,action,entity,entity_id) VALUES (?,?,?,?)').run(req.user.sub, 'order.create', 'order', id);
       db.exec('COMMIT');
     } catch (e) { db.exec('ROLLBACK'); return bad(res, e.message === 'stock_race' ? 'insufficient_stock' : 'order_failed', e.code || 500); }
-    notifyOrderParties(db, id, 'order_placed', 'Order placed', `${biz.name} · ₹${priced.total}`);
-    const out = orderView(db, id, timeScale);
+    if (payment === 'online' || payment === 'razorpay') notify(db, req.user.sub, { kind: 'order_pending_payment', title: 'Order awaiting payment', body: `${biz.name} · ₹${priced.total} · not confirmed until paid`, order_id: id });
+    else notifyOrderParties(db, id, 'order_placed', 'Order placed', `${biz.name} · ₹${priced.total}`);
+    const view = orderView(db, id, timeScale);
     if (payment === 'razorpay') {
       try {
         const rz = await payments.createOrder({ amountPaise: priced.total * 100, receipt: id, notes: { mapos_order: id } });
         db.prepare('INSERT INTO payments(order_id,provider,provider_order_id,amount_paise,status,raw) VALUES (?,?,?,?,?,?)').run(id, 'razorpay', rz.id, priced.total * 100, 'created', JSON.stringify({ status: rz.status }));
-        out.razorpay = { key_id: payments.keyId, order_id: rz.id, amount: priced.total * 100, currency: 'INR', name: 'Bharat Map', description: `Order ${id}` };
+        view.razorpay = { key_id: payments.keyId, order_id: rz.id, amount: priced.total * 100, currency: 'INR', name: 'Bharat Map', description: `Order ${id}` };
       } catch (e) {
         db.prepare("UPDATE orders SET payment_status='payment_init_failed' WHERE id=?").run(id);
-        out.payment_status = 'payment_init_failed'; out.payment_error = e.message;
+        view.payment_status = 'payment_init_failed'; view.payment_error = e.message;
       }
     }
-    res.status(201).json(out);
+    return res.status(201).json(view);
+  }
+  app.locals.placeOrder = placeOrder;
+  app.post('/api/orders', requireRole('customer', 'admin'), async (req, res) => {
+    const r = await placeOrder(req.user, req.body || {});
+    res.status(r.code).json(r.body);
   });
   app.get('/api/orders', requireRole(), (req, res) => {
     const rows = req.user.role === 'admin' ? db.prepare('SELECT id FROM orders ORDER BY created_ms DESC LIMIT 100').all()
@@ -392,7 +411,7 @@ export function createApp({ db = openDb(), timeScale = Number(process.env.DEMO_T
     const o = db.prepare('SELECT * FROM orders WHERE id=?').get(req.params.id);
     if (!o || !canSee(req, o)) return bad(res, 'not_found', 404);
     const live = orderView(db, o.id, timeScale).tracking.status;
-    if (!['placed', 'accepted'].includes(live)) return bad(res, 'cannot_cancel_now', 409);
+    if (!['placed', 'accepted', 'pending_payment'].includes(live)) return bad(res, 'cannot_cancel_now', 409);
     db.exec('BEGIN');
     db.prepare("UPDATE orders SET status='cancelled', updated_at=datetime('now') WHERE id=?").run(o.id);
     for (const it of db.prepare('SELECT * FROM order_items WHERE order_id=?').all(o.id)) db.prepare('UPDATE products SET stock=stock+? WHERE id=?').run(it.qty, it.product_id);
@@ -463,36 +482,62 @@ export function createApp({ db = openDb(), timeScale = Number(process.env.DEMO_T
     res.json({ riders: db.prepare('SELECT * FROM riders').all(), warehouses: db.prepare('SELECT * FROM warehouses').all() });
   });
 
-  // ---------- payments (Razorpay) ----------
-  const markPaid = (providerOrderId, paymentId, raw) => {
-    const pay = db.prepare("SELECT * FROM payments WHERE provider='razorpay' AND provider_order_id=?").get(providerOrderId);
-    if (!pay) return null;
-    if (pay.status !== 'paid') {
+  // ---------- payments (server/payments/: Razorpay, Cashfree, PhonePe, Paytm — each enabled only by its env keys) ----------
+  // Only a VERIFIED payment (signature or server-to-server status re-check, or a signed webhook) marks an order paid; that
+  // is also the moment a 'pending_payment' order is confirmed ('placed') and tracking starts.
+  const markPaid = (provider, providerOrderId, paymentId, raw) => {
+    const p = db.prepare('SELECT * FROM payments WHERE provider=? AND provider_order_id=?').get(provider, providerOrderId);
+    if (!p) return null;
+    if (p.status !== 'paid') {
       db.exec('BEGIN');
-      db.prepare("UPDATE payments SET status='paid', provider_payment_id=?, raw=?, updated_at=datetime('now') WHERE id=?").run(paymentId, raw ? JSON.stringify(raw).slice(0, 4000) : pay.raw, pay.id);
-      db.prepare("UPDATE orders SET payment_status='paid', updated_at=datetime('now') WHERE id=?").run(pay.order_id);
-      db.prepare('INSERT INTO order_events(order_id,status,note) VALUES (?,?,?)').run(pay.order_id, 'payment', `razorpay ${paymentId}`);
+      db.prepare("UPDATE payments SET status='paid', provider_payment_id=?, raw=?, updated_at=datetime('now') WHERE id=?").run(paymentId || null, raw ? JSON.stringify(raw).slice(0, 4000) : p.raw, p.id);
+      db.prepare("UPDATE orders SET payment_status='paid', updated_at=datetime('now') WHERE id=?").run(p.order_id);
+      const confirmed = db.prepare("UPDATE orders SET status='placed', created_ms=? WHERE id=? AND status='pending_payment'").run(Date.now(), p.order_id).changes;
+      db.prepare('INSERT INTO order_events(order_id,status,note) VALUES (?,?,?)').run(p.order_id, 'payment', `${provider} ${paymentId || ''} verified`.trim());
       db.exec('COMMIT');
-      notifyOrderParties(db, pay.order_id, 'payment_paid', 'Payment received', `₹${pay.amount_paise / 100} via Razorpay`);
+      notifyOrderParties(db, p.order_id, 'payment_paid', 'Payment received', `₹${p.amount_paise / 100} via ${provider} · order confirmed`);
+      if (confirmed) notifyOrderParties(db, p.order_id, 'order_placed', 'Order confirmed', `Paid order is now with the seller`);
     }
-    return pay.order_id;
+    return p.order_id;
   };
-  app.post('/api/payments/razorpay/verify', requireRole(), (req, res) => {
-    const rzOrder = str(req.body?.razorpay_order_id, 60), rzPay = str(req.body?.razorpay_payment_id, 60), sig = str(req.body?.razorpay_signature, 200);
-    const pay = db.prepare("SELECT p.*, o.customer_id FROM payments p JOIN orders o ON o.id=p.order_id WHERE p.provider_order_id=?").get(rzOrder);
-    if (!pay || (pay.customer_id !== req.user.sub && req.user.role !== 'admin')) return bad(res, 'not_found', 404);
-    if (!payments.verifyCheckout(rzOrder, rzPay, sig)) {
-      db.prepare("UPDATE payments SET status='failed', updated_at=datetime('now') WHERE id=? AND status!='paid'").run(pay.id);
-      return bad(res, 'invalid_signature', 400);
-    }
-    const orderId = markPaid(rzOrder, rzPay);
+  const markFailed = (provider, providerOrderId) => db.prepare("UPDATE payments SET status='failed', updated_at=datetime('now') WHERE provider=? AND provider_order_id=? AND status!='paid'").run(provider, providerOrderId);
+  app.get('/api/payments/config', (_req, res) => res.json(pay.publicConfig()));
+  app.post('/api/payments/orders', requireRole(), async (req, res) => {
+    const o = db.prepare('SELECT * FROM orders WHERE id=?').get(str(req.body?.order_id, 40));
+    if (!o || (o.customer_id !== req.user.sub && req.user.role !== 'admin')) return bad(res, 'not_found', 404);
+    if (o.status !== 'pending_payment' || o.payment_status === 'paid') return bad(res, 'order_not_awaiting_payment', 409);
+    if (!pay.configured()) return bad(res, 'payments_not_configured', 503);
+    const gw = pay.get(str(req.body?.gateway, 20));
+    if (!gw || !gw.enabled) return bad(res, 'gateway_not_enabled', 400);
+    const attempt = `${o.id}_${crypto.randomBytes(3).toString('hex')}`; // gateways need a unique merchant order id per attempt
+    const returnUrl = `${(process.env.PUBLIC_BASE_URL || `${req.protocol}://${req.get('host')}`).replace(/\/$/, '')}/#/pay/${o.id}`;
+    const u = db.prepare('SELECT id,email FROM users WHERE id=?').get(o.customer_id);
+    try {
+      const r = await gw.createOrder({ orderId: gw.id === 'razorpay' ? o.id : attempt, amountPaise: o.total * 100, customer: { id: u.id, email: u.email }, returnUrl });
+      db.prepare('INSERT INTO payments(order_id,provider,provider_order_id,amount_paise,status,raw) VALUES (?,?,?,?,?,?)').run(o.id, gw.id, r.providerOrderId, o.total * 100, 'created', JSON.stringify({ attempt }));
+      db.prepare("UPDATE orders SET payment_method='online', updated_at=datetime('now') WHERE id=? AND payment_method='online'").run(o.id);
+      res.status(201).json({ gateway: gw.id, mode: gw.mode, prototype: !!gw.prototype, provider_order_id: r.providerOrderId, checkout: r.checkout, amount_paise: o.total * 100 });
+    } catch (e) { res.status(e.code || 502).json({ error: e.message }); }
+  });
+  app.post('/api/payments/:gateway/verify', requireRole(), async (req, res) => {
+    const gw = pay.get(req.params.gateway);
+    if (!gw || !gw.enabled) return bad(res, 'gateway_not_enabled', 400);
+    const providerOrderId = str(req.body?.razorpay_order_id || req.body?.provider_order_id, 80);
+    const p = db.prepare('SELECT p.*, o.customer_id FROM payments p JOIN orders o ON o.id=p.order_id WHERE p.provider=? AND p.provider_order_id=?').get(gw.id, providerOrderId);
+    if (!p || (p.customer_id !== req.user.sub && req.user.role !== 'admin')) return bad(res, 'not_found', 404);
+    let v;
+    try { v = await gw.verifyClient(req.body || {}, { providerOrderId }); } catch (e) { return res.status(e.code || 502).json({ error: e.message }); }
+    if (!v.ok) { markFailed(gw.id, providerOrderId); return bad(res, gw.id === 'razorpay' ? 'invalid_signature' : 'payment_not_verified', 400); }
+    const orderId = markPaid(gw.id, providerOrderId, v.providerPaymentId);
     res.json(orderView(db, orderId, timeScale));
   });
-  app.post('/api/payments/razorpay/webhook', (req, res) => {
-    if (!payments.verifyWebhook(req.rawBody, req.headers['x-razorpay-signature'])) return bad(res, 'invalid_signature', 400);
-    const ev = req.body?.event; const ent = req.body?.payload?.payment?.entity;
-    if ((ev === 'payment.captured' || ev === 'order.paid') && ent?.order_id) markPaid(ent.order_id, ent.id, { event: ev, method: ent.method });
-    if (ev === 'payment.failed' && ent?.order_id) db.prepare("UPDATE payments SET status='failed', updated_at=datetime('now') WHERE provider_order_id=? AND status!='paid'").run(ent.order_id);
+  app.post('/api/payments/:gateway/webhook', (req, res) => {
+    const gw = pay.get(req.params.gateway);
+    if (!gw || !gw.enabled) return bad(res, 'gateway_not_enabled', 400);
+    let v; try { v = gw.verifyWebhook(req.rawBody || '', req.headers); } catch { v = { ok: false }; }
+    if (!v.ok) return bad(res, 'invalid_signature', 400);
+    if (v.paid && v.providerOrderId) markPaid(gw.id, v.providerOrderId, v.providerPaymentId, { webhook: true });
+    if (v.failed && v.providerOrderId) markFailed(gw.id, v.providerOrderId);
     res.json({ ok: true });
   });
 
@@ -509,6 +554,7 @@ export function createApp({ db = openDb(), timeScale = Number(process.env.DEMO_T
   });
 
   mountAdmin(app, { db, orderView: (id) => orderView(db, id, timeScale), bad, str, num });
+  app.locals.svc = mountServices(app, { db, v1, placeOrder, orderView: (id) => orderView(db, id, timeScale), env, bad, str, num, now });
 
   // ---------- ONDC (Beckn-shaped, PROTOTYPE: unsigned, not registry-connected) ----------
   app.post('/ondc/search', (req, res) => {
@@ -532,6 +578,7 @@ export function createApp({ db = openDb(), timeScale = Number(process.env.DEMO_T
   return app;
 }
 
+const DEMO_IDS = new Set(BUSINESSES.map((b) => b.id));
 export function orderView(db, id, timeScale) {
   const o = db.prepare('SELECT * FROM orders WHERE id=?').get(id);
   const b = db.prepare('SELECT id,name,lat,lng,address,phone FROM businesses WHERE id=?').get(o.business_id);
@@ -548,6 +595,7 @@ export function orderView(db, id, timeScale) {
   }
   return {
     id: o.id, business: b, rider: r, items, fulfilment: o.fulfilment, payment_method: o.payment_method, payment_status: o.payment_status,
+    status: tr.status, source: o.source || 'shop', demo: DEMO_IDS.has(o.business_id), demo_note: DEMO_IDS.has(o.business_id) ? 'Demo seller — fictional business, prices and stock' : null,
     subtotal: o.subtotal, delivery_fee: o.delivery_fee, handling_fee: o.handling_fee, total: o.total,
     drop: o.drop_lat ? { lat: o.drop_lat, lng: o.drop_lng, address: o.drop_address } : null, route, created_at: o.created_at,
     tracking: { order_id: o.id, ...tr, rider: r, vehicle_policy: r ? vehicleFor(items.map((i) => ({ ...i, category: /TV/.test(i.name) ? 'tv' : '' }))) : null },

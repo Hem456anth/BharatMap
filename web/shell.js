@@ -26,6 +26,11 @@ import { initLinks } from './ui/links.js';
 import { initVoiceSearch } from './ui/voice-search.js';
 import { currentPosition, setRationaleGate } from './native.js';
 
+import { initLinkout } from './ui/linkout.js';
+import { initServicePanel } from './ui/service-panel.js';
+import { initPayment } from './ui/payment.js';
+import { initOndc } from './ui/ondc.js';
+import { initTraffic } from './ui/traffic.js';
 export function createShell({ map, maplibregl, state, api, apiBase, toast, onShop }) {
   const listeners = new Map();
   const ctx = {
@@ -98,6 +103,11 @@ export function createShell({ map, maplibregl, state, api, apiBase, toast, onSho
   ctx.report = initReport(ctx);
   ctx.privacy = initPrivacy(ctx);
   ctx.links = initLinks(ctx);
+  ctx.linkout = initLinkout(ctx);
+  ctx.services = initServicePanel(ctx);
+  ctx.payment = initPayment(ctx, { onTrack: (id) => ctx.emit('track-order', id), onCancelled: (id) => ctx.emit('order-cancelled', id) });
+  ctx.ondc = initOndc(ctx);
+  ctx.traffic = initTraffic(ctx);
   ctx.voiceSearch = initVoiceSearch(ctx, { onText: (text) => { document.getElementById('q').value = text; ctx.search.submit(text); } });
   // Navigation map style preference (auto by sunrise/sunset, or forced day/night).
   document.querySelectorAll('[name=navstyle]').forEach((r) => {

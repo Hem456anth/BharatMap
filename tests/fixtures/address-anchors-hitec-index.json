@@ -1,0 +1,60 @@
+{
+ "note": "REAL rows extracted from the bundled offline index web/offline/search/index.json (OpenStreetMap via Protomaps build 2026-10-17, ODbL) within ~3 km of HITEC City/Madhapur, filtered to bank/brand names. Format [name, kind, lat, lng].",
+ "attribution": "© OpenStreetMap contributors (ODbL) · Protomaps",
+ "places": [
+  [
+   "Trendset Jayabheri Connect",
+   "commercial",
+   17.45773,
+   78.36713
+  ],
+  [
+   "Reliance Fresh",
+   "supermarket",
+   17.44179,
+   78.35976
+  ],
+  [
+   "Reliance Fresh",
+   "supermarket",
+   17.4416,
+   78.38465
+  ],
+  [
+   "Reliance Fresh",
+   "general",
+   17.44158,
+   78.38478
+  ],
+  [
+   "State Bank of India",
+   "bank",
+   17.45069,
+   78.38098
+  ],
+  [
+   "HDFC Bank",
+   "bank",
+   17.45093,
+   78.38203
+  ],
+  [
+   "Cyber Towers Bus Stop",
+   "bus_stop",
+   17.45071,
+   78.38212
+  ],
+  [
+   "Cyber Towers - Madhapur Main Road",
+   "primary",
+   17.44207,
+   78.39124
+  ],
+  [
+   "Cyber Towers - Madhapur Main Road",
+   "primary",
+   17.44792,
+   78.38392
+  ]
+ ]
+}

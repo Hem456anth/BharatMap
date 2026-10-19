@@ -13,6 +13,7 @@ import { shareLink } from '../native.js';
 import { buildShareLinks } from '../shared/deeplink.js';
 import { serverBase } from '../services/server.js';
 import { parseOsmCharger, parseParking } from '../shared/ev.js';
+import { alsoHere } from '../services/also-here.js';
 
 const CAT_FROM_TAGS = [
   ['fuel', (t) => t.amenity === 'fuel'], ['ev', (t) => t.amenity === 'charging_station'], ['atm', (t) => t.amenity === 'atm'],
@@ -99,6 +100,7 @@ export function initPlace(ctx) {
         ${phone ? `<a class="act" id="pcCall" href="tel:${esc(phone.split(';')[0].replace(/[^\d+]/g, ''))}">${icon('phone')}<span>${esc(ctx.t('call'))}</span></a>` : seller ? '' : ''}
         ${seller ? `<button class="act shop" id="pcShop">${icon('bag')}<span>${esc(ctx.t('shop_here'))}</span></button>` : ''}
       </div>
+      <div id="pcServices" class="pc-services"></div>
       <ul class="details">
         ${cat === 'ev' ? evHtml(p) : ''}${cat === 'parking' ? parkingHtml(p) : ''}
         ${hoursHtml(tags.opening_hours)}
@@ -109,6 +111,7 @@ export function initPlace(ctx) {
         <li class="detail">${icon('locate', { size: 20 })}<div><div class="mono">${esc(digipin || '')}</div><small>${esc(ctx.t('digipin'))} · ${p.lat.toFixed(5)}, ${p.lng.toFixed(5)}</small></div><button class="icon-btn sm" data-copy="digipin" aria-label="${esc(ctx.t('digipin'))}: copy">${icon('copy', { size: 18 })}</button></li>
       </ul>
       <div class="row wrap"><button class="link" id="pcHome">${esc(ctx.t('set_as_home'))}</button><button class="link" id="pcWork">${esc(ctx.t('set_as_work'))}</button>${ctx.directions.state?.to ? `<button class="link" id="pcStop">${icon('plus', { size: 16 })} ${esc(ctx.t('add_stop'))}</button>` : ''}<button class="link" id="pcReport">${icon('flag', { size: 16 })} ${esc(ctx.t('report_title'))}</button></div>
+      <section id="pcAlso" class="pc-also" hidden aria-labelledby="pcAlsoH"></section>
       <p class="small muted">${p.source === 'seller' || (seller && p.kind === 'seller') ? esc(ctx.t('demo_seller')) : p.source === 'ocm' ? 'Open Charge Map (CC BY 4.0)' : esc(ctx.t('osm_credit'))}</p>`;
     $('pcDir').onclick = () => ctx.directions.open(p);
     $('pcSave').onclick = () => ctx.saved.openSaveDialog(p, () => render(current));
@@ -118,11 +121,28 @@ export function initPlace(ctx) {
     $('pcWork').onclick = () => { ctx.saved.setShortcut('work', p); ctx.toast(ctx.tf('saved_ok', { list: ctx.t('work') })); };
     $('pcReport').onclick = () => ctx.report.open({ lat: p.lat, lng: p.lng, name: p.name });
     if ($('pcStop')) $('pcStop').onclick = () => ctx.directions.addStop({ lat: p.lat, lng: p.lng, name: p.name || ctx.t('dropped_pin') });
+    // v0.7 service panel (Map → Place → Services → Book/Order → Track) and "Also here" (OSM containment, online only).
+    ctx.services?.mount($('pcServices'), p, { seller, origin: from });
+    loadAlsoHere(p);
     $('placeCard').onclick = async (e) => {
+      const ah = e.target.closest('[data-also]'); if (ah) { const it = alsoItems.find((x) => x.id === ah.dataset.also); if (it) open({ ...it, _from: p._from }); return; }
       const c = e.target.closest('[data-copy]'); if (!c) return;
       const txt = c.dataset.copy === 'digipin' ? digipin : (current.address || `${p.lat.toFixed(6)}, ${p.lng.toFixed(6)}`);
       try { await navigator.clipboard.writeText(txt); ctx.toast(ctx.t('copied')); } catch { ctx.toast(txt); }
     };
+  }
+
+  let alsoItems = [];
+  async function loadAlsoHere(p) {
+    const el = $('pcAlso'); if (!el || p.kind === 'pin' || navigator.onLine === false || ctx.style?.forceOffline) return;
+    const my = seq;
+    try {
+      const r = await alsoHere(p);
+      if (my !== seq || !r.container || !r.items.length) return;
+      alsoItems = r.items;
+      el.hidden = false;
+      el.innerHTML = `<h4 id="pcAlsoH">${esc(ctx.t('also_here'))}${r.container.name ? ` · ${esc(r.container.name)}` : ''}</h4><div class="also-row">${r.items.slice(0, 10).map((x) => `<button class="also" data-also="${esc(x.id)}"><b>${esc(x.name)}</b><small>${esc(x.kind.replace('shop:', ''))}</small></button>`).join('')}</div><p class="small muted">${esc(ctx.t('osm_credit'))}</p>`;
+    } catch { /* optional section: stays hidden */ }
   }
 
   async function share(p) {

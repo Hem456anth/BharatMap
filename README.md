@@ -1,4 +1,4 @@
-# Bharat Map — v0.5 + sprint 0.5.11 (map-first app + own map-services backend, Android + web)
+# Bharat Map — v0.7 (map-first app + own map-services backend, Android + web)
 
 An India-first map app with an original identity: a calm, full-screen map with a floating search pill and a
 three-height bottom sheet, real places from OpenStreetMap, route options for drive / two-wheeler / cycle / walk,
@@ -10,6 +10,17 @@ tracking, seller and admin dashboards).
 > Overpass, Nominatim, Photon, OSRM). Sellers, products and riders in Shop are **fictional demo data**. Live traffic and live
 > transit arrivals are **not** included (they need licensed feeds); metro journeys use **scheduled** HMRL GTFS times. See `docs/AUDIT.md` for implemented vs prototype vs
 > needs-paid-API.
+
+## New in v0.7 (20 Oct 2026)
+- **Place-card service panels** (12 panel types): every value labelled Live / Scheduled / Estimate / Link-out / Demo /
+  Unavailable with its source; no fabricated prices, fares, showtimes or ETAs.
+- **Provider catalogue** of 92 Indian services, honestly classified (`docs/INTEGRATION_MATRIX.md`, `docs/INTEGRATIONS.md` §18);
+  link-outs go through a screen that names the destination host.
+- **Order → separate payment screen** (`#/pay/<orderId>`): online orders wait as `pending_payment` until a server-verified
+  payment. Razorpay, plus Cashfree / PhonePe / Paytm prototype adapters, each enabled only by server keys; without keys the
+  app says "Payments not configured". No `upi://` intents.
+- Live traffic only with a TomTom/HERE key; truck routing (Valhalla truck costing); ONDC buyer prototype behind a flag;
+  admin **Listings** (place verification + provider links). Config: `docs/CONFIGURATION.md`; gaps: `docs/KNOWN_LIMITATIONS.md`.
 
 ## New in sprint 0.5.11 (19 Oct 2026)
 | Area | What you get | Status |
@@ -112,7 +123,7 @@ Intent filters for `geo:` and `bharatmap://`, and four launcher shortcuts. With 
 configured the app runs fully on-device (Shop uses fictional demo data). Details: [docs/ANDROID.md](docs/ANDROID.md).
 
 ## Docs
-`docs/ARCHITECTURE.md` · `docs/API.md` · `docs/AUDIT.md` (implemented / prototype / needs paid API) · `docs/TEST-REPORT.md` ·
+`docs/ARCHITECTURE.md` · `docs/API.md` · `docs/CONFIGURATION.md` · `docs/KNOWN_LIMITATIONS.md` · `docs/INTEGRATIONS.md` · `docs/AUDIT.md` (implemented / prototype / needs paid API) · `docs/TEST-REPORT.md` ·
 `docs/ANDROID.md` · `docs/SELF_HOSTING.md` · `docs/OFFLINE_ROUTING.md` (graph build) · `docs/DEPLOYMENT.md` · `docs/PRD.md` · `docs/RESEARCH.md` · research for v0.3 in `docs/re/`.
 
 ## Attribution & licences

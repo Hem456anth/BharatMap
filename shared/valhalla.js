@@ -4,14 +4,21 @@
 import { decodePolyline } from './polyline.js';
 import { parseValhallaLanes } from './lanes.js';
 
-export const VALHALLA_COSTING = { drive: 'auto', two: 'motor_scooter', bike: 'bicycle', walk: 'pedestrian' };
+export const VALHALLA_COSTING = { drive: 'auto', two: 'motor_scooter', bike: 'bicycle', walk: 'pedestrian', truck: 'truck' };
+/** v0.7 truck defaults (Valhalla truck costing; metres / tonnes) — Indian medium goods vehicle; override per request. */
+export const TRUCK_DEFAULTS = { height: 3.8, width: 2.5, length: 10, weight: 16.2, axle_load: 10.2, hazmat: false };
 
 /** Pure: Valhalla /route JSON body. opts: { alternates, avoidTolls, avoidHighways, lang } */
-export function buildValhallaRequest(mode, from, to, { alternates = 2, avoidTolls = false, avoidHighways = false, lang = 'en-US', via = [] } = {}) {
+export function buildValhallaRequest(mode, from, to, { alternates = 2, avoidTolls = false, avoidHighways = false, lang = 'en-US', via = [], truck = {} } = {}) {
   const costing = VALHALLA_COSTING[mode];
   if (!costing) throw new Error(`unknown_mode:${mode}`);
   for (const p of [from, ...via, to]) if (!Number.isFinite(p?.lat) || !Number.isFinite(p?.lng)) throw new Error('invalid_point');
   const co = {};
+  if (costing === 'truck') {
+    Object.assign(co, TRUCK_DEFAULTS, Object.fromEntries(Object.entries(truck).filter(([k, v]) => k in TRUCK_DEFAULTS && (typeof v === 'boolean' || Number.isFinite(v)))));
+    if (avoidTolls) co.use_tolls = 0;
+    if (avoidHighways) co.use_highways = 0;
+  }
   if (costing === 'auto' || costing === 'motor_scooter') {
     if (avoidTolls) co.use_tolls = 0;
     if (avoidHighways) co.use_highways = 0;

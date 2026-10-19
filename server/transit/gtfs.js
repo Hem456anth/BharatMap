@@ -47,7 +47,7 @@ export function readZip(buf) {
   return out;
 }
 
-const FILES = ['agency', 'stops', 'routes', 'trips', 'stop_times', 'calendar', 'calendar_dates', 'feed_info'];
+const FILES = ['agency', 'stops', 'routes', 'trips', 'stop_times', 'calendar', 'calendar_dates', 'feed_info', 'fare_attributes', 'fare_rules'];
 /** Load a feed from a .zip file or a directory (x.txt or x.txt.gz). */
 export function loadFeed(src) {
   const files = {};
@@ -88,7 +88,7 @@ export function buildTimetable(feed, { id = 'feed', name = '', attribution = '',
     if (stopIdx.has(sid)) return stopIdx.get(sid);
     const s = stopRows.get(sid) || {}; const parent = s.parent_station ? stopRows.get(s.parent_station) : null;
     stopIdx.set(sid, stops.length);
-    stops.push({ id: sid, name: s.stop_name || parent?.stop_name || sid, lat: +s.stop_lat, lng: +s.stop_lon, parent: s.parent_station || '', platform: s.platform_code || '' });
+    stops.push({ id: sid, name: s.stop_name || parent?.stop_name || sid, lat: +s.stop_lat, lng: +s.stop_lon, parent: s.parent_station || '', platform: s.platform_code || '', ...(s.zone_id ? { zone: s.zone_id } : {}) });
     return stops.length - 1;
   };
   const patMap = new Map(); const patterns = [];
@@ -128,8 +128,11 @@ export function buildTimetable(feed, { id = 'feed', name = '', attribution = '',
   }
   const fi = (feed.feed_info || [])[0] || {};
   const ag = (feed.agency || [])[0] || {};
+  // v0.7: GTFS fares (fare_attributes.txt + fare_rules.txt) when the feed has them; HMRL's bundled feed does not.
+  const fares = (feed.fare_attributes || []).map((f) => ({ id: f.fare_id, price: Number(f.price), currency: f.currency_type || 'INR' })).filter((f) => f.id && Number.isFinite(f.price));
+  const fareRules = (feed.fare_rules || []).map((r) => ({ fare: r.fare_id, route: r.route_id || '', origin: r.origin_id || '', destination: r.destination_id || '' }));
   return { version: 1, id, name: name || ag.agency_name || id, attribution, agency: ag.agency_name || '', timezone: ag.agency_timezone || 'Asia/Kolkata',
-    valid: { start: fi.feed_start_date || '', end: fi.feed_end_date || '' }, stops, routes, services, patterns, transfers };
+    valid: { start: fi.feed_start_date || '', end: fi.feed_end_date || '' }, stops, routes, services, patterns, transfers, ...(fares.length ? { fares, fareRules } : {}) };
 }
 
 /** Load every feed under a directory: each subfolder or .zip is one feed (attribution from ATTRIBUTION.txt if present). */

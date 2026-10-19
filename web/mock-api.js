@@ -37,7 +37,7 @@ function view(o) {
     const r = S.riders.find((x) => x.id === o.rider?.id); if (r) r.available = true;
     o.events.push({ status: 'delivered', note: 'auto (simulated rider)', at: new Date().toISOString() }); save();
   }
-  return { ...o, business: { id: b.id, name: b.name, lat: b.lat, lng: b.lng, address: b.address }, tracking: { order_id: o.id, ...tr, rider: o.rider } };
+  return { ...o, status: tr.status, demo: true, demo_note: 'Demo seller — fictional business, prices and stock', payment_status: o.payment_status || 'pending', business: { id: b.id, name: b.name, lat: b.lat, lng: b.lng, address: b.address }, tracking: { order_id: o.id, ...tr, rider: o.rider } };
 }
 
 export async function mockApi(method, path, body) {
@@ -88,8 +88,22 @@ export async function mockApi(method, path, body) {
       rt = await route(b, drop);
     }
     for (const l of priced.lines) b.products.find((x) => x.id === l.product_id).stock -= l.qty;
-    const o = { id: `ord_${Math.random().toString(16).slice(2, 10)}`, customer_id: S.user.id, business_id: b.id, rider: rider && { id: rider.id, name: rider.name, vehicle: rider.vehicle }, fulfilment: body.fulfilment, payment_method: body.payment_method, status: 'placed', subtotal: priced.subtotal, delivery_fee: priced.delivery_fee, handling_fee: priced.handling_fee, total: priced.total, items: priced.lines.map(({ product_id, name, qty, unit_price }) => ({ product_id, name, qty, unit_price })), drop, route: rt, created_ms: Date.now(), created_at: new Date().toISOString(), events: [{ status: 'placed', note: rider ? `rider ${rider.name} (${rider.vehicle}) assigned` : 'pickup order', at: new Date().toISOString() }] };
+    // On-device mode has no payment gateway: online orders stay 'pending_payment' (never marked paid); simulated UPI is not offered.
+    if (body.payment_method === 'upi_simulated' || body.payment_method === 'razorpay') throw err(400, body.payment_method === 'razorpay' ? 'payments_not_configured' : 'simulated_payments_disabled');
+    const online = body.payment_method === 'online';
+    const o = { id: `ord_${Math.random().toString(16).slice(2, 10)}`, customer_id: S.user.id, business_id: b.id, rider: rider && { id: rider.id, name: rider.name, vehicle: rider.vehicle }, fulfilment: body.fulfilment, payment_method: online ? 'online' : 'cod', payment_status: online ? 'pending_payment' : 'pending', status: online ? 'pending_payment' : 'placed', subtotal: priced.subtotal, delivery_fee: priced.delivery_fee, handling_fee: priced.handling_fee, total: priced.total, items: priced.lines.map(({ product_id, name, qty, unit_price }) => ({ product_id, name, qty, unit_price })), drop, route: rt, created_ms: Date.now(), created_at: new Date().toISOString(), events: [{ status: 'placed', note: rider ? `rider ${rider.name} (${rider.vehicle}) assigned` : 'pickup order', at: new Date().toISOString() }] };
     S.orders.unshift(o); save();
+    return view(o);
+  }
+  if (p === '/api/payments/config') return { configured: false, gateways: [], upi: 'inside gateway checkout only', all: [] };
+  if (p === '/api/payments/orders' && method === 'POST') throw err(503, 'payments_not_configured');
+  let mc = /^\/api\/orders\/([\w]+)\/cancel$/.exec(p);
+  if (mc && method === 'POST') {
+    const o = S.orders.find((x) => x.id === mc[1]); if (!o) throw err(404, 'not_found');
+    const st = view(o).tracking.status; if (!['placed', 'accepted', 'pending_payment'].includes(st)) throw err(409, 'cannot_cancel_now');
+    const b = S.businesses.find((x) => x.id === o.business_id); for (const it of o.items) { const pr = b.products.find((x) => x.id === it.product_id); if (pr) pr.stock += it.qty; }
+    const r = S.riders.find((x) => x.id === o.rider?.id); if (r) r.available = true;
+    o.status = 'cancelled'; o.events.push({ status: 'cancelled', note: 'by customer', at: new Date().toISOString() }); save();
     return view(o);
   }
   if (p === '/api/orders') return { items: S.orders.filter((o) => S.user && (S.user.role !== 'seller' ? o.customer_id === S.user.id || S.user.role === 'admin' : o.business_id === S.user.business_id)).map(view) };

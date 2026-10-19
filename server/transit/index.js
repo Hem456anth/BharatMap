@@ -5,6 +5,7 @@ import { fileURLToPath } from 'node:url';
 import { loadFeedsDir } from './gtfs.js';
 import { planJourney, stopsNear, nextDepartures, ymd } from '../../shared/transit/raptor.js';
 import { haversineKm } from '../../shared/geo.js';
+import { stationDepartures } from '../../shared/services/departures.js';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 export function createTransit({ dirs = [path.join(HERE, 'feeds'), process.env.TRANSIT_FEEDS_DIR || path.join(HERE, '../../data/gtfs')] } = {}) {
@@ -49,6 +50,12 @@ export function createTransit({ dirs = [path.join(HERE, 'feeds'), process.env.TR
           .map(({ i, m }) => ({ id: tt.stops[i].parent || tt.stops[i].id, name: tt.stops[i].name, lat: tt.stops[i].lat, lng: tt.stops[i].lng, distance_m: Math.round(m), feed: tt.id, attribution: tt.attribution,
             departures: nextDepartures(tt, i, { date: w.date, dow: w.dow, sec: w.departSec, limit: 4 }) }));
       }).sort((a, b) => a.distance_m - b.distance_m).slice(0, limit);
+    },
+    /** v0.7 station panel: scheduled departures for an OSM station from whichever feed covers it. */
+    departures(place, opts = {}) {
+      const w = when(opts);
+      for (const tt of feedFor(place)) { const d = stationDepartures(tt, place, { date: w.date, dow: w.dow, sec: w.departSec }); if (d.status === 'ready') return { ...d, via: 'server' }; }
+      return { status: load().length ? 'no_match' : 'no_feed' };
     },
     nearestKm: (p) => Math.min(...load().flatMap((tt) => tt.stops.map((s) => haversineKm(p, s))), Infinity),
     istNow,

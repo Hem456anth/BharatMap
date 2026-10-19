@@ -233,41 +233,25 @@ $('#placeBtn').addEventListener('click', async () => {
   if (ful === 'delivery' && !state.drop) { toast('Set a drop location first'); return; }
   $('#placeBtn').disabled = true;
   try {
-    const o = await api('POST', '/api/orders', { business_id: c.business.id, fulfilment: ful, payment_method: $('[name=pay]:checked').value, items: c.items.map((i) => ({ product_id: i.id, qty: i.qty })), drop: state.drop, drop_address: $('#dropAddr').value || state.drop?.label });
+    const method = $('[name=pay]:checked').value === 'online' ? 'online' : 'cod';
+    const o = await api('POST', '/api/orders', { business_id: c.business.id, fulfilment: ful, payment_method: method, items: c.items.map((i) => ({ product_id: i.id, qty: i.qty })), drop: state.drop, drop_address: $('#dropAddr').value || state.drop?.label });
     state.cart = null; renderCartFab(); $('#cartDlg').close();
-    toast(`Order ${o.id} placed · ${inr(o.total)}`);
     ensureNotifyPermission().catch(() => {});
+    // v0.7: the order exists first; online payment happens on the separate payment screen and only a server-verified
+    // payment confirms it. COD orders are confirmed now and tracking starts.
+    if (o.status === 'pending_payment') { toast(`Order ${o.id} created · pending payment`); shell.payment.open(o.id); return; }
+    toast(`Order ${o.id} placed · ${inr(o.total)}`);
     showTab('orders'); track(o.id);
-    if (o.razorpay) payWithRazorpay(o);
-    else if (o.payment_status === 'payment_init_failed') toast('Payment could not start. Retry from Orders or choose cash on delivery.');
   } catch (e) { toast(`Order failed: ${ERRORS[e.message] || e.message}`); } finally { $('#placeBtn').disabled = false; }
 });
 
 const ERRORS = { payments_not_configured: 'Online payment is not set up on this server. Choose cash on delivery.', out_of_delivery_range: 'That address is beyond this seller\'s 25 km delivery range.', no_rider_available: 'No rider is free right now. Try pickup or retry in a few minutes.', insufficient_stock: 'Someone just bought the last units. Reduce quantity.', drop_location_required: 'Set a drop location first.' };
 
-// ---------------- Payments (Razorpay Checkout; real provider, Test or Live mode by server keys) ----------------
-function loadScript(src) {
-  return new Promise((res, rej) => { if (document.querySelector(`script[src="${src}"]`)) return res(); const s = Object.assign(document.createElement('script'), { src, async: true, onload: res, onerror: () => rej(new Error('Could not load Razorpay. Check your connection.')) }); document.head.append(s); });
-}
-async function payWithRazorpay(o) {
-  try {
-    await loadScript('https://checkout.razorpay.com/v1/checkout.js');
-    const rz = new window.Razorpay({
-      key: o.razorpay.key_id, order_id: o.razorpay.order_id, amount: o.razorpay.amount, currency: 'INR',
-      name: 'Bharat Map', description: o.razorpay.description, prefill: { email: state.user?.email || '' }, theme: { color: '#0f6e56' },
-      handler: async (resp) => {
-        try { await api('POST', '/api/payments/razorpay/verify', resp); toast('Payment successful ✓'); deviceNotify('Payment received', `${inr(o.total)} paid for ${o.id}`); track(o.id); } catch (e) { toast(`Payment verification failed: ${e.message}`); }
-      },
-      modal: { ondismiss: () => toast('Payment not completed. The order stays unpaid; you can pay from Orders.') },
-    });
-    rz.on('payment.failed', (r) => toast(`Payment failed: ${r.error?.description || 'declined'}`));
-    rz.open();
-  } catch (e) { toast(e.message); }
-}
+// Payments: see web/ui/payment.js (separate secure payment screen, #/pay/<orderId>).
 
 // ---------------- Tracking ----------------
 const STEPS = ['placed', 'accepted', 'picked_up', 'out_for_delivery', 'delivered'];
-const STEP_LABEL = { placed: 'Order placed', accepted: 'Seller packing', picked_up: 'Picked up', out_for_delivery: 'Out for delivery', delivered: 'Delivered', ready_for_pickup: 'Ready for pickup', completed: 'Completed', cancelled: 'Cancelled', rejected: 'Rejected by seller' };
+const STEP_LABEL = { pending_payment: 'Pending payment — not confirmed', placed: 'Order placed', accepted: 'Seller packing', picked_up: 'Picked up', out_for_delivery: 'Out for delivery', delivered: 'Delivered', ready_for_pickup: 'Ready for pickup', completed: 'Completed', cancelled: 'Cancelled', rejected: 'Rejected by seller' };
 async function track(id) {
   clearInterval(state.trackTimer); state.stream?.close();
   const o = await api('GET', `/api/orders/${id}`);
@@ -276,7 +260,9 @@ async function track(id) {
   const render = (tk) => {
     const idx = STEPS.indexOf(tk.status);
     $('#tracking').innerHTML = `<div class="card"><h3>${esc(tr(state.lang, 'tracking'))} · ${esc(o.id)}</h3>
-      <div class="meta">${esc(o.business.name)} → ${esc(o.drop?.address || 'you')} · ${inr(o.total)} · ${esc(o.payment_method === 'cod' ? 'Cash on delivery' : o.payment_method === 'razorpay' ? `Razorpay · ${o.payment_status}` : 'UPI (simulated)')}</div>
+      ${o.demo ? `<p class="prov-demo" data-prov="demo"><span class="hl hl-demo">Demo</span> ${esc(o.demo_note || 'Demo seller')}</p>` : ''}
+      <div class="meta">${esc(o.business.name)} → ${esc(o.drop?.address || 'you')} · ${inr(o.total)} · ${esc(o.payment_method === 'cod' ? 'Cash on delivery' : `Online · ${o.payment_status}`)}</div>
+      ${tk.status === 'pending_payment' ? `<div class="row"><button class="btn primary" data-paynow="${esc(o.id)}">Pay now (secure payment screen)</button></div>` : ''}
       ${o.rider ? `<div class="meta">🛵 ${esc(tr(state.lang, 'rider'))}: ${esc(o.rider.name)} (${esc(o.rider.vehicle)}) · route: ${esc(o.route?.engine || '')}</div>` : ''}
       <div class="bar" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${Math.round((tk.fraction || 0) * 100)}"><i style="width:${Math.round((tk.fraction || 0) * 100)}%"></i></div>
       <p><b>${esc(STEP_LABEL[tk.status] || tk.status)}</b>${tk.eta_s ? ` · ${esc(tr(state.lang, 'eta'))} ${Math.max(1, Math.round(tk.eta_s / 60))} min` : ''}</p>
@@ -311,6 +297,7 @@ async function loadOrders() {
   $('#orderList').innerHTML = items.length ? items.map((o) => `<div class="card"><h3>${esc(o.business.name)}</h3><div class="meta">${esc(o.id)} · ${inr(o.total)} · ${esc(STEP_LABEL[o.tracking.status] || o.tracking.status)}</div><button class="btn ghost" data-track="${esc(o.id)}">${esc(tr(state.lang, 'tracking'))}</button></div>`).join('') : '<p class="muted">No orders yet. Try “LED TVs near me”.</p>';
 }
 $('#orderList').addEventListener('click', (e) => { const b = e.target.closest('[data-track]'); if (b) track(b.dataset.track); });
+$('#tracking').addEventListener('click', (e) => { const b = e.target.closest('[data-paynow]'); if (b) shell.payment.open(b.dataset.paynow); });
 
 // ---------------- Assistant ----------------
 $('#chatForm').addEventListener('submit', async (e) => {
@@ -447,7 +434,7 @@ function updateBadge() {
 }
 $('#setBtn').addEventListener('click', () => {
   $('#apiUrl').value = apiBase(); $('#setOffline').checked = shell.style.forceOffline;
-  $('#setInfo').textContent = state.demo ? 'Status: on-device mode (no backend).' : `Status: connected to ${apiBase() || location.origin} · v${state.config?.version || '?'} · payments: ${state.config?.payments?.razorpay ? `Razorpay ${state.config.payments.mode}` : 'COD/UPI-simulated only'}`;
+  $('#setInfo').textContent = state.demo ? 'Status: on-device mode (no backend).' : `Status: connected to ${apiBase() || location.origin} · v${state.config?.version || '?'} · payments: ${state.config?.payments?.online?.configured ? state.config.payments.online.gateways.map((g) => `${g.name} ${g.mode}`).join(', ') : 'not configured (cash on delivery only)'}`;
   $('#setDlg').showModal();
 });
 $('#setClose').addEventListener('click', () => $('#setDlg').close());
@@ -500,8 +487,9 @@ async function openShop({ q, sellerId } = {}) {
     if (name === 'home') { clearMarkers(state.markers); clearMarkers(state.mobMarkers); }
     if (name === 'shop' && state.results.length) plotResults();
   });
-  if ($('[name=pay][value=razorpay]')) $('[name=pay][value=razorpay]').closest('label').hidden = !state.config?.payments?.razorpay;
-  if (state.config?.payments && !state.config.payments.upi_simulated) $('[name=pay][value=upi_simulated]').closest('label').hidden = true;
+  shell.on('track-order', (id) => { openShop(); showTab('orders'); track(id); });
+  shell.on('order-cancelled', () => loadOrders().catch(() => {}));
+  shell.requireSignIn = () => openAuth('customer@mapos.demo');
   updateBadge();
   await shell.style.apply({ reason: 'boot' });
   if (state.user) afterSignIn();
@@ -512,5 +500,6 @@ async function openShop({ q, sellerId } = {}) {
   const qs = new URLSearchParams(location.search);
   if (qs.get('q')) openShop({ q: qs.get('q') });
   if (qs.get('cat')) shell.search.openCategory(qs.get('cat'));
+  if (/^#\/pay\//.test(location.hash)) shell.payment.fromHash();
   if ('serviceWorker' in navigator && !state.demo && !isNative()) navigator.serviceWorker.register('sw.js').catch(() => {});
 })();

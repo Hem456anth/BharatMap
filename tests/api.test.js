@@ -97,9 +97,11 @@ test('order validation: out of stock, bad qty, out of range, no drop', async () 
 test('wholesale pickup order applies tier price; cancel restores stock', async () => {
   const cust = await login('customer@mapos.demo');
   const s0 = db.prepare('SELECT stock FROM products WHERE id=?').get('p9').stock;
-  const o = await j('POST', '/api/orders', { business_id: 'b3', items: [{ product_id: 'p9', qty: 5 }], fulfilment: 'pickup', payment_method: 'upi_simulated' }, cust);
+  // v0.7: simulated UPI is off unless ALLOW_SIMULATED_UPI=1 and never marks an order paid.
+  assert.equal((await j('POST', '/api/orders', { business_id: 'b3', items: [{ product_id: 'p9', qty: 5 }], fulfilment: 'pickup', payment_method: 'upi_simulated' }, cust)).body.error, 'simulated_payments_disabled');
+  const o = await j('POST', '/api/orders', { business_id: 'b3', items: [{ product_id: 'p9', qty: 5 }], fulfilment: 'pickup', payment_method: 'cod' }, cust);
   assert.equal(o.status, 201); assert.equal(o.body.subtotal, 12100 * 5);
-  assert.equal(o.body.payment_status, 'paid_simulated');
+  assert.equal(o.body.payment_status, 'pending');
   const c = await j('POST', `/api/orders/${o.body.id}/cancel`, {}, cust);
   assert.ok([200, 409].includes(c.status));
   if (c.status === 200) assert.equal(db.prepare('SELECT stock FROM products WHERE id=?').get('p9').stock, s0);
