@@ -2,8 +2,9 @@
 
 **Status: implemented (v0.4).** `android/` is a native Android project (Capacitor 7, compileSdk/targetSdk 35, minSdk 23 —
 Android 6.0+, package `com.indiamapos.app`, app name **Bharat Map**). The APK is built by GitHub Actions
-(`.github/workflows/ci.yml`) on every push to `main` and attached to a GitHub Release tagged `v0.4.<run>` as
-`bharat-map-0.4.<run>-debug.apk` (versionName `0.4.<run>`, versionCode = CI run number).
+(`.github/workflows/ci.yml`) on every push to `main` and attached to a GitHub Release tagged `v0.5.<run>` as
+`bharat-map-0.5.<run>.apk` (release-signed, not debuggable; from v0.5.13) plus `bharat-map-0.5.<run>-debug.apk`
+(versionName `0.5.<run>`, versionCode = CI run number).
 
 ## What is native
 | Capability | How |
@@ -42,22 +43,23 @@ npx cap sync android
 cd android && ./gradlew assembleDebug        # → app/build/outputs/apk/debug/app-debug.apk
 ```
 
-## Release signing (Play Store)
-Create a keystore (`keytool -genkeypair -v -keystore release.keystore -alias mapos -keyalg RSA -keysize 2048 -validity 10000`)
-and add repository secrets `ANDROID_KEYSTORE_BASE64` (base64 of the file), `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS`,
-`ANDROID_KEY_PASSWORD`. CI then also produces `bharat-map-0.4.<run>-release.apk`. Without them CI ships a **debug-signed** APK
-(installable by sideloading, not accepted by Play).
+## Release signing
+Release key: PKCS12 keystore, alias `bharatmap`, RSA 4096, 10,000 days, `CN=Bharat Map` (cert SHA-256 `d04d20f9…997c6c`).
+CI reads repository secrets `ANDROID_KEYSTORE_B64`, `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS`, `ANDROID_KEY_PASSWORD`;
+without them the release build is left unsigned and only the debug APK is published. No R8/minification or resource shrinking.
+Key backup, secrets setup and offline signing: [DEPLOYMENT.md](DEPLOYMENT.md#android-release-signing).
 
 ## Install the APK
 1. On the phone, open the repository's **Releases** page (`https://github.com/Hem456anth/BharatMap/releases`) and tap the
-   latest `v0.4.<n>` → `bharat-map-0.4.<n>-debug.apk`.
+   latest `v0.5.<n>` → `bharat-map-0.5.<n>.apk` (the release build; the `-debug` file is for troubleshooting only).
 2. Open the downloaded file. Android asks to allow **Install unknown apps** for your browser or Files app — allow it once.
-3. Tap **Install**. If an older v0.2 build ("India MapOS") is installed with a different signature, uninstall it first.
+3. Tap **Install**. **Coming from 0.5.12 or older (debug-signed) or a v0.2 "India MapOS" build: uninstall it once first** — the
+   release key differs, so Android will not update over it. Release builds then update in place.
 4. Open **Bharat Map**, allow location when you tap locate, and allow notifications if you use Shop orders.
 5. For voice guidance in Hindi/Telugu, make sure the phone's speech engine has that language (Settings → System →
    Languages → Text-to-speech → Google speech engine → Install voice data).
 
-Sideloading via USB: `adb install -r bharat-map-0.4.<n>-debug.apk`.
+Sideloading via USB: `adb install -r bharat-map-0.5.<n>.apk`.
 
 ## Known limits
 - Background navigation is compiled and its permission/rationale flow is E2E-tested with a stub plugin; it has not been tested on a physical device here. Aggressive OEM battery savers (some Xiaomi/Oppo/Vivo builds) may still stop it.

@@ -1,3 +1,17 @@
+# Bharat Map 0.5.13 — release APK
+
+Run date: 19 Oct 2026 (IST). First **release** build (previous releases shipped only a debug-signed APK).
+
+| Check | Result |
+|---|---|
+| CI | [run 13](https://github.com/Hem456anth/BharatMap/actions/runs/39209827250) (`4c89851`): unit + API + audit + secret scan ✅, Browser E2E ✅, Android ✅ — `assembleDebug assembleRelease`; release built without signing secrets (see below) → `bharat-map-0.5.13-release-unsigned.apk` 100,294,263 bytes, `aapt`: `versionCode='13' versionName='0.5.13'`, no `application-debuggable`, `zipalign -c -P 16 4` OK |
+| Signing | Signed offline with the Bharat Map release key (`apksigner` 0.9, build-tools 35): **Verifies**, v1 ✅ v2 ✅ v3 ✅, signer `CN=Bharat Map`, RSA 4096, cert SHA-256 `d04d20f9fd727d7ca6d966e771e2ed5760b20fefe9c139d36f0e3e86b7997c6c` |
+| Re-verified on GitHub | [attach run](https://github.com/Hem456anth/BharatMap/actions/runs/39210777662): sha256 of the signed APK matches (`bc487abc…9a731eaa4f`), `apksigner verify` ✅, `zipalign` ✅, `aapt` → debuggable=false; attached to the release |
+| Release | [v0.5.13](https://github.com/Hem456anth/BharatMap/releases/tag/v0.5.13): `bharat-map-0.5.13.apk` **100,443,822 bytes** (95.8 MiB, release, main asset) + `bharat-map-0.5.13-debug.apk` 102,777,634 bytes |
+| Not debuggable | `aapt dump badging` has no `application-debuggable`; the `<application>` element of the binary manifest has no `android:debuggable` attribute (androguard); `buildTypes.release` sets `debuggable false` |
+| Unchanged by design | `minifyEnabled false`, `shrinkResources false` (no R8, no resource shrinking); version scheme `0.5.<run number>` / versionCode = run number |
+| Install note | Release key ≠ debug key → uninstall a 0.5.12-or-older debug install once, then install `bharat-map-0.5.13.apk` |
+
 # Bharat Map sprint 0.5.11 — Test report
 
 Run date: 19 Oct 2026 (IST), aarch64 sandbox, Chromium 141 headless (SwiftShader). Raw outputs: `docs/test-output.txt` (npm test),

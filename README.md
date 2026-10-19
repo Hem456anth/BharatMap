@@ -32,7 +32,7 @@ tracking, seller and admin dashboards).
 | Community | **Report a map problem** → anonymous OpenStreetMap note (4 categories, rate-limited). **Road incidents** (pothole, waterlogging, closure, police check) that expire after 2 h, with votes and confidence, labelled “Community report, not verified” (shared through the server, device-only otherwise) |
 | Deep links | `geo:` URIs, `bharatmap://place|directions|search|list|live`, web `?lat=&lon=`; Android intent filters + App plugin; share links (geo + app + https); launcher shortcuts (Home, Work, Petrol nearby, Offline maps) |
 | Home & routing | Commute card (Home/Work drive time, “no live traffic”), **multi-stop routes** (up to 5 stops), arrival summary with “report a problem on this trip” |
-| Offline, bigger | **11 bundled cities** (Visakhapatnam, Hyderabad, Vijayawada, Guntur, Tirupati, Bengaluru, Chennai, Mumbai, Delhi NCR, Kolkata, Pune) + an **offline place index** of 68 k real OSM names built from the bundled tiles (`scripts/build-poi-index.mjs`); full Indic glyphs kept. APK ≈ 103 MB (v0.5.12: 102,777,637 bytes) |
+| Offline, bigger | **11 bundled cities** (Visakhapatnam, Hyderabad, Vijayawada, Guntur, Tirupati, Bengaluru, Chennai, Mumbai, Delhi NCR, Kolkata, Pune) + an **offline place index** of 68 k real OSM names built from the bundled tiles (`scripts/build-poi-index.mjs`); full Indic glyphs kept. APK ≈ 100 MB (release v0.5.13: 100,443,822 bytes) |
 | Voice, live, lists | Voice search (Android speech recognition / Web Speech), **live location sharing** via the server (time-limited, secret-protected), favourites lists shared as links |
 
 ## New in v0.4
@@ -101,7 +101,11 @@ docs/                ARCHITECTURE, API, AUDIT, TEST-REPORT, ANDROID, DEPLOYMENT,
 
 ## Android app
 Capacitor 7, package `com.indiamapos.app`, built by GitHub Actions on every push to `main` and published as a Release
-(`Bharat Map 0.5.N`, asset `bharat-map-0.5.N-debug.apk`, ≈ 103 MB with 11 offline cities and the offline search index). Native plugins: Geolocation (watchPosition for navigation),
+(`Bharat Map 0.5.N`). Main asset `bharat-map-0.5.N.apk` is the **release build** — signed with the Bharat Map release key
+(CN=Bharat Map, RSA 4096, cert SHA-256 `d04d20f9…997c6c`), not debuggable, no R8/minification or resource shrinking, ≈ 100 MB with
+11 offline cities and the offline search index; `bharat-map-0.5.N-debug.apk` is kept as a secondary asset for troubleshooting.
+**Upgrading from 0.5.12 or older:** those were debug-signed, so uninstall the old app once before installing a release build
+(Android refuses an update signed with a different key); release builds update in place after that. Signing setup: [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md#android-release-signing). Native plugins: Geolocation (watchPosition for navigation),
 Share, App (hardware back + deep links), Local Notifications, Text-to-Speech and Speech Recognition (community plugins), and the
 own `BackgroundNav` plugin (foreground service for navigation with the screen off; opens app settings after a permission denial).
 Intent filters for `geo:` and `bharatmap://`, and four launcher shortcuts. With no backend

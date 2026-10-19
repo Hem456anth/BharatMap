@@ -74,5 +74,53 @@ See `android/README.md` (PWA install today; Capacitor or TWA wrapper for Play St
 | Push when app closed | Firebase project, `google-services.json`, FCM service account | In-app + local notifications while app is open/backgrounded |
 | AI rewrite layer | `LLM_API_KEY` (+ `LLM_BASE_URL`, `LLM_MODEL`) | Rule-based multilingual intent engine |
 | Production routing/geocoding | Self-hosted `OSRM_URL` / `NOMINATIM_URL` / Valhalla | Public OSRM/Nominatim demo servers (rate-limited, dev only) |
-| Release-signed APK | `ANDROID_KEYSTORE_*` secrets | Debug-signed APK (sideload only) |
+| Release-signed APK | `ANDROID_KEYSTORE_B64`, `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS`, `ANDROID_KEY_PASSWORD` (see below) | CI still builds the release APK, but unsigned (kept as a CI artifact); only the debug APK is published |
 | Live traffic, tolls, transit schedules | Licensed feeds (e.g. NHAI/FASTag, GTFS from agencies) | Labelled sample data |
+
+## Android release signing
+
+The app's release key was generated on 19 Oct 2026: PKCS12 keystore, alias `bharatmap`, RSA 4096, validity 10,000 days
+(until 6 Mar 2054), `CN=Bharat Map`.
+
+| | |
+|---|---|
+| Certificate SHA-256 | `d0:4d:20:f9:fd:72:7d:7c:a6:d9:66:e7:71:e2:ed:57:60:b2:0f:ef:e9:c1:39:d3:6f:0e:3e:86:b7:99:7c:6c` |
+| Certificate SHA-1 | `3f:67:79:6d:59:35:66:df:f9:fd:f2:40:b7:78:bd:5d:82:31:f8:e3` |
+| Signature schemes | v1 (JAR) + v2 + v3 |
+| Keystore file SHA-256 | `4f8a2779bba25c1bf8014aa0f974f646236f144e69212145f3979fd9f64323ab` |
+
+**Key backup.** The keystore and its passwords are **not** in this repository (`.gitignore` excludes `signing/`, `*.jks`,
+`*.keystore`). The owner's backup is kept outside the repo (`signing/bharatmap-release.jks`, `signing/bharatmap-release.jks.b64`,
+`signing/credentials.txt`, all mode 600). Copy it to a second safe place (password manager / encrypted drive). **If the key is lost,
+no future build can update an installed copy** — every user would have to uninstall and reinstall.
+
+**CI secrets.** Settings → Secrets and variables → Actions → *Repository secrets*:
+
+| Secret | Value |
+|---|---|
+| `ANDROID_KEYSTORE_B64` | contents of `bharatmap-release.jks.b64` (single-line base64 of the keystore) |
+| `ANDROID_KEYSTORE_PASSWORD` | from `credentials.txt` |
+| `ANDROID_KEY_ALIAS` | `bharatmap` |
+| `ANDROID_KEY_PASSWORD` | from `credentials.txt` (same as the store password — PKCS12) |
+
+With the secrets present, the `android` job decodes the keystore to `$RUNNER_TEMP` (deleted after the build), checks it opens with
+the password/alias, runs `assembleDebug assembleRelease` (`android/app/build.gradle` reads `ANDROID_KEYSTORE_PATH` and the three
+password/alias variables; if any is missing the release build is produced **unsigned** instead of failing), verifies with
+`apksigner verify --print-certs` (must be `CN=Bharat Map`), `zipalign -c -P 16 4` and `aapt dump badging` (must not be
+debuggable), then publishes `bharat-map-0.5.N.apk` (release, main asset) and `bharat-map-0.5.N-debug.apk`.
+
+Without the secrets, CI warns, uploads `bharat-map-0.5.N-release-unsigned.apk` as a 7-day artifact, and publishes only the debug APK.
+An unsigned build can be signed offline with the backed-up key:
+
+```bash
+apksigner sign --ks signing/bharatmap-release.jks --ks-key-alias bharatmap \
+  --ks-pass env:KSP --key-pass env:KSP --out bharat-map-0.5.N.apk bharat-map-0.5.N-release-unsigned.apk
+apksigner verify --print-certs bharat-map-0.5.N.apk
+```
+
+(v0.5.13 was produced this way: the secrets could not be written through the automation's GitHub token, which has no
+Actions-secrets permission. Add the four secrets once in the GitHub UI and every later build is signed in CI.)
+
+**Switching from debug builds.** 0.5.12 and earlier were signed with the CI's throwaway debug key. Android will not install a
+release-signed build over them: uninstall the old app once (on-device saved places and downloaded offline data are removed), then
+install the release APK. Later release builds install as normal updates.
