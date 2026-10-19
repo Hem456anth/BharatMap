@@ -20,7 +20,8 @@ Legend as below (✅ implemented · 🟡 prototype · 🔌 needs external depend
 
 ### Tests (v0.7)
 - `npm test`: **166 / 166 pass** (141 + 25 new: `tests/v07.test.js` 15, `tests/v07-api.test.js` 10).
-- Chromium E2E: **112 / 112 pass** locally (chunked); see `docs/TEST-REPORT.md`.
+- Chromium E2E: **112 / 112 pass** locally (chunked) and in one full CI run ([run 14](https://github.com/Hem456anth/BharatMap/actions/runs/39330636207)); see `docs/TEST-REPORT.md`.
+- Release: [v0.7.14](https://github.com/Hem456anth/BharatMap/releases/tag/v0.7.14), `bharat-map-0.7.14.apk` signed with the release key, debuggable=false.
 
 ### Remaining gaps (v0.7)
 - No real-device run of the v0.7 APK; no payment-gateway sandbox run; no ONDC network; no traffic key — `docs/KNOWN_LIMITATIONS.md`.

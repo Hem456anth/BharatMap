@@ -8,7 +8,17 @@ Run date: 20 Oct 2026 (IST), aarch64 sandbox, Chromium 129 headless (SwiftShader
 |---|---|
 | Unit + API (`npm test`, node:test) | **166 / 166 pass** (141 from v0.1–0.5.11 + 25 new: `tests/v07.test.js` 15, `tests/v07-api.test.js` 10) |
 | Browser E2E (`tests/e2e.mjs`, desktop 1366×820 + mobile 390×844) | **112 / 112 pass** locally — 106 steps + 6 console-error checks (102 regression + 10 new v0.7 steps); 0 console errors. Run in chunks (`ONLY=<regex>`) because of the sandbox's ~115 s command limit; see "Harness" below |
-| CI | _filled in after the push — see the "CI and release" section_ |
+| CI | [run 14](https://github.com/Hem456anth/BharatMap/actions/runs/39330636207) (`340e23b`): unit + API **166 / 166** + `npm audit` (0 vulnerabilities) + secret scan ✅, Browser E2E **112 / 112 pass, 0 FAIL** in one full run on GitHub's Chromium ✅, Android `assembleDebug assembleRelease` ✅ → release [v0.7.14](https://github.com/Hem456anth/BharatMap/releases/tag/v0.7.14) |
+
+## CI and release (v0.7.14)
+
+| Check | Result |
+|---|---|
+| CI | [run 14](https://github.com/Hem456anth/BharatMap/actions/runs/39330636207), all three jobs green. Release built without signing secrets → artifact `bharat-map-0.7.14-release-unsigned.apk` 100,357,530 bytes |
+| Signing | Signed offline with the Bharat Map release key (`apksigner`, build-tools 35): **Verifies**, v1 ✅ v2 ✅ v3 ✅, one signer `CN=Bharat Map`, cert SHA-256 `d04d20f9fd727d7ca6d966e771e2ed5760b20fefe9c139d36f0e3e86b7997c6c` (same key as 0.5.13, so it updates over 0.5.13 in place); `zipalign -c -P 16 4` OK |
+| Manifest | `aapt`: `package com.indiamapos.app versionCode='14' versionName='0.7.14'`, minSdk 23, target/compile 35; no `application-debuggable`, no `android:debuggable` attribute → **debuggable=false** |
+| Attached | [attach run](https://github.com/Hem456anth/BharatMap/actions/runs/39331325706) (`.github/workflows/attach-apk.yml`): SHA-256 matched, apksigner/zipalign/aapt re-checked on GitHub, uploaded |
+| Release | [v0.7.14](https://github.com/Hem456anth/BharatMap/releases/tag/v0.7.14): **`bharat-map-0.7.14.apk` 100,510,581 bytes** (95.9 MiB), SHA-256 `87aa21b01e92f811c697da0dbb64c7e757c37121bf5b0239d7b798e3b76eebae` (re-downloaded from the release and matched) + `bharat-map-0.7.14-debug.apk` 102,851,530 bytes |
 
 ### New unit + API tests (25)
 `tests/v07.test.js` (15): tag → panel mapping for all 12 panel types; **honesty self-check** over every sample panel (no Live
