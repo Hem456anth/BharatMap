@@ -16,14 +16,28 @@ android {
             ignoreAssetsPattern '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
         }
     }
+    // Release signing: CI decodes the ANDROID_KEYSTORE_B64 secret to a file and passes its path in
+    // ANDROID_KEYSTORE_PATH (falls back to app/release.keystore). If the keystore or any password is
+    // missing, the release build still assembles but stays UNSIGNED (app-release-unsigned.apk) instead of failing.
+    def releaseKeystorePath = System.getenv('ANDROID_KEYSTORE_PATH') ?: 'release.keystore'
+    def releaseKeystore = file(releaseKeystorePath)
+    def releaseStorePass = System.getenv('ANDROID_KEYSTORE_PASSWORD')
+    def releaseKeyAlias = System.getenv('ANDROID_KEY_ALIAS')
+    def releaseKeyPass = System.getenv('ANDROID_KEY_PASSWORD')
+    def hasReleaseSigning = releaseKeystore.exists() && releaseStorePass && releaseKeyAlias && releaseKeyPass
+    if (!hasReleaseSigning) {
+        logger.warn("Bharat Map: release keystore/passwords not provided - release APK will be unsigned.")
+    }
     signingConfigs {
-        release {
-            // Populated in CI from repository secrets; absent locally => release build is skipped.
-            if (file('release.keystore').exists()) {
-                storeFile file('release.keystore')
-                storePassword System.getenv('ANDROID_KEYSTORE_PASSWORD')
-                keyAlias System.getenv('ANDROID_KEY_ALIAS')
-                keyPassword System.getenv('ANDROID_KEY_PASSWORD')
+        if (hasReleaseSigning) {
+            release {
+                storeFile releaseKeystore
+                storePassword releaseStorePass
+                keyAlias releaseKeyAlias
+                keyPassword releaseKeyPass
+                enableV1Signing true
+                enableV2Signing true
+                enableV3Signing true
             }
         }
     }
@@ -33,8 +47,11 @@ android {
     }
     buildTypes {
         release {
-            if (file('release.keystore').exists()) { signingConfig signingConfigs.release }
+            if (hasReleaseSigning) { signingConfig signingConfigs.release }
+            debuggable false
+            // Deliberately no R8/minification and no resource shrinking (project decision).
             minifyEnabled false
+            shrinkResources false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
         }
     }

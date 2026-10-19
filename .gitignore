@@ -12,3 +12,4 @@ android/app/release.keystore
 *.jks
 .scratch/
 web/vendor/maplibre-gl-5.js
+signing/

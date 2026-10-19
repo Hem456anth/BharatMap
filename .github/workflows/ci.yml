@@ -49,11 +49,12 @@ jobs:
         with: { name: e2e-screenshots, path: docs/screenshots, retention-days: 14 }
 
   android:
-    name: Build Android APK
+    name: Build Android APK (signed release + debug)
     runs-on: ubuntu-latest
     needs: test
     env:
-      HAS_KEYSTORE: ${{ secrets.ANDROID_KEYSTORE_BASE64 != '' }}
+      HAS_KEYSTORE: ${{ secrets.ANDROID_KEYSTORE_B64 != '' }}
+      VER: 0.5.${{ github.run_number }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -66,11 +67,23 @@ jobs:
           MAPOS_API_BASE: ${{ vars.MAPOS_API_BASE }}   # set in repo Settings → Variables once the backend is deployed
         run: node scripts/build-www.mjs
       - run: npx cap sync android
-      - name: Decode release keystore (optional)
+      - name: Decode release keystore
         if: env.HAS_KEYSTORE == 'true'
-        env: { KS: "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" }
-        run: echo "$KS" | base64 -d > android/app/release.keystore
-      - name: Gradle build
+        env:
+          KS: ${{ secrets.ANDROID_KEYSTORE_B64 }}
+          KSP: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          KA: ${{ secrets.ANDROID_KEY_ALIAS }}
+        run: |
+          echo "$KS" | tr -d ' \r\n' | base64 -d > "$RUNNER_TEMP/bharatmap-release.jks"
+          echo "decoded keystore sha256: $(sha256sum "$RUNNER_TEMP/bharatmap-release.jks" | cut -c1-64) ($(stat -c%s "$RUNNER_TEMP/bharatmap-release.jks") bytes)"
+          keytool -list -keystore "$RUNNER_TEMP/bharatmap-release.jks" -storepass "$KSP" -alias "$KA" > /dev/null \
+            && echo "keystore opens with ANDROID_KEYSTORE_PASSWORD and contains alias ANDROID_KEY_ALIAS" \
+            || { echo "::error::keystore could not be opened with the stored password/alias (secret pasted incorrectly?)"; exit 1; }
+          echo "ANDROID_KEYSTORE_PATH=$RUNNER_TEMP/bharatmap-release.jks" >> "$GITHUB_ENV"
+      - name: Warn when release signing secrets are missing
+        if: env.HAS_KEYSTORE != 'true'
+        run: echo "::warning::ANDROID_KEYSTORE_B64 secret not set - release APK will be unsigned and only the debug APK is published."
+      - name: Gradle build (assembleDebug + assembleRelease)
         working-directory: android
         env:
           VERSION_CODE: ${{ github.run_number }}
@@ -80,20 +93,62 @@ jobs:
           ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
         run: |
           chmod +x gradlew
-          ./gradlew --no-daemon assembleDebug
+          ./gradlew --no-daemon assembleDebug assembleRelease
           ./gradlew --no-daemon lintDebug || echo "lint reported issues (non-blocking)"
-          if [ -f app/release.keystore ]; then ./gradlew --no-daemon assembleRelease; fi
+      - name: Remove decoded keystore
+        if: always()
+        run: rm -f "$RUNNER_TEMP/bharatmap-release.jks"
       - name: Collect APKs
         run: |
           mkdir -p out
-          cp android/app/build/outputs/apk/debug/app-debug.apk out/bharat-map-0.5.${{ github.run_number }}-debug.apk
-          [ -f android/app/build/outputs/apk/release/app-release.apk ] && cp android/app/build/outputs/apk/release/app-release.apk out/bharat-map-0.5.${{ github.run_number }}-release.apk || true
+          cp android/app/build/outputs/apk/debug/app-debug.apk out/bharat-map-$VER-debug.apk
+          if [ -f android/app/build/outputs/apk/release/app-release.apk ]; then
+            cp android/app/build/outputs/apk/release/app-release.apk out/bharat-map-$VER.apk
+          elif [ "$HAS_KEYSTORE" = "true" ]; then
+            echo "::error::Keystore was provided but no signed app-release.apk was produced"; ls -la android/app/build/outputs/apk/release; exit 1
+          else
+            # No signing secrets: keep the unsigned release build as a CI artifact so it can be signed offline with the release key.
+            mkdir -p out-unsigned
+            cp android/app/build/outputs/apk/release/app-release-unsigned.apk out-unsigned/bharat-map-$VER-release-unsigned.apk
+            ls -la out-unsigned
+          fi
           ls -la out
+      - name: Verify release signature and manifest (apksigner, aapt)
+        if: hashFiles('out/bharat-map-*[0-9].apk') != ''
+        run: |
+          BT=$ANDROID_HOME/build-tools/$(ls $ANDROID_HOME/build-tools | sort -V | tail -1)
+          APK=out/bharat-map-$VER.apk
+          echo "build-tools: $BT"
+          $BT/zipalign -c -P 16 -v 4 "$APK" > /dev/null && echo "zipalign: OK (4-byte, 16K .so pages)" || $BT/zipalign -c -v 4 "$APK" | tail -1
+          $BT/apksigner verify --verbose --print-certs "$APK" | tee apksigner.txt
+          grep -q "CN=Bharat Map" apksigner.txt || { echo "::error::release APK is not signed with the Bharat Map release key"; exit 1; }
+          echo "--- debuggable check ---"
+          $BT/aapt dump badging "$APK" | grep -E "^package:|application-debuggable" || true
+          if $BT/aapt dump badging "$APK" | grep -q application-debuggable; then echo "::error::release APK is debuggable"; exit 1; fi
+          echo "debuggable=false (no application-debuggable in aapt badging)"
+          $BT/aapt2 dump xmltree --file AndroidManifest.xml "$APK" | grep -i debuggable || echo "AndroidManifest.xml: no android:debuggable attribute"
+          echo "--- debug APK cert (for comparison) ---"
+          $BT/apksigner verify --print-certs out/bharat-map-$VER-debug.apk | grep -E "DN|SHA-256"
+          {
+            echo "## Release signature"; echo '```'; cat apksigner.txt | grep -E "Verifies|v1|v2|v3|DN|SHA-256"; echo "debuggable=false"; echo '```'
+          } >> $GITHUB_STEP_SUMMARY
+      - name: Check unsigned release build (not debuggable)
+        if: hashFiles('out-unsigned/*.apk') != ''
+        run: |
+          BT=$ANDROID_HOME/build-tools/$(ls $ANDROID_HOME/build-tools | sort -V | tail -1)
+          APK=$(ls out-unsigned/*.apk)
+          $BT/aapt dump badging "$APK" | grep -E "^package:|application-debuggable" || true
+          if $BT/aapt dump badging "$APK" | grep -q application-debuggable; then echo "::error::release APK is debuggable"; exit 1; fi
+          echo "debuggable=false (no application-debuggable in aapt badging)"
+          $BT/zipalign -c -P 16 -v 4 "$APK" > /dev/null && echo "zipalign: OK (4-byte, 16K .so pages)" || echo "zipalign check: not aligned"
+      - uses: actions/upload-artifact@v4
+        if: hashFiles('out-unsigned/*.apk') != ''
+        with: { name: bharat-map-release-unsigned, path: out-unsigned/*.apk, retention-days: 7 }
       - name: APK size report (informational, never fails the build)
         run: |
-          APK=$(ls out/*-debug.apk | head -1)
           echo "## APK size" >> $GITHUB_STEP_SUMMARY
-          echo "$(basename $APK): $(du -h $APK | cut -f1) ($(stat -c%s $APK) bytes)" | tee -a $GITHUB_STEP_SUMMARY
+          for APK in out/*.apk; do echo "$(basename $APK): $(du -h $APK | cut -f1) ($(stat -c%s $APK) bytes)" | tee -a $GITHUB_STEP_SUMMARY; done
+          APK=$(ls out/*.apk | head -1)
           echo '```' >> $GITHUB_STEP_SUMMARY
           unzip -lv "$APK" | awk 'NR>3 && $1 ~ /^[0-9]+$/ { split($8, p, "/"); key = p[1]; if (key == "assets") key = p[1] "/" p[2] "/" p[3]; raw[key] += $1; comp[key] += $3 } END { for (k in raw) printf "%10.1f MB stored %10.1f MB raw  %s\n", comp[k]/1048576, raw[k]/1048576, k }' | sort -rn | head -20 | tee -a $GITHUB_STEP_SUMMARY
           echo '```' >> $GITHUB_STEP_SUMMARY
@@ -106,6 +161,13 @@ jobs:
         if: github.ref == 'refs/heads/main'
         env: { GH_TOKEN: "${{ github.token }}" }
         run: |
-          gh release create "v0.5.${{ github.run_number }}" out/*.apk \
-            --title "Bharat Map 0.5.${{ github.run_number }}" \
-            --notes "Bharat Map 0.5 (sprint ${{ github.run_number }}): device tiers (Lite/Balanced/Full from device memory, CPU and network), offline search v2 over every bundled city (OSM Telugu/Hindi/Tamil/Kannada/… names, Latin↔Indic transliteration, pincodes, DIGIPIN), India road hints (take the flyover, stay on the service road, narrow road ahead, time-restriction badge), Indic guidance-voice picker. Earlier 0.5: lane guidance (OSRM/Valhalla lanes), speed-limit sign + overspeed chime (OSM maxspeed via Valhalla/Overpass; never shown when unknown), navigation sounds, sunrise/sunset day-night driving style, junction view, permission explainers + privacy dashboard (DPDP), report a map problem (OpenStreetMap notes) and 2-hour community incidents, geo:/bharatmap:// deep links + share links, commute card, multi-stop routes, offline maps for 11 cities with an offline place index, voice search, live location and list sharing. Automated build of ${{ github.sha }}. Debug-signed APK: enable Install unknown apps to sideload. See docs/TEST-REPORT.md."
+          FEATURES="Bharat Map 0.5 (sprint ${{ github.run_number }}): device tiers (Lite/Balanced/Full from device memory, CPU and network), offline search v2 over every bundled city (OSM Telugu/Hindi/Tamil/Kannada/… names, Latin↔Indic transliteration, pincodes, DIGIPIN), India road hints (take the flyover, stay on the service road, narrow road ahead, time-restriction badge), Indic guidance-voice picker. Earlier 0.5: lane guidance (OSRM/Valhalla lanes), speed-limit sign + overspeed chime (OSM maxspeed via Valhalla/Overpass; never shown when unknown), navigation sounds, sunrise/sunset day-night driving style, junction view, permission explainers + privacy dashboard (DPDP), report a map problem (OpenStreetMap notes) and 2-hour community incidents, geo:/bharatmap:// deep links + share links, commute card, multi-stop routes, offline maps for 11 cities with an offline place index, voice search, live location and list sharing."
+          if [ -f "out/bharat-map-$VER.apk" ]; then
+            ASSETS="out/bharat-map-$VER.apk out/bharat-map-$VER-debug.apk"
+            INSTALL="Install bharat-map-$VER.apk - the signed RELEASE build (not debuggable, no R8/minification). IMPORTANT: it is signed with the Bharat Map release key, which differs from the debug key used by earlier builds (0.5.12 and older), so Android will refuse to update over a debug install - uninstall the old debug build once, then install this APK (Install unknown apps must be allowed). Future release builds will update in place. bharat-map-$VER-debug.apk is the debug build, for troubleshooting only."
+          else
+            ASSETS="out/bharat-map-$VER-debug.apk"
+            INSTALL="Release signing secrets (ANDROID_KEYSTORE_B64 etc.) were not available to this run; the release-key-signed APK, if any, is attached separately after offline signing."
+          fi
+          printf '%s\n\n%s\n\nAutomated build of %s. See docs/TEST-REPORT.md.\n' "$INSTALL" "$FEATURES" "${{ github.sha }}" > notes.md
+          gh release create "v$VER" $ASSETS --title "Bharat Map $VER" --notes-file notes.md
