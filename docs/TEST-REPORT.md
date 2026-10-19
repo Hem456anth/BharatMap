@@ -9,7 +9,7 @@ Run date: 19 Oct 2026 (IST), aarch64 sandbox, Chromium 141 headless (SwiftShader
 | Unit + API (`npm test`, node:test) | **141 / 141 pass** (120 from v0.1–v0.5 + 21 new) — green on two consecutive runs |
 | Browser E2E (`tests/e2e.mjs`, desktop 1366×820 + mobile 390×844) | **102 / 102 pass** — desktop 58, mobile 44 (91 regression + 11 new); 0 console errors. Local full run 1 green; run 2: see CI/notes below |
 | Offline routing graph (`scripts/build-graph.sh`) | Visakhapatnam built and routed offline (`scripts/graph-smoke.py`): 71 tiles, 10.9 MB tar, 3.7 MB gz — `docs/OFFLINE_ROUTING.md` |
-| CI | _filled in after the run_ |
+| CI | [run 12](https://github.com/Hem456anth/BharatMap/actions/runs/39204245141) (`a409eda`): unit + API + audit + secret scan ✅, Browser E2E ✅ (102 / 102 on GitHub's Chromium, 0 FAIL), Android Gradle build ✅ → release [v0.5.12](https://github.com/Hem456anth/BharatMap/releases/tag/v0.5.12), `bharat-map-0.5.12-debug.apk` 102,777,637 bytes (98.0 MiB): `AndroidManifest.xml`, `classes.dex`–`classes4.dex`, 11 offline PMTiles, `offline/search/index.json` (12.5 MB raw), launcher `shortcuts.xml`. [Run 11](https://github.com/Hem456anth/BharatMap/actions/runs/39202827569) (`5d2dd88`) failed only on E2E `low-bandwidth toggle … restored` (desktop) — fixed below; its automatically published v0.5.11 APK predates the fix |
 
 ### New unit + API tests (21)
 `tests/v06.test.js` (19): device tiers (2 GB phone → low; 3 GB + 4 cores → low; 2G / Save-Data → low; 8 GB + 8 cores → high;
@@ -37,6 +37,15 @@ the guidance language, missing voice → null).
 | Road hint "Take the flyover" ~380 m before the Port Main Road Flyover (real NH16 Valhalla edges), spoken once; Telugu chip | ✅ | ✅ |
 | Service-road hint + time-restriction badge "No entry · Mo-Sa 08:00-11:00 · In force now/Not in force now" + narrow event (**synthetic fixture**) | ✅ | ✅ |
 | Indic voice picker: te/hi/ta + English-India listed, fr-FR filtered out; Telugu sample spoken with the te-IN voice; guidance then speaks te-IN; back to Automatic | ✅ | ✅ |
+
+### Fix after CI run 11
+- **Low-bandwidth / device-tier changes were skipped while tiles were loading** (CI failure on `v04 desktop: low-bandwidth toggle … restored`):
+  `ctx.bw.refresh()` applied the policy only when `map.loaded() || map.isStyleLoaded()`, and MapLibre reports both as false while any
+  source is still fetching tiles. On CI's slower runner, turning low-bandwidth off mid-load left the zoom cap at 16. The zoom cap and
+  prefetch delta are now applied unconditionally (layer visibility changes are guarded and re-applied on `style.load`); `ctx.tier.set()`
+  had the same guard and got the same fix (`web/shell.js`, `web/map/style.js`). New E2E regression assertion: the step simulates the
+  loading state (`loaded()`/`isStyleLoaded()` → false) before unticking and requires max zoom 20 — it fails on `5d2dd88` (maxZoom 16)
+  and passes with the fix. Unit + API re-run: 141 / 141.
 
 ### Test-harness change
 E2E contexts now pin `navigator.deviceMemory = 8` and `hardwareConcurrency = 8`: the 2-vCPU sandbox would otherwise be detected
