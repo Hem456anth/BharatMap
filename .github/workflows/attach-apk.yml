@@ -1,0 +1,39 @@
+name: Attach offline-signed APK to a release
+
+# Manual: an APK signed offline with the Bharat Map release key is fetched from a short-lived URL, its SHA-256 must
+# match the input, its signature/alignment/manifest are re-verified, then it is attached to the existing release.
+on:
+  workflow_dispatch:
+    inputs:
+      url: { description: 'Short-lived download URL of the signed APK', required: true }
+      sha256: { description: 'Expected SHA-256 of the APK', required: true }
+      tag: { description: 'Release tag, e.g. v0.7.14', required: true }
+      name: { description: 'Asset name, e.g. bharat-map-0.7.14.apk', required: true }
+
+permissions:
+  contents: write
+
+jobs:
+  attach:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download and check hash
+        env: { URL: "${{ inputs.url }}", SHA: "${{ inputs.sha256 }}", NAME: "${{ inputs.name }}" }
+        run: |
+          case "$NAME" in bharat-map-*.apk) ;; *) echo "::error::unexpected asset name"; exit 1;; esac
+          curl -sfL --retry 3 -o "$NAME" "$URL"
+          echo "$SHA  $NAME" | sha256sum -c -
+          echo "size: $(stat -c%s "$NAME") bytes"
+      - name: Verify signature, alignment, not debuggable
+        env: { NAME: "${{ inputs.name }}" }
+        run: |
+          BT=$ANDROID_HOME/build-tools/$(ls $ANDROID_HOME/build-tools | sort -V | tail -1)
+          $BT/apksigner verify --verbose --print-certs "$NAME" | tee apksigner.txt
+          grep -q "CN=Bharat Map" apksigner.txt || { echo "::error::not signed with the Bharat Map release key"; exit 1; }
+          $BT/zipalign -c -P 16 4 "$NAME"
+          $BT/aapt dump badging "$NAME" | grep -E "^package"
+          if $BT/aapt dump badging "$NAME" | grep -q application-debuggable; then echo "::error::APK is debuggable"; exit 1; fi
+          { echo "## $NAME"; echo '```'; grep -E "Verifies|v1|v2|v3|DN|SHA-256" apksigner.txt; echo "debuggable=false"; echo '```'; } >> $GITHUB_STEP_SUMMARY
+      - name: Attach to release
+        env: { GH_TOKEN: "${{ github.token }}", TAG: "${{ inputs.tag }}", NAME: "${{ inputs.name }}" }
+        run: gh release upload "$TAG" "$NAME" --clobber --repo "$GITHUB_REPOSITORY"
