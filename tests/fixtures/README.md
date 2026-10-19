@@ -38,3 +38,10 @@ FOSSGIS OSRM rejects `annotations=maxspeed` (InvalidQuery), which is why speed l
 (or Overpass `maxspeed` tags) unless a self-hosted OSRM with `OSRM_MAXSPEED=1` is configured.
 In the E2E the **OpenStreetMap Notes API is mocked** (returns note id 4242); tests never create real notes.
 The offline place indexes in `web/offline/pois/` are built from the bundled PMTiles by `scripts/build-poi-index.mjs`.
+
+## Sprint 0.5.11 fixtures (captured 2026-10-19, User-Agent `BharatMap-test-fixture/0.6`)
+| File | Source request |
+|---|---|
+| `valhalla-roadhints-{dwarakanagar-anakapalli,dwarakanagar-rkbeach,silkboard-ecity}.json` | `GET https://valhalla1.openstreetmap.de/trace_attributes` for the OSRM fixture route geometry, attributes `edge.length/bridge/road_class/use/lane_count/traversability/names/way_id` (real) |
+| `overpass-roadhints-dwarakanagar-anakapalli.json` | `buildRoadHintsQuery(<that route>)` on overpass.private.coffee (real; no `*:conditional` tags on this route) |
+| `overpass-roadhints-synthetic-rkbeach.json` | **SYNTHETIC** — not OSM data. Four invented ways (negative ids, names prefixed "(synthetic)") laid on the real RK Beach route geometry: `lanes=1`, `highway=service`, `motor_vehicle:conditional=no @ (Mo-Sa 08:00-11:00)`, an odd-even note. Used only to exercise the restriction badge / narrow / service UI |

@@ -1,6 +1,7 @@
 // Map style management: online (OpenFreeMap liberty/dark) or bundled offline PMTiles (Protomaps light/dark),
 // plus Bharat Map overlay layers that survive style switches: routes, POI overlays, 3D buildings, transit lines.
 // Auto-fallback: if the network map fails (style or repeated tile errors) the bundled offline map is used.
+import { labelMinzoomShift } from '../lib/device-tier.js';
 import { store } from '../shared/storage.js';
 import { isNative } from '../native.js';
 
@@ -13,7 +14,7 @@ const PALETTE = {
 export function createMapStyle(ctx) {
   const { map } = ctx;
   const S = {
-    offlineActive: false, auto: false, routes: EMPTY, pois: EMPTY, legs: EMPTY, tolls: EMPTY, errors: [], lowBw: false,
+    offlineActive: false, auto: false, routes: EMPTY, pois: EMPTY, legs: EMPTY, tolls: EMPTY, errors: [], lowBw: false, tier: null, labelZoom: {}, labelShift: 0,
     pref: store.getItem('bm-map-style') || 'auto', // auto | standard | dark
     buildings3d: store.getItem('bm-3d') !== '0',
     transit: store.getItem('bm-transit') === '1',
@@ -71,7 +72,7 @@ export function createMapStyle(ctx) {
     for (const l of map.getStyle().layers) if (l.type === 'fill-extrusion' && !l.id.startsWith('bm-')) map.setLayoutProperty(l.id, 'visibility', 'none');
     if (sc && !map.getLayer('bm-buildings-3d')) {
       map.addLayer({ id: 'bm-buildings-3d', type: 'fill-extrusion', source: sc.source, 'source-layer': sc.buildings, minzoom: 14,
-        layout: { visibility: S.buildings3d && !S.lowBw ? 'visible' : 'none' },
+        layout: { visibility: S.buildings3d && !S.lowBw && S.tier?.allow3D !== false ? 'visible' : 'none' },
         paint: { 'fill-extrusion-color': p.building, 'fill-extrusion-height': sc.height, 'fill-extrusion-base': sc.base, 'fill-extrusion-opacity': 0.82 } }, before);
     }
     if (sc && !map.getLayer('bm-transit')) {
@@ -171,7 +172,7 @@ export function createMapStyle(ctx) {
     get forceOffline() { return S.forceOffline; },
     setPref(v) { S.pref = v; store.setItem('bm-map-style', v); apply({ reason: 'pref' }); },
     setForceOffline(v) { S.forceOffline = !!v; store.setItem('mapos-offline', v ? '1' : '0'); if (!v) S.auto = false; apply({ reason: 'force' }); },
-    set3D(v) { S.buildings3d = !!v; store.setItem('bm-3d', v ? '1' : '0'); if (map.getLayer('bm-buildings-3d')) map.setLayoutProperty('bm-buildings-3d', 'visibility', v && !S.lowBw ? 'visible' : 'none'); },
+    set3D(v) { S.buildings3d = !!v; store.setItem('bm-3d', v ? '1' : '0'); if (map.getLayer('bm-buildings-3d')) map.setLayoutProperty('bm-buildings-3d', 'visibility', v && !S.lowBw && S.tier?.allow3D !== false ? 'visible' : 'none'); },
     setTransit(v) { S.transit = !!v; store.setItem('bm-transit', v ? '1' : '0'); if (map.getLayer('bm-transit')) map.setLayoutProperty('bm-transit', 'visibility', v ? 'visible' : 'none'); },
     setRoutes(fc) { S.routes = fc || EMPTY; map.getSource('bm-routes')?.setData(S.routes); applyDash(); },
     setIncidents(fc) { S.incidents = fc || EMPTY; map.getSource('bm-incidents')?.setData(S.incidents); },
@@ -187,9 +188,27 @@ export function createMapStyle(ctx) {
       S.lowBw = !!policy.active;
       map.setMaxZoom(policy.maxZoom);
       if (typeof map.setPrefetchZoomDelta === 'function') map.setPrefetchZoomDelta(policy.prefetchZoomDelta);
-      if (map.getLayer('bm-buildings-3d')) map.setLayoutProperty('bm-buildings-3d', 'visibility', policy.allow3D && S.buildings3d ? 'visible' : 'none');
+      if (map.getLayer('bm-buildings-3d')) map.setLayoutProperty('bm-buildings-3d', 'visibility', policy.allow3D && S.buildings3d && S.tier?.allow3D !== false ? 'visible' : 'none');
       if (!policy.allow3D && map.getPitch() > 0) ctx.cam?.ease?.({ pitch: 0, duration: 300 });
     },
+    /** v0.6 device tier (web/lib/device-tier.js): 3D/terrain allowed, label density (later minzoom), max pitch. */
+    applyTier(policy) {
+      S.tier = policy;
+      if (!policy) return;
+      map.setMaxPitch(policy.maxPitch ?? 70);
+      if (!policy.allow3D && map.getLayer('bm-buildings-3d')) map.setLayoutProperty('bm-buildings-3d', 'visibility', 'none');
+      else if (policy.allow3D && map.getLayer('bm-buildings-3d')) map.setLayoutProperty('bm-buildings-3d', 'visibility', S.buildings3d && !S.lowBw ? 'visible' : 'none');
+      if (!policy.allowTerrain && map.getTerrain?.()) map.setTerrain(null);
+      const shift = labelMinzoomShift(policy.labelDensity);
+      S.labelShift = shift;
+      for (const l of map.getStyle()?.layers || []) {
+        if (l.type !== 'symbol' || l.id.startsWith('bm-')) continue;
+        if (S.labelZoom[l.id] == null) S.labelZoom[l.id] = l.minzoom ?? 0;
+        try { map.setLayerZoomRange(l.id, Math.min(22, S.labelZoom[l.id] + shift), l.maxzoom ?? 24); } catch { /* ignore */ }
+      }
+    },
+    get tier() { return S.tier; },
+    get labelShift() { return S.labelShift || 0; },
     themeChanged() { if (S.pref === 'auto') apply({ reason: 'theme' }); },
     mapTheme,
   };

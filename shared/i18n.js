@@ -106,11 +106,12 @@ const V3 = {
 export const V3_KEYS = Object.keys(V3.en);
 import { V4, V4_KEYS, V4_NEEDS_REVIEW } from './i18n-v04.js';
 import { V5, V5_KEYS, V5_NEEDS_REVIEW } from './i18n-v05.js';
+import { V6, V6_KEYS, V6_NEEDS_REVIEW } from './i18n-v06.js';
 
 export const STRINGS = Object.fromEntries(
-  Object.entries(T).map(([lang, arr]) => [lang, { ...V3.en, ...(V3[lang] || {}), ...V4.en, ...(V4[lang] || {}), ...V5.en, ...(V5[lang] || {}), ...Object.fromEntries(K.map((k, i) => [k, arr[i]])) }])
+  Object.entries(T).map(([lang, arr]) => [lang, { ...V3.en, ...(V3[lang] || {}), ...V4.en, ...(V4[lang] || {}), ...V5.en, ...(V5[lang] || {}), ...V6.en, ...(V6[lang] || {}), ...Object.fromEntries(K.map((k, i) => [k, arr[i]])) }])
 );
-export { V4_KEYS, V4_NEEDS_REVIEW, V5_KEYS, V5_NEEDS_REVIEW };
+export { V4_KEYS, V4_NEEDS_REVIEW, V5_KEYS, V5_NEEDS_REVIEW, V6_KEYS, V6_NEEDS_REVIEW };
 /** Languages with complete (non-fallback) v0.3 strings. */
 export const V3_COMPLETE = Object.keys(V3);
 

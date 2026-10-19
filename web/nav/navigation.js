@@ -14,6 +14,10 @@ import { createSounds } from './sounds.js';
 import { laneStripHtml, laneHintUseful } from '../shared/lanes.js';
 import { limitAt, createOverspeedMonitor, speedKmhFromFixes } from '../shared/maxspeed.js';
 import { getSpeedLimits } from '../services/speed.js';
+import { getRoadHints } from '../services/roadhints.js';
+import { t as tr } from '../shared/i18n.js';
+import { hintAt, restrictionAt, hintKey, restrictionLabel } from '../shared/roadhints.js';
+import { openingStatus } from '../lib/opening-hours.js';
 import { isComplexJunction, junctionSvg } from './junction.js';
 import { projectOnRoute } from './tracker.js';
 import { navStyleFor } from '../shared/sun.js';
@@ -27,6 +31,8 @@ export function initNavigation(ctx) {
   const { map } = ctx;
   const $ = (id) => document.getElementById(id);
   const voice = createVoice(ctx);
+  // v0.6: spoken guidance follows the guidance voice's language (Settings → Guidance voice), else the app language.
+  const G = () => voice.guidanceLang;
   const sounds = createSounds({ isMuted: () => voice.muted });
   const N = { active: false, route: null, tracker: null, opts: null, stop: null, sim: null, lastStep: -1, nowSaid: -1, overview: false, rerouting: false, last: null, arrived: false, simMult: Number(new URLSearchParams(location.search).get('simspeed')) || 4, fixes: 0 };
 
@@ -46,7 +52,7 @@ export function initNavigation(ctx) {
     if (N.active) end({ silent: true });
     Object.assign(N, { active: true, route, opts, tracker: createTracker(route), lastStep: -1, nowSaid: -1, overview: false, rerouting: false, arrived: false, fixes: 0, last: null,
       startedAt: Date.now(), travelledM: 0, maxKmh: 0,
-      speedSegs: null, speedSource: null, overspeed: createOverspeedMonitor(), lastFixAt: Date.now(), gpsLost: false, prevFix: null, lanesAlong: null, approachCue: -1 });
+      speedSegs: null, speedSource: null, overspeed: createOverspeedMonitor(), lastFixAt: Date.now(), gpsLost: false, prevFix: null, lanesAlong: null, approachCue: -1, hints: null, hintSaid: new Set() });
     prepareRoute(route);
     applyNavTheme();
     document.documentElement.classList.add('navigating');
@@ -55,11 +61,11 @@ export function initNavigation(ctx) {
     $('simSpeed').textContent = ctx.tf('sim_speed', { n: N.simMult });
     setMuteUi();
     $('navInstr').textContent = ctx.t('gps_wait'); $('navDist').textContent = ''; $('navIcon').innerHTML = icon(maneuverIcon(route.steps[0]), { size: 44 });
-    say(ctx.t('nav_started'));
+    say(tr(G(), 'nav_started'), tr('en', 'nav_started'));
     ctx.style.setRoutes({ type: 'FeatureCollection', features: [{ type: 'Feature', geometry: route.geometry, properties: { selected: true, fallback: !!route.fallback } }] });
     if (opts.simulate) startSim(); else { startGps(); N.watchdog = setInterval(gpsWatchdog, 2000); }
     // v0.4: on unmetered connections, cache the route corridor's tiles (z12–14) so the route survives a dropped network.
-    if (!opts.simulate && ctx.bw?.policy.prefetchRoute && !ctx.style.offline) {
+    if (!opts.simulate && ctx.bw?.policy.prefetchRoute && ctx.tier?.policy.prefetch !== false && !ctx.style.offline) {
       prefetchCorridor(ctx.map, route.geometry.coordinates).then((n) => { if (n) ctx.toast(ctx.tf('prefetch_done', { n })); }).catch(() => {});
     }
     ctx.emit('nav', { active: true, simulate: !!opts.simulate });
@@ -75,6 +81,12 @@ export function initNavigation(ctx) {
     if (!N.speedSegs && ['drive', 'two'].includes(N.opts.mode)) {
       const r0 = route;
       getSpeedLimits(route, { mode: N.opts.mode }).then((res) => { if (N.active && N.route === r0 && res.segments) { N.speedSegs = res.segments; N.speedSource = res.source; ctx.emit('speed-limits', res); if (N.state && !N.arrived) render(N.state); } }).catch(() => {});
+    }
+    // v0.6 India road hints: flyover / service road / narrow road / time restriction (OSM tags along the route).
+    N.hints = route.road_hints?.events || null; N.hintSaid = new Set(); renderHints(null);
+    if (!N.hints && ['drive', 'two'].includes(N.opts.mode)) {
+      const r0 = route;
+      getRoadHints(route, { mode: N.opts.mode }).then((res) => { if (N.active && N.route === r0) { N.hints = res.events || []; N.hintSource = res.source; ctx.emit('road-hints', res); if (N.state && !N.arrived) renderHints(N.state); } }).catch(() => {});
     }
     const loc = route.geometry.coordinates[0];
     indexFor({ lng: loc[0], lat: loc[1] }).then((ix) => { lmIndex = ix; }).catch(() => {});
@@ -112,6 +124,30 @@ export function initNavigation(ctx) {
     const key = show ? `${N.route.id}:${st.stepIndex}` : '';
     if (el.dataset.key !== key) { el.dataset.key = key; el.innerHTML = show ? junctionSvg(step, N.route.geometry.coordinates, { label: `${ctx.t('junction_view')}: ${instr(step)}` }) : ''; }
     el.hidden = !show || !el.innerHTML;
+  }
+  /** Restriction state now: 'active' | 'inactive' | 'unknown' (condition evaluated like opening_hours, in IST). */
+  function restrictionNow(r) { const st = openingStatus(r.condition).status; return st === 'open' ? 'active' : st === 'closed' ? 'inactive' : 'unknown'; }
+  function renderHints(st) {
+    const chip = $('navHint'), badge = $('navRestrict');
+    const h = st && N.hints ? hintAt(N.hints, st.along) : null;
+    const key = hintKey(h);
+    const text = key ? (h.on ? ctx.t(`${key}_on`) : ctx.t(key)) : '';
+    if (chip.dataset.text !== text) { chip.dataset.text = text; chip.querySelector('span').textContent = text; chip.dataset.type = h?.type || ''; }
+    chip.hidden = !text || N.overview;
+    if (h && !h.on && h.inM <= 300 && !N.hintSaid.has(`${h.type}@${Math.round(h.atM)}`)) {
+      N.hintSaid.add(`${h.type}@${Math.round(h.atM)}`);
+      if (st.distanceToManeuverM > 80) say(tr(G(), key), tr('en', key));
+    }
+    const r = st && N.hints ? restrictionAt(N.hints, st.along) : null;
+    const rtext = r ? `${ctx.t(`restr_${restrictionLabel(r.restriction)}`)} · ${r.restriction.condition}` : '';
+    if (badge.dataset.text !== rtext) {
+      badge.dataset.text = rtext; badge.querySelector('span').textContent = rtext;
+      const now = r ? restrictionNow(r.restriction) : '';
+      badge.dataset.now = now; badge.querySelector('small').textContent = now ? ctx.t(`restr_${now}`) : '';
+      badge.setAttribute('aria-label', r ? `${ctx.t('restr_title')}: ${rtext}. ${now ? ctx.t(`restr_${now}`) : ''}` : '');
+    }
+    badge.hidden = !rtext;
+    N.hintNow = h; N.restrictNow = r;
   }
   function gpsWatchdog() {
     if (!N.active || N.opts.simulate || N.arrived) return;
@@ -178,7 +214,7 @@ export function initNavigation(ctx) {
       if (ctx.cam.reduced()) map.jumpTo(opt); else map.easeTo({ ...opt, duration: fix.simulated ? 260 : 900, easing: (x) => x });
     }
     render(st);
-    renderSpeed(fix, st); renderLanes(st); renderJunction(st);
+    renderSpeed(fix, st); renderLanes(st); renderJunction(st); renderHints(st);
     if (st.arrived) return arrive();
     if (st.offRoute && !N.rerouting && !fix.simulated) reroute(fix);
   }
@@ -197,12 +233,12 @@ export function initNavigation(ctx) {
     // Voice: announce each new maneuver with its distance, and again just before it.
     if (st.stepIndex !== N.lastStep) {
       N.lastStep = st.stepIndex;
-      const sp = spokenInstruction(step, st.distanceToManeuverM, ctx.lang(), { landmark: landmarkFor(step), destinationName: N.opts.dest?.label });
+      const sp = spokenInstruction(step, st.distanceToManeuverM, G(), { landmark: landmarkFor(step), destinationName: N.opts.dest?.label });
       say(sp, spokenInstruction(step, st.distanceToManeuverM, 'en', { landmark: landmarkFor(step) }));
     } else if (N.nowSaid !== st.stepIndex && st.distanceToManeuverM <= (N.opts.mode === 'walk' ? 25 : 60) && step.type !== 'arrive') {
       N.nowSaid = st.stepIndex;
       sounds.play('approach');
-      say(instr(step), instr(step, 'en'));
+      say(instr(step, G()), instr(step, 'en'));
     }
   }
   function say(text, fallbackText) {
@@ -214,7 +250,7 @@ export function initNavigation(ctx) {
     N.rerouting = true;
     $('navInstr').textContent = ctx.t('rerouting');
     sounds.play('reroute');
-    say(ctx.t('rerouting'));
+    say(tr(G(), 'rerouting'), tr('en', 'rerouting'));
     const res = await getRoutes(N.opts.mode, { lat: fix.lat, lng: fix.lng }, N.opts.dest);
     if (!N.active) return;
     if (res.routes?.length && !res.fallback) {
@@ -230,12 +266,12 @@ export function initNavigation(ctx) {
     N.arrived = true;
     stopSources();
     sounds.play('arrival');
-    $('navLanes').hidden = true; $('navJunction').hidden = true;
+    $('navLanes').hidden = true; $('navJunction').hidden = true; $('navHint').hidden = true; $('navRestrict').hidden = true;
     $('navIcon').innerHTML = icon('arrive', { size: 44 });
     $('navDist').textContent = '';
     $('navInstr').textContent = ctx.t('arrived');
     $('navNext').hidden = true;
-    say(buildInstruction({ type: 'arrive' }, ctx.lang()), buildInstruction({ type: 'arrive' }, 'en'));
+    say(buildInstruction({ type: 'arrive' }, G()), buildInstruction({ type: 'arrive' }, 'en'));
     $('navEnd').textContent = ctx.t('done');
     // v0.5 arrival summary: trip time, distance, average speed, and "report a problem on this trip" (OSM note).
     const mins = Math.max(1, Math.round((Date.now() - N.startedAt) / 60000));
@@ -254,7 +290,7 @@ export function initNavigation(ctx) {
     document.documentElement.classList.remove('navigating');
     delete document.documentElement.dataset.navTheme;
     ctx.style.setDriving?.(null);
-    $('navLanes').hidden = true; $('navJunction').hidden = true; $('navGps').hidden = true; $('navLimit').hidden = true; $('navArrival').hidden = true;
+    $('navLanes').hidden = true; $('navJunction').hidden = true; $('navGps').hidden = true; $('navLimit').hidden = true; $('navArrival').hidden = true; $('navHint').hidden = true; $('navRestrict').hidden = true;
     $('nav').hidden = true; ctx.sheet.hide(false);
     $('navEnd').textContent = ctx.t('nav_end');
     if (!N.last?.simulated && !ctx.myLoc) ctx.controls.hidePuck();
@@ -289,6 +325,8 @@ export function initNavigation(ctx) {
     /** Simulated vehicle speed (km/h) for the drive simulator (tests / demos). */
     setSimSpeedKmh(v) { N.simKmh = Number(v) || null; },
     get speed() { return { now: N.speedNow, limit: N.limitNow, over: N.overNow, source: N.speedSource }; },
+    /** v0.6 road hints: events along the route, the hint and restriction shown now, and their source. */
+    get hints() { return { events: N.hints, now: N.hintNow || null, restriction: N.restrictNow || null, source: N.hintSource || null }; },
     /** Feed a position fix (used by tests to exercise off-route/reroute without GPS). */
     feed: (fix) => onFix(fix),
   };

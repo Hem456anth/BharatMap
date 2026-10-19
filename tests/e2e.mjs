@@ -1,4 +1,4 @@
-// End-to-end UI tests in real Chromium (desktop 1366×820 + mobile 390×844).
+// End-to-end UI tests in real Chromium (desktop 1366×820 + mobile 390×844). v0.3–v0.5 + v0.6 sprint steps.
 // Run: BASE=http://localhost:8080 node tests/e2e.mjs   (server must be running; see scripts/dev-restart.sh)
 // Third-party map services are answered from real captured fixtures (tests/e2e-net.mjs); the browser
 // has no other network access. Screenshots: docs/screenshots/v03-*.png, v04-*.png, v05-*.png.
@@ -19,11 +19,15 @@ const step = async (name, fn) => {
 };
 const assert = (c, m) => { if (!c) throw new Error(m); };
 
-async function newPage(vp, { fail = {}, colorScheme = 'light', blockSW = false } = {}) {
+async function newPage(vp, { fail = {}, colorScheme = 'light', blockSW = false, roadHints = false, init = null } = {}) {
   const ctx = await browser.newContext({ ...(blockSW ? { serviceWorkers: 'block' } : {}), acceptDownloads: true, viewport: { width: vp.width, height: vp.height }, isMobile: !!vp.isMobile, hasTouch: !!vp.isMobile, geolocation: { latitude: 17.7289, longitude: 83.305, accuracy: 10 }, permissions: ['geolocation'], colorScheme, locale: 'en-IN', timezoneId: 'Asia/Kolkata' });
   const netLog = [];
-  await installNetworkFixtures(ctx, { log: netLog, fail });
+  await installNetworkFixtures(ctx, { log: netLog, fail, roadHints });
   await ctx.addInitScript(SPEECH_STUB);
+  // v0.6 device tiers read deviceMemory/hardwareConcurrency: pin a mid/high-end profile so earlier steps do not depend on
+  // the test machine (a 2-vCPU sandbox would otherwise be a Lite device). The tier step overrides this.
+  await ctx.addInitScript(`Object.defineProperty(Navigator.prototype, 'deviceMemory', { get: () => 8, configurable: true }); Object.defineProperty(Navigator.prototype, 'hardwareConcurrency', { get: () => 8, configurable: true });`);
+  if (init) await ctx.addInitScript(init);
   const page = await ctx.newPage();
   const errors = [];
   page.on('pageerror', (e) => errors.push(e.message));
@@ -836,6 +840,121 @@ await step('v05 desktop: server mode — incident stored on the server (label, c
   await page.evaluate(() => window.__bm.ctx.links.stopLive());
   await ctx.close();
 });
+
+// ======================= v0.6 sprint =======================
+// Device tiers (2 GB phone → Lite), offline search v2 (Latin ↔ Telugu/Hindi, pincode, offline), India road hints
+// (real NH16 flyover from Valhalla + labelled synthetic restriction fixture on the RK Beach route), Indic voice picker.
+// Screenshots: docs/screenshots/v06-*.png
+const shot6 = (page, name) => page.screenshot({ path: `${OUT}/v06-${name}.png` });
+const DWK = { lat: 17.7289, lng: 83.305, name: 'Dwaraka Nagar' };
+async function startVizagSim(page, to, { kmh = 30, startAt = null } = {}) {
+  await page.evaluate(async ({ DWK, to }) => { const c = window.__bm.ctx; c.nav.end({ silent: true }); await c.directions.open(to, { mode: 'drive', from: DWK }); }, { DWK, to });
+  await page.waitForFunction(() => window.__bm.ctx.directions.state.result?.routes?.length, null, { timeout: 15000 });
+  await page.evaluate(({ kmh }) => { const c = window.__bm.ctx; c.nav.setSimSpeedKmh(kmh); const S = c.directions.state; c.nav.start(S.result.routes[0], { mode: 'drive', dest: S.to, simulate: true, simStartM: 0 }); }, { kmh });
+  await page.waitForSelector('#nav:not([hidden])');
+  if (startAt) {
+    await page.waitForFunction(() => window.__bm.ctx.nav.hints.events?.length, null, { timeout: 15000 });
+    const m = await page.evaluate(startAt);
+    await page.evaluate(({ m, kmh }) => { const c = window.__bm.ctx; const r = c.nav.route; const to = c.directions.state.to; c.nav.end({ silent: true }); c.nav.setSimSpeedKmh(kmh); c.nav.start(r, { mode: 'drive', dest: to, simulate: true, simStartM: m }); }, { m, kmh });
+    await page.waitForSelector('#nav:not([hidden])');
+  }
+}
+for (const vp of [{ name: 'desktop', width: 1366, height: 820 }, { name: 'mobile', width: 390, height: 844, isMobile: true }]) {
+  const V = vp.name;
+  await step(`v06 ${V}: device tier — a 2 GB phone gets Lite (no 3D, thinner labels, no prefetch, low-bandwidth on); override to Full`, async () => {
+    const { ctx, page } = await newPage(vp, { blockSW: true, init: `Object.defineProperty(Navigator.prototype, 'deviceMemory', { get: () => 2, configurable: true }); Object.defineProperty(Navigator.prototype, 'hardwareConcurrency', { get: () => 8, configurable: true });` });
+    await boot(page);
+    const t = await page.evaluate(() => { const c = window.__bm.ctx; return { tier: document.documentElement.dataset.tier, detected: c.tier.policy.detected, bw: c.bw.policy.active, reason: c.bw.policy.reason, shift: c.style.labelShift, pitch: c.map.getMaxPitch(), prefetch: c.tier.policy.prefetch }; });
+    assert(t.tier === 'low' && t.detected === 'low' && t.bw && t.reason === 'device-tier' && t.shift === 1 && t.pitch === 0 && t.prefetch === false, JSON.stringify(t));
+    assert(await page.isDisabled('#tdBtn'), '3D button disabled');
+    await page.evaluate(() => window.__bm.ctx.views.show('settings', { detent: 'full' }));
+    await page.waitForFunction(() => /Lite/.test(document.querySelector('#tierSet option[value=auto]').textContent), null, { timeout: 5000 });
+    assert(/memory 2 GB/.test(await page.textContent('#tierNote')), 'detected reason shown');
+    await shot6(page, `${V}-01-tier-lite`);
+    await page.selectOption('#tierSet', 'high');
+    await page.waitForFunction(() => document.documentElement.dataset.tier === 'high' && !window.__bm.ctx.bw.policy.active && window.__bm.ctx.style.labelShift === 0 && window.__bm.ctx.map.getMaxPitch() === 70, null, { timeout: 5000 });
+    assert((await page.evaluate(() => localStorage.getItem('bm-tier'))) === 'high', 'override persisted');
+    await ctx.close();
+  });
+
+  const { ctx, page, netLog, errors } = await newPage(vp, { blockSW: true, roadHints: true });
+  await step(`v06 ${V}: offline search v2 — "simhachalam" → సింహాచలం, Telugu గాజువాక → Gajuwaka, pincode 530016`, async () => {
+    await boot(page);
+    await page.evaluate(() => import('/lib/offline-search.js').then((m) => m.loadSearchIndex()));
+    const typeAndWait = async (text, re) => {
+      await page.fill('#q', ''); await page.click('#q'); await page.type('#q', text, { delay: 20 });
+      await page.waitForFunction((src) => [...document.querySelectorAll('#suggest li')].some((li) => new RegExp(src).test(li.textContent)), re.source, { timeout: 10000 });
+    };
+    await typeAndWait('simhachalam', /Simhachalam.*సింహాచలం/);
+    await shot6(page, `${V}-02-search-latin-to-telugu`);
+    await typeAndWait('గాజువాక', /Gajuwaka/);
+    await typeAndWait('530016', /530016.*Pincode/);
+    await page.keyboard.press('Escape');
+  });
+  if (V === 'desktop') {
+    await step('v06 desktop: offline search v2 with the network off — Hindi सिंहाचलम submits to the bundled index', async () => {
+      await ctx.setOffline(true);
+      await page.fill('#q', 'सिंहाचलम'); await page.press('#q', 'Enter');
+      await page.waitForFunction(() => /Simhachalam/.test(document.getElementById('poiList').textContent + document.getElementById('placeTitle')?.textContent), null, { timeout: 10000 });
+      await shot6(page, 'desktop-03-search-offline-hindi');
+      await ctx.setOffline(false);
+      await home(page);
+    });
+  }
+  await step(`v06 ${V}: road hints — "Take the flyover" before the Port Main Road Flyover (real NH16 Valhalla edges), spoken once`, async () => {
+    await page.evaluate(() => { window.__spoken.length = 0; });
+    await startVizagSim(page, { lat: 17.6913, lng: 83.0037, name: 'Anakapalli' }, { kmh: 30, startAt: () => window.__bm.ctx.nav.hints.events.find((e) => e.type === 'flyover').atM - 380 });
+    await page.waitForFunction(() => !document.getElementById('navHint').hidden && /Take the flyover/.test(document.getElementById('navHint').textContent), null, { timeout: 12000 });
+    assert((await page.getAttribute('#navHint', 'data-type')) === 'flyover', 'hint type');
+    assert(netLog.includes('valhalla trace_attributes roadhints') && netLog.includes('overpass roadhints'), 'sources requested');
+    await page.waitForTimeout(500);
+    await shot6(page, `${V}-04-hint-flyover`);
+    await page.waitForFunction(() => window.__spoken.some((u) => /Take the flyover/.test(u.text)), null, { timeout: 12000 });
+    await setLang(page, 'te');
+    await page.waitForFunction(() => /ఫ్లైఓవర్/.test(document.getElementById('navHint').textContent) || window.__bm.ctx.nav.hints.now?.on, null, { timeout: 8000 });
+    await setLang(page, 'en');
+    await page.click('#navEnd');
+  });
+  await step(`v06 ${V}: road hints — service road + narrow road hints and the time-restriction badge (synthetic fixture, labelled)`, async () => {
+    await startVizagSim(page, { lat: 17.714, lng: 83.323, name: 'RK Beach' }, { kmh: 12, startAt: () => window.__bm.ctx.nav.hints.events.find((e) => e.type === 'service').atM - 200 });
+    await page.waitForFunction(() => !document.getElementById('navHint').hidden && /service road/.test(document.getElementById('navHint').textContent), null, { timeout: 12000 });
+    await page.evaluate(() => { const c = window.__bm.ctx; const r = c.nav.route; const ev = c.nav.hints.events; const to = c.directions.state.to; c.nav.end({ silent: true }); c.nav.setSimSpeedKmh(12); c.nav.start(r, { mode: 'drive', dest: to, simulate: true, simStartM: ev.find((e) => e.type === 'restriction').atM - 250 }); });
+    await page.waitForFunction(() => window.__bm.ctx.nav.hints.events?.length && !document.getElementById('navRestrict').hidden, null, { timeout: 12000 });
+    const txt = await page.textContent('#navRestrict');
+    assert(/No entry/.test(txt) && /Mo-Sa 08:00-11:00/.test(txt) && /(In force now|Not in force now)/.test(txt), txt);
+    await page.waitForTimeout(400);
+    await shot6(page, `${V}-05-restriction-badge`);
+    await page.click('#navEnd');
+    await page.evaluate(() => { const c = window.__bm.ctx; const r = c.directions.state.result.routes[0]; c.nav.setSimSpeedKmh(12); c.nav.start(r, { mode: 'drive', dest: c.directions.state.to, simulate: true, simStartM: 0 }); });
+    await page.waitForFunction(() => window.__bm.ctx.nav.hints.events?.length, null, { timeout: 12000 });
+    const narrow = await page.evaluate(() => window.__bm.ctx.nav.hints.events.find((e) => e.type === 'narrow'));
+    assert(narrow && narrow.atM > 0, 'narrow event');
+    await page.click('#navEnd');
+  });
+  await step(`v06 ${V}: Indic voice picker — on-device voices filtered to te/hi/ta (+ English India), sample phrase, choice used in guidance`, async () => {
+    await page.evaluate(() => window.__bm.ctx.views.show('settings', { detent: 'full' }));
+    await page.waitForFunction(() => document.querySelectorAll('#voicePick optgroup').length >= 3, null, { timeout: 8000 });
+    const opts = await page.$$eval('#voicePick option', (o) => o.map((x) => x.value));
+    assert(opts.includes('stub-te-IN') && opts.includes('stub-hi-IN') && opts.includes('stub-ta-IN') && opts.includes('stub-en-IN') && !opts.includes('stub-fr-FR'), opts.join());
+    await page.selectOption('#voicePick', 'stub-te-IN');
+    await page.evaluate(() => { window.__spoken.length = 0; });
+    await page.click('#voiceSample');
+    await page.waitForFunction(() => window.__spoken.some((u) => u.lang === 'te-IN' && /ఫ్లైఓవర్/.test(u.text) && u.voice === 'stub te-IN'), null, { timeout: 5000 });
+    assert(JSON.parse(await page.evaluate(() => localStorage.getItem('bm-guidance-voice'))).lang === 'te', 'choice persisted');
+    await shot6(page, `${V}-06-voice-picker`);
+    await page.evaluate(() => { window.__spoken.length = 0; });
+    await startVizagSim(page, { lat: 17.714, lng: 83.323, name: 'RK Beach' }, { kmh: 30 });
+    await page.waitForFunction(() => window.__spoken.length && window.__spoken.every((u) => u.lang === 'te-IN'), null, { timeout: 8000 });
+    assert((await page.textContent('#navInstr')).length > 0, 'screen text stays in the app language');
+    await page.click('#navEnd');
+    await page.evaluate(() => window.__bm.ctx.views.show('settings', { detent: 'full' }));
+    await page.selectOption('#voicePick', '');
+    assert((await page.evaluate(() => localStorage.getItem('bm-guidance-voice'))) === null, 'automatic restored');
+    const real = errors.filter((e) => !/ERR_INTERNET_DISCONNECTED/.test(e)); // the offline-search step turns the network off on purpose
+    assert(!real.length, `console errors: ${real.slice(0, 2).join(' | ')}`);
+  });
+  await ctx.close();
+}
 
 await browser.close();
 console.log(results.join('\n'));

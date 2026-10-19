@@ -415,3 +415,21 @@ html.sheet-hidden .maplibregl-ctrl-bottom-right { bottom: 0 !important; }
 .nav-arrival span { color: var(--ink2); font-size: 14px; font-variant-numeric: tabular-nums; }
 .nav-arrival .link { align-self: flex-start; padding: 6px 0; min-height: 40px; }
 @media (min-width: 900px) { .nav-arrival { width: 410px; } }
+
+/* v0.6 India road hints (flyover / service road / narrow road) and time-restriction badge */
+.nav-hint { align-self: flex-start; margin: 6px 10px 0 20px; padding: 6px 12px; border-radius: 999px; background: #FFF4D6; color: #3A2A00; font-weight: 700; font-size: 14px; box-shadow: var(--sh-ctl); }
+.nav-hint[data-type=flyover]::before { content: "⤴ "; }
+.nav-hint[data-type=service]::before { content: "⇉ "; }
+.nav-hint[data-type=narrow]::before { content: "⚠ "; }
+.nav-restrict { align-self: flex-start; margin: 6px 10px 0 20px; display: flex; gap: 6px; align-items: baseline; flex-wrap: wrap; max-width: calc(100% - 40px); padding: 6px 12px; border-radius: 12px; background: #fff; color: #111; border: 2px solid #D32F2F; font-size: 13px; box-shadow: var(--sh-ctl); }
+.nav-restrict small { font-weight: 700; color: #B71C1C; }
+.nav-restrict[data-now=inactive] { border-color: #888; }
+.nav-restrict[data-now=inactive] small { color: #555; }
+[data-nav-theme=night] .nav-hint { background: #3A2F0B; color: #FFE7A3; }
+[data-nav-theme=night] .nav-restrict { background: #11141F; color: #E8EAF2; }
+[data-nav-theme=night] .nav-restrict small { color: #FF8A80; }
+@media (min-width: 900px) { .nav-hint, .nav-restrict { margin-left: 28px; } }
+.voice-row { gap: 8px; align-items: center; }
+.voice-row select { flex: 1; min-width: 0; }
+.nav-restrict b { align-self: center; display: inline-flex; color: #B71C1C; }
+.nav-restrict b svg { width: 16px; height: 16px; }

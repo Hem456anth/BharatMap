@@ -15,6 +15,7 @@ import { initPanels } from './ui/panels.js';
 import { initNavigation } from './nav/navigation.js';
 import { onBackButton } from './native.js';
 import { readConnection, bandwidthPolicy } from './lib/bandwidth.js';
+import { readDeviceSignals, resolveTier, bandwidthManualFor } from './lib/device-tier.js';
 import { createRegionManager } from './lib/region-manager.js';
 import { createBackgroundNav } from './nav/background.js';
 import { serverBase } from './services/server.js';
@@ -41,18 +42,33 @@ export function createShell({ map, maplibregl, state, api, apiBase, toast, onSho
   };
   hydrateIcons();
   // v0.4 low-bandwidth mode: auto from navigator.connection (Save-Data / 2G / 3G) or manual (Settings, Layers).
+  // v0.6 device tier (low/mid/high from deviceMemory, CPU cores, connection; manual override in Settings).
+  const tierState = { manual: store.getItem('bm-tier') || 'auto' };
+  tierState.policy = resolveTier(readDeviceSignals(), tierState.manual);
   const bw = { manual: store.getItem('bm-lowbw') || 'auto' };
-  bw.policy = bandwidthPolicy(readConnection(), bw.manual);
+  const bwEffective = () => { const m = bandwidthManualFor(tierState.policy, bw.manual); return m === 'on' && bw.manual !== 'on' ? 'tier' : m; };
+  bw.policy = bandwidthPolicy(readConnection(), bwEffective());
   ctx.bw = {
     get policy() { return bw.policy; }, get manual() { return bw.manual; },
     set(manual) { bw.manual = manual; store.setItem('bm-lowbw', manual); this.refresh(); },
     refresh() {
-      const prev = bw.policy.active; bw.policy = bandwidthPolicy(readConnection(), bw.manual);
+      const prev = bw.policy.active; bw.policy = bandwidthPolicy(readConnection(), bwEffective());
       if (map.loaded() || map.isStyleLoaded()) ctx.style?.applyBandwidth(bw.policy);
       document.documentElement.classList.toggle('low-bw', bw.policy.active);
       if (bw.policy.active !== prev) { ctx.emit('bandwidth', bw.policy); if (bw.policy.active && bw.policy.reason !== 'manual') ctx.toast(ctx.t('low_bw_auto')); }
     },
   };
+  ctx.tier = {
+    get policy() { return tierState.policy; }, get manual() { return tierState.manual; },
+    set(manual) {
+      tierState.manual = manual; store.setItem('bm-tier', manual);
+      tierState.policy = resolveTier(readDeviceSignals(), manual);
+      if (map.isStyleLoaded()) ctx.style?.applyTier(tierState.policy);
+      document.documentElement.dataset.tier = tierState.policy.tier;
+      ctx.bw.refresh(); ctx.emit('tier', tierState.policy);
+    },
+  };
+  document.documentElement.dataset.tier = tierState.policy.tier;
   navigator.connection?.addEventListener?.('change', () => ctx.bw.refresh());
   // v0.4 downloadable offline regions (Cache Storage) and background navigation (Android foreground service).
   const regionsBase = () => (window.__MAPOS_CONFIG__?.regionsBase || serverBase() || '').replace(/\/$/, '');
@@ -86,7 +102,8 @@ export function createShell({ map, maplibregl, state, api, apiBase, toast, onSho
     r.checked = r.value === (store.getItem('bm-nav-style') || 'auto');
     r.addEventListener('change', () => { store.setItem('bm-nav-style', r.value); if (ctx.nav.active) ctx.nav.applyNavTheme(); });
   });
-  map.on('style.load', () => ctx.style.applyBandwidth(ctx.bw.policy));
+  map.on('style.load', () => { ctx.style.applyTier(ctx.tier.policy); ctx.style.applyBandwidth(ctx.bw.policy); });
+  if (map.isStyleLoaded()) ctx.style.applyTier(ctx.tier.policy);
   document.documentElement.classList.toggle('low-bw', ctx.bw.policy.active);
 
   // Theme: auto via prefers-color-scheme, or manual (Settings). boot-theme.js applied it before paint.

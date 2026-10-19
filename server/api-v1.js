@@ -11,6 +11,7 @@ import { TokenBucketLimiter, rateLimitMiddleware } from './lib/ratelimit.js';
 import { inIndia } from '../shared/geo.js';
 import { CATEGORY_BY_ID } from '../web/services/overpass.js';
 import { mountCommunity } from './community.js';
+import { createFtsSearch } from './lib/search-fts.js';
 
 const num = (v) => (v === undefined || v === '' ? NaN : Number(v));
 const pt = (lat, lng) => { const p = { lat: num(lat), lng: num(lng) }; return inIndia(p) ? p : null; };
@@ -19,6 +20,7 @@ const bad = (res, error, code = 400) => res.status(code).json({ error });
 export function mountApiV1(app, { root, db = null, now, providers = createProviders(), transit = createTransit(), regionsDir = process.env.REGIONS_DIR || path.join(root, 'data/regions'),
   limiter = new TokenBucketLimiter({ capacity: Number(process.env.V1_RATE_BURST || 60), refillPerSec: Number(process.env.V1_RATE_PER_SEC || 2) }) } = {}) {
   const r = express.Router();
+  const search = createFtsSearch({ indexFile: path.join(root, 'web/offline/search/index.json'), dbFile: process.env.SEARCH_DB || path.join(root, 'data/search.db') });
   r.use(rateLimitMiddleware(limiter, { name: 'v1' }));
   r.use(express.json({ limit: '512kb' }));
   const wrap = (fn) => (req, res) => Promise.resolve(fn(req, res)).catch((e) => {
@@ -66,6 +68,20 @@ export function mountApiV1(app, { root, db = null, now, providers = createProvid
     const c = req.body?.coordinates;
     if (!Array.isArray(c) || c.length < 2 || c.length > 20000 || !c.every((x) => Array.isArray(x) && inIndia({ lat: +x[1], lng: +x[0] }))) return bad(res, 'invalid_line');
     res.json(await providers.speedLimits(c.map((x) => [+x[0], +x[1]]), { mode: String(req.body.mode || 'drive') }));
+  }));
+  r.post('/road-hints', wrap(async (req, res) => {
+    const c = req.body?.coordinates;
+    if (!Array.isArray(c) || c.length < 2 || c.length > 20000 || !c.every((x) => Array.isArray(x) && inIndia({ lat: +x[1], lng: +x[0] }))) return bad(res, 'invalid_line');
+    if (!providers.roadHints) return bad(res, 'not_supported', 501);
+    res.json(await providers.roadHints(c.map((x) => [+x[0], +x[1]]), { mode: String(req.body.mode || 'drive') }));
+  }));
+  // v0.6 offline search v2 (SQLite FTS5 over the bundled index; same ranking as the app's on-device index)
+  r.get('/places/search', wrap(async (req, res) => {
+    const q = String(req.query.q || '').slice(0, 120);
+    const near = pt(req.query.lat, req.query.lng);
+    const limit = Math.max(1, Math.min(20, Number(req.query.limit) || 10));
+    res.setHeader('Cache-Control', 'public, max-age=300');
+    res.json({ query: q, engine: search.mode || 'fts5', results: await search.search(q, { near, limit }), attribution: '© OpenStreetMap contributors' });
   }));
   r.get('/transit/feeds', (_req, res) => res.json({ feeds: transit.feeds(), errors: transit.errors() }));
   r.get('/transit/plan', (req, res) => {

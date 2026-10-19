@@ -139,6 +139,12 @@
               <label><input type="radio" name="navstyle" value="night" /><span data-i18n="nav_style_night">Night</span></label>
             </div>
           </fieldset>
+          <label for="tierSet" data-i18n="device_tier">Device performance</label>
+          <select id="tierSet"><option value="auto">Automatic</option><option value="low" data-i18n="tier_low">Lite (low-end phone)</option><option value="mid" data-i18n="tier_mid">Balanced</option><option value="high" data-i18n="tier_high">Full (3D, all labels)</option></select>
+          <p class="small muted" id="tierNote"></p>
+          <label for="voicePick" data-i18n="guidance_voice">Guidance voice</label>
+          <div class="row voice-row"><select id="voicePick"><option value="">Automatic (app language)</option></select><button id="voiceSample" class="btn" type="button" data-i18n="voice_sample">Play sample</button></div>
+          <p class="small muted" id="voiceNote" data-i18n="voice_note">Picking a voice also sets the language of spoken directions.</p>
           <label class="switch"><input type="checkbox" id="lowBwSet" /><span><b data-i18n="low_bw">Low-bandwidth mode</b><small id="lowBwNote" data-i18n="low_bw_note">Fewer map tiles, no 3D, smaller search area</small></span></label>
           <label class="switch"><input type="checkbox" id="bgNavSet" /><span><b data-i18n="bg_setting">Navigate with the screen off</b><small data-i18n="bg_setting_note">Uses a foreground service with a notification during navigation</small></span></label>
           <button id="bgAlways" class="btn" type="button" hidden><span data-i18n="bg_allow_always">Allow location all the time (optional)</span></button>
@@ -228,6 +234,8 @@
     </div>
     <div id="navLanes" class="nav-lanes" hidden></div>
     <div id="navJunction" class="nav-junction" hidden></div>
+    <div id="navHint" class="nav-hint" hidden role="status"><span></span></div>
+    <div id="navRestrict" class="nav-restrict" hidden role="status"><b aria-hidden="true" data-icon="clock"></b><span></span><small></small></div>
     <div id="navArrival" class="nav-arrival" hidden role="status"></div>
     <div id="navGps" class="nav-gps" hidden role="status" data-i18n="gps_lost">GPS signal lost</div>
     <div class="nav-next" id="navNext" hidden><span data-i18n="nav_then">Then</span> <span id="navNextIcon" aria-hidden="true"></span> <span id="navNextText"></span></div>

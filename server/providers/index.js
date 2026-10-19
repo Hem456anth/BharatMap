@@ -5,6 +5,7 @@
 //   PHOTON_URL, NOMINATIM_URL        geocoding (type-ahead / search + reverse)
 //   OVERPASS_URL                     POIs, toll plazas, EV fallback
 //   OCM_API_KEY (+ OCM_URL)          Open Charge Map (EV); the key stays on the server
+import { segmentsFromValhallaEdges, segmentsFromOverpass, buildRoadHintsQuery, mergeHintSegments, scaleHintSegments, hintEvents } from '../../shared/roadhints.js';
 import { createUpstream, withFallback } from '../lib/upstream.js';
 import { buildValhallaRequest, parseValhalla } from '../../shared/valhalla.js';
 import { parseOsrm, fallbackRoutes } from '../../web/services/routing.js';
@@ -144,6 +145,21 @@ export function createProviders({ env = process.env, fetchImpl, now, sleep, time
     return { source: segs && coverage(segs) > 0 ? 'overpass' : null, segments: segs && coverage(segs) > 0 ? segs : null, coverage: segs ? coverage(segs) : 0 };
   }
 
+  // v0.6 India road hints: Valhalla edges (bridge / road class / use) + Overpass tag-only facts (shared/roadhints.js).
+  async function roadHints(coords, { mode = 'drive' } = {}) {
+    offline();
+    const pts = coords.length > 600 ? simplify(coords, 4) : coords;
+    const total = lineLengthM(coords);
+    let vSegs = null, oSegs = null;
+    try {
+      const body = JSON.stringify({ shape: pts.map(([lng, lat]) => ({ lat, lon: lng })), shape_match: 'map_snap', costing: mode === 'two' ? 'motor_scooter' : 'auto', filters: { attributes: ['edge.length', 'edge.bridge', 'edge.road_class', 'edge.use', 'edge.names', 'edge.traversability'], action: 'include' } });
+      vSegs = scaleHintSegments(segmentsFromValhallaEdges(await up.valhalla.request('/trace_attributes', { method: 'POST', body, headers: { 'Content-Type': 'application/json' } })), total);
+    } catch { /* Overpass only */ }
+    try { oSegs = segmentsFromOverpass(await overpass(buildRoadHintsQuery(coords, { full: !vSegs })), coords, { structure: !vSegs }); } catch { /* none */ }
+    const segs = mergeHintSegments(vSegs, oSegs);
+    return { source: vSegs && oSegs ? 'valhalla+overpass' : vSegs ? 'valhalla' : oSegs ? 'overpass' : null, segments: segs, events: hintEvents(segs) };
+  }
+
   function status() {
     const s = (u, c) => ({ url: c.public ? c.url : '(self-hosted)', public: c.public, breaker: u.breaker.state, stats: u.stats, cache: u.cache.size });
     return {
@@ -154,5 +170,5 @@ export function createProviders({ env = process.env, fetchImpl, now, sleep, time
       offline: cfg.offline,
     };
   }
-  return { route, geocode, reverse, nearby, tolls, overpass, speedLimits, status, cfg, upstreams: up };
+  return { route, geocode, reverse, nearby, tolls, overpass, speedLimits, roadHints, status, cfg, upstreams: up };
 }

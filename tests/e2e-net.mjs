@@ -11,12 +11,19 @@ const CAT_FIXTURE = [
   [/railway"~"\^\(station\|halt\)/, 'overpass-rail-dwarakanagar'], [/subway/, 'overpass-metro-ameerpet'], [/bus_stop/, 'overpass-bus-dwarakanagar'],
 ];
 
-export async function installNetworkFixtures(ctx, { log = [], fail = {} } = {}) {
+export async function installNetworkFixtures(ctx, { log = [], fail = {}, roadHints = false } = {}) {
   const json = (route, body) => route.fulfill({ status: 200, contentType: 'application/json', headers: { 'Access-Control-Allow-Origin': '*' }, body });
   await ctx.route(/^https:\/\/overpass-api\.de\//, async (route) => {
     const body = decodeURIComponent(route.request().postData() || '').replace(/^data=/, '');
     log.push(`overpass ${body.slice(0, 80)}`);
     if (fail.overpass) return route.abort('internetdisconnected');
+    // v0.6 road-hint queries (conditional / bridge / service / lanes=1 / width, or the full corridor fallback).
+    if (/conditional|highway"~"\^\(motorway/.test(body)) {
+      log.push('overpass roadhints');
+      if (!roadHints) return json(route, '{"version":0.6,"elements":[]}');
+      // NH16 route to Anakapalli: real captured tags; the RK Beach route: the labelled SYNTHETIC restriction fixture.
+      return json(route, fx(/,83\.0\d/.test(body) ? 'overpass-roadhints-dwarakanagar-anakapalli' : 'overpass-roadhints-synthetic-rkbeach'));
+    }
     const hit = CAT_FIXTURE.find(([re]) => re.test(body));
     // Metro query around Vizag returns the (real) empty result; around Hyderabad the Ameerpet fixture.
     if (hit && hit[1] === 'overpass-metro-ameerpet' && /\(17\.7/.test(body)) return json(route, '{"version":0.6,"elements":[]}');
@@ -31,6 +38,12 @@ export async function installNetworkFixtures(ctx, { log = [], fail = {} } = {}) 
   // FOSSGIS Valhalla (two-wheeler motor_scooter; avoid tolls/highways) — real captured response.
   await ctx.route(/^https:\/\/valhalla1\.openstreetmap\.de\//, (route) => {
     const u = decodeURIComponent(route.request().url()); const costing = (u.match(/"costing":"(\w+)"/) || [])[1];
+    if (/trace_attributes/.test(u) && /edge\.bridge/.test(u)) {
+      log.push('valhalla trace_attributes roadhints');
+      if (fail.valhalla || !roadHints) return json(route, '{"edges":[],"units":"kilometers"}');
+      let last = null; try { const pts = decodePolyline(JSON.parse(u.slice(u.indexOf('json=') + 5)).encoded_polyline, 6); last = pts[pts.length - 1]; } catch { /* ignore */ }
+      return json(route, last && last[0] < 83.05 ? fx('valhalla-roadhints-dwarakanagar-anakapalli') : '{"edges":[],"units":"kilometers"}');
+    }
     if (/trace_attributes/.test(u)) {
       log.push('valhalla trace_attributes');
       if (fail.valhalla) return route.abort('internetdisconnected');
@@ -62,8 +75,8 @@ export async function installNetworkFixtures(ctx, { log = [], fail = {} } = {}) 
 /** Records speechSynthesis utterances instead of speaking (headless has no audio). */
 export const SPEECH_STUB = `(() => {
   window.__spoken = [];
-  const voices = [{ lang: 'en-IN', name: 'stub en-IN', default: true }, { lang: 'hi-IN', name: 'stub hi-IN' }, { lang: 'te-IN', name: 'stub te-IN' }];
-  const s = { speak: (u) => window.__spoken.push({ text: u.text, lang: u.lang }), cancel: () => {}, getVoices: () => voices, pause() {}, resume() {}, addEventListener() {}, speaking: false, pending: false };
+  const voices = [{ lang: 'en-IN', name: 'stub en-IN', voiceURI: 'stub-en-IN', default: true }, { lang: 'hi-IN', name: 'stub hi-IN', voiceURI: 'stub-hi-IN' }, { lang: 'te-IN', name: 'stub te-IN', voiceURI: 'stub-te-IN' }, { lang: 'ta-IN', name: 'stub ta-IN', voiceURI: 'stub-ta-IN' }, { lang: 'fr-FR', name: 'stub fr-FR', voiceURI: 'stub-fr-FR' }];
+  const s = { speak: (u) => window.__spoken.push({ text: u.text, lang: u.lang, voice: u.voice ? u.voice.name : null }), cancel: () => {}, getVoices: () => voices, pause() {}, resume() {}, addEventListener() {}, speaking: false, pending: false };
   Object.defineProperty(window, 'speechSynthesis', { value: s, configurable: true });
   window.SpeechSynthesisUtterance = function (t) { this.text = t; };
 })();`;

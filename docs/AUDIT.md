@@ -1,3 +1,30 @@
+# Audit — Bharat Map sprint 0.5.11 (19 Oct 2026) — device tiers, offline search v2, India road hints, Indic voices
+
+Legend as below (✅ implemented · 🟡 prototype · 🔌 needs external dependency · ⛔ not built). Everything from v0.5 keeps its status.
+
+| Area | Feature | Status | Evidence · dependency |
+|---|---|---|---|
+| Performance | **Device tiers** low/mid/high from `navigator.deviceMemory`, `hardwareConcurrency`, `connection.effectiveType`/`saveData`; manual override (Settings → Device performance, persisted `bm-tier`). Low: 3D buildings off + max pitch 0, terrain off (none is drawn today), label layers start one zoom later, no route/tile prefetch, low-bandwidth mode forced on (reason `device-tier`, user can still switch it off) | ✅ / 🟡 | `web/lib/device-tier.js`, `web/map/style.js applyTier`, `web/shell.js`; unit (2 GB phone → low, 3 GB + 4 cores → low, 8 GB + 8 cores → high, unknown → mid, override) + E2E desktop/mobile with a faked 2 GB device; `v06-*-01-tier-lite.png`. Not measured on real low-end phones; `deviceMemory` is Chromium/WebView-only (other browsers → mid) |
+| Search | **Offline search v2**: prebuilt compact inverted index (Latin, native-script and phonetic tokens, delta-encoded postings) over 86,977 places in all 11 bundled cities; 37,977 with OSM native-script names; 1,079 pincode centroids (median of OSM `addr:postcode`/`postal_code` features); DIGIPIN decode. Loaded lazily in the app (10.6 MB JSON in the APK) | ✅ | `shared/search-index.js`, `web/lib/offline-search.js`, `scripts/build-search-index.mjs`, data `scripts/search-data/osm-extras/*.json` (fetched with `scripts/fetch-osm-search-extras.mjs` from Overpass, ODbL). Unit: 6+ Indic/Latin queries → right top hit (simhachalam→సింహాచలం, సింహాచలం/सिंहाचलम→Simhachalam, గాజువాక→Gajuwaka, చార్మినార్/चारमीनार/charminar→Charminar, ఋషికొండ→Rushikonda, pincode, DIGIPIN). E2E: suggestions + Hindi submit with the network off |
+| Search | **Transliteration** Latin ↔ Telugu/Devanagari/Tamil/Kannada/Malayalam/Bengali/Gujarati/Gurmukhi/Odia (one ISCII-offset table), loose phonetic key (aspiration, vowel length, retroflex/dental, v/w, anusvara, doubled letters) | ✅ / 🟡 | `shared/translit.js`; unit. Rule-based and original; no 300-query Indic benchmark yet (roadmap exit criterion not measured) |
+| Search | **Server FTS5** `GET /api/v1/places/search` — SQLite FTS5 (`node:sqlite`, unicode61) for candidates, ranking shared with the app; DB built lazily to `data/search.db` | ✅ | `server/lib/search-fts.js`; API test (engine `fts5`, Latin↔Indic, pincode, DIGIPIN) and a unit test that server and device return the same top hit |
+| Navigation | **Road hints**: "Take the flyover" (Valhalla `edge.bridge` on motorway–tertiary, ≥ 120 m, or a name with "flyover"), "Stay on the service road" (Valhalla `use`/`road_class`), "Narrow road ahead" (explicit OSM `lanes=1` two-way or `width ≤ 4 m` via Overpass — Valhalla `lane_count` is not used because it defaults to 1 on untagged ways), spoken once ~300 m before, chip under the banner | ✅ / 🟡 | `shared/roadhints.js`, `web/services/roadhints.js`, `/api/v1/road-hints`; unit + API with **real captured** Valhalla `trace_attributes` and Overpass responses for Dwaraka Nagar → Anakapalli (Port Main Road Flyover found at ≈ 2.6 km); E2E desktop/mobile `v06-*-04-hint-flyover.png`. Coverage depends on OSM tagging; not field-tested |
+| Navigation | **Time-restriction badge**: `access/motor_vehicle/motorcar/vehicle/hgv/goods/motorcycle/oneway/maxspeed/bus:conditional` parsed; odd-even from notes; "in force now / not now / check signs" evaluated in IST with the opening-hours evaluator | ✅ / 🟡 | unit + E2E with a **SYNTHETIC fixture** (`tests/fixtures/overpass-roadhints-synthetic-rkbeach.json`, labelled) because none of the captured routes carries conditional tags. Real-world coverage of `*:conditional` in Indian OSM data is low |
+| Voice | **Indic voice picker**: device voices (Web Speech `getVoices()` / Capacitor TTS `getSupportedVoices()`) filtered to te, hi, ta, kn, ml, mr, bn, gu, pa, or + English-India fallback; sample phrase per language; choice persisted (`bm-guidance-voice`) and used for guidance, also setting the spoken-guidance language | ✅ / 🟡 | `web/nav/voices.js`, `web/nav/voice.js`, `web/native.js`; unit + E2E with a stub voice list (sample spoken with the te-IN voice; guidance utterances te-IN). Real voice availability on Android devices not tested |
+| Routing | **Offline routing groundwork**: `scripts/build-graph.sh` (Geofabrik/osmium or Overpass bbox → Valhalla tiles) + `scripts/graph-smoke.py` | 🟡 | Built and routed in the sandbox (aarch64, pyvalhalla 3.9.1): Visakhapatnam 71 tiles / 10.9 MB tar / 3.7 MB gz. Overpass path untested (public endpoints refused the query). **No on-device engine** — `docs/OFFLINE_ROUTING.md` |
+| i18n | 32 new keys in en/hi/te (`shared/i18n-v06.js`) | 🟡 | hi/te need native review; other 8 languages fall back to English for these keys |
+
+### Tests (sprint 0.5.11)
+- `npm test`: **141 / 141 pass** (120 + 21 new: `tests/v06.test.js` 19, `tests/v06-api.test.js` 2).
+- Chromium E2E: see `docs/TEST-REPORT.md`.
+
+### Remaining gaps (sprint 0.5.11)
+- On-device offline routing engine (graph build only); bundled-city graphs other than Visakhapatnam not built.
+- No Indic search benchmark (300-query set) yet; ranking tuned on a handful of real queries.
+- Conditional restrictions and narrow-road tags are sparse in Indian OSM data; time restriction UI verified only on synthetic data.
+- Device testing of tiers, voices and hints on real Android phones.
+- APK grows by the search index (≈ 10.6 MB raw); no size budget by request.
+
 # Audit — Bharat Map v0.5 (19 Oct 2026) — final functionality audit
 
 Legend: ✅ **Implemented** (working, tested) · 🟡 **Prototype** (works, but partial / simulated / estimate / not device-tested) ·

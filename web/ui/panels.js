@@ -6,6 +6,7 @@ import { store } from '../shared/storage.js';
 import { icon } from './icons.js';
 import { esc, serviceError } from './search.js';
 import { fetchJSON } from '../services/net.js';
+import { indicVoices } from '../nav/voices.js';
 
 const OVERLAYS = [['ev', '#1E8E5A'], ['parking', '#2F3A8F'], ['fuel', '#C2410C'], ['rail', '#7A3FB0'], ['airport', '#0E7490']];
 
@@ -130,11 +131,34 @@ export function initPanels(ctx) {
     $('voiceDefault').checked = !ctx.nav.voice.muted;
     $('lowBwSet').checked = ctx.bw.policy.active;
     $('lowBwNote').textContent = ctx.bw.policy.active && ctx.bw.policy.reason !== 'manual' ? ctx.t('low_bw_auto') : ctx.t('low_bw_note');
+    // v0.6 device tier
+    const tp = ctx.tier.policy;
+    $('tierSet').querySelector('option[value=auto]').textContent = ctx.tf('tier_auto', { t: ctx.t(`tier_${tp.detected}`) });
+    $('tierSet').value = ctx.tier.manual;
+    $('tierNote').textContent = `${ctx.t(`tier_note_${tp.tier}`)} ${ctx.tf('tier_detected', { why: tp.reasons.join(', ') })}`;
+    renderVoices();
     $('bgNavSet').checked = ctx.bg.enabled();
     $('bgNavSet').closest('label').hidden = !ctx.bg.supported();
     $('bgAlways').hidden = $('bgAlwaysNote').hidden = !ctx.bg.supported();
     $('aboutLine').textContent = `Bharat Map · ${ctx.tf('version', { v: '0.5' })} · ${ctx.t('osm_credit')} · Contains data provided by Hyderabad Metro Rail Ltd.`;
   }
+  // v0.6 Indic guidance-voice picker: on-device voices grouped by language (te, hi, ta, kn, ml, mr, bn, gu, pa, or,
+  // English-India fallback), a sample-phrase button, choice persisted and used by navigation guidance.
+  let voiceGroups = [];
+  async function renderVoices() {
+    const sel = $('voicePick');
+    const raw = await ctx.nav.voice.listVoices().catch(() => []);
+    voiceGroups = indicVoices(raw);
+    const chosen = ctx.nav.voice.chosen;
+    sel.innerHTML = `<option value="">${esc(ctx.t('voice_auto'))}</option>` + voiceGroups.map((g) => `<optgroup label="${esc(g.label)}">${g.voices.map((v) => `<option value="${esc(v.id)}" data-lang="${esc(v.lang)}">${esc(v.name)} · ${esc(v.lang)}</option>`).join('')}</optgroup>`).join('');
+    sel.value = chosen && voiceGroups.some((g) => g.voices.some((v) => v.id === chosen.id)) ? chosen.id : '';
+    const hasIndic = voiceGroups.some((g) => g.code !== 'en');
+    $('voiceNote').textContent = hasIndic ? ctx.t('voice_note') : ctx.t('voice_none');
+  }
+  const findVoice = (id) => voiceGroups.flatMap((g) => g.voices).find((v) => v.id === id) || null;
+  $('voicePick').addEventListener('change', (e) => { const v = findVoice(e.target.value); ctx.nav.voice.choose(v); ctx.toast(ctx.tf('voice_chosen', { v: v ? `${v.name} (${v.lang})` : ctx.t('voice_auto') })); });
+  $('voiceSample').addEventListener('click', () => { ctx.nav.voice.sample(findVoice($('voicePick').value)); });
+  $('tierSet').addEventListener('change', (e) => { ctx.tier.set(e.target.value); renderSettings(); });
   document.querySelectorAll('[name=theme]').forEach((r) => r.addEventListener('change', () => ctx.applyTheme(r.value)));
   $('voiceDefault').addEventListener('change', (e) => ctx.nav.voice.setMuted(!e.target.checked));
   $('lowBwSet').addEventListener('change', (e) => { ctx.bw.set(e.target.checked ? 'on' : 'off'); renderSettings(); });

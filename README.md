@@ -1,4 +1,4 @@
-# Bharat Map — v0.5 (map-first app + own map-services backend, Android + web)
+# Bharat Map — v0.5 + sprint 0.5.11 (map-first app + own map-services backend, Android + web)
 
 An India-first map app with an original identity: a calm, full-screen map with a floating search pill and a
 three-height bottom sheet, real places from OpenStreetMap, route options for drive / two-wheeler / cycle / walk,
@@ -10,6 +10,15 @@ tracking, seller and admin dashboards).
 > Overpass, Nominatim, Photon, OSRM). Sellers, products and riders in Shop are **fictional demo data**. Live traffic and live
 > transit arrivals are **not** included (they need licensed feeds); metro journeys use **scheduled** HMRL GTFS times. See `docs/AUDIT.md` for implemented vs prototype vs
 > needs-paid-API.
+
+## New in sprint 0.5.11 (19 Oct 2026)
+| Area | What you get | Status |
+|---|---|---|
+| Device tiers | `web/lib/device-tier.js` picks **Lite / Balanced / Full** from `navigator.deviceMemory`, CPU threads and `connection.effectiveType`/`saveData` (a 2 GB phone → Lite). Lite: no 3D buildings or terrain, labels appear one zoom later, no tile/route prefetch, low-bandwidth mode on. Manual override in Settings → Device performance | Implemented (unit + E2E) |
+| Offline search v2 | One prebuilt token index over **86,977 places in all 11 bundled cities** (56 k from the bundled tiles + 30.7 k OSM features with native-script names), **37,977 places with Telugu/Hindi/Tamil/Kannada/… names from OSM**, **1,079 pincode centroids**, DIGIPIN decoding — `web/offline/search/index.json` (10.6 MB, works offline in the APK). **Latin ↔ Indic transliteration** (`shared/translit.js`, all 9 Brahmic scripts): "simhachalam" finds సింహాచలం, "చార్మినార్"/"चारमीनार" find Charminar. Server: the same data in **SQLite FTS5** (`node:sqlite`) at `GET /api/v1/places/search` | Implemented (unit + API + E2E) |
+| India road hints | From OSM tags along the route: **"Take the flyover"** (bridge on a main road, Valhalla `trace_attributes` edges), **"Stay on the service road"**, **"Narrow road ahead"** (explicit `lanes=1` / `width ≤ 4 m`), and a **time-restriction badge** (`*:conditional`, odd-even notes) that says whether it is in force now (IST). Spoken once ~300 m before. `POST /api/v1/road-hints` on the server | Implemented; restriction/narrow/service E2E use a **labelled synthetic fixture** (no conditional tags on the captured routes) |
+| Indic voice picker | Settings → Guidance voice lists the device's TTS voices for te, hi, ta, kn, ml, mr, bn, gu, pa, or (+ English-India fallback) with **Play sample**; the choice is saved and also sets the spoken-guidance language | Implemented (unit + E2E with a stub voice list); not device-tested |
+| Offline routing groundwork | `scripts/build-graph.sh` builds a Valhalla graph for Visakhapatnam (Geofabrik + osmium + pyvalhalla 3.9.1 on aarch64): **71 tiles, 10.9 MB tar, 3.7 MB gzipped**; routes verified offline with `scripts/graph-smoke.py`. **No on-device engine yet** — see `docs/OFFLINE_ROUTING.md` | Graph build tested; engine not started |
 
 ## New in v0.5
 | Area | What you get |
@@ -100,7 +109,7 @@ configured the app runs fully on-device (Shop uses fictional demo data). Details
 
 ## Docs
 `docs/ARCHITECTURE.md` · `docs/API.md` · `docs/AUDIT.md` (implemented / prototype / needs paid API) · `docs/TEST-REPORT.md` ·
-`docs/ANDROID.md` · `docs/SELF_HOSTING.md` · `docs/DEPLOYMENT.md` · `docs/PRD.md` · `docs/RESEARCH.md` · research for v0.3 in `docs/re/`.
+`docs/ANDROID.md` · `docs/SELF_HOSTING.md` · `docs/OFFLINE_ROUTING.md` (graph build) · `docs/DEPLOYMENT.md` · `docs/PRD.md` · `docs/RESEARCH.md` · research for v0.3 in `docs/re/`.
 
 ## Attribution & licences
 Map data © OpenStreetMap contributors (ODbL). Online tiles: OpenFreeMap / OpenMapTiles. Offline tiles: Protomaps basemap

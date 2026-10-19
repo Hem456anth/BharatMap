@@ -92,7 +92,9 @@ export function nativeTts() {
   const T = plugin('TextToSpeech');
   if (!T) return null;
   return {
-    speak: (text, lang) => T.speak({ text, lang, rate: 1.0, pitch: 1.0, volume: 1.0, category: 'playback' }),
+    speak: (text, lang, voice) => T.speak({ text, lang, rate: 1.0, pitch: 1.0, volume: 1.0, category: 'playback', ...(Number.isInteger(voice) ? { voice } : {}) }),
+    /** v0.6: installed voices (SpeechSynthesisVoice-like objects; speak({ voice: index }) uses the array index). */
+    voices: async () => { try { const r = await T.getSupportedVoices(); return r.voices || []; } catch { return []; } },
     stop: () => T.stop().catch(() => {}),
     supports: async (lang) => { try { const r = await T.getSupportedLanguages(); return (r.languages || []).some((l) => l.toLowerCase().startsWith(lang.slice(0, 2).toLowerCase())); } catch { return false; } },
   };

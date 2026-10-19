@@ -1,3 +1,63 @@
+# Bharat Map sprint 0.5.11 — Test report
+
+Run date: 19 Oct 2026 (IST), aarch64 sandbox, Chromium 141 headless (SwiftShader). Raw outputs: `docs/test-output.txt` (npm test),
+`docs/e2e-results.txt` (Chromium E2E). New screenshots: `docs/screenshots/v06-*.png`.
+
+## Summary
+| Suite | Result |
+|---|---|
+| Unit + API (`npm test`, node:test) | **141 / 141 pass** (120 from v0.1–v0.5 + 21 new) — green on two consecutive runs |
+| Browser E2E (`tests/e2e.mjs`, desktop 1366×820 + mobile 390×844) | **102 / 102 pass** — desktop 58, mobile 44 (91 regression + 11 new); 0 console errors. Local full run 1 green; run 2: see CI/notes below |
+| Offline routing graph (`scripts/build-graph.sh`) | Visakhapatnam built and routed offline (`scripts/graph-smoke.py`): 71 tiles, 10.9 MB tar, 3.7 MB gz — `docs/OFFLINE_ROUTING.md` |
+| CI | _filled in after the run_ |
+
+### New unit + API tests (21)
+`tests/v06.test.js` (19): device tiers (2 GB phone → low; 3 GB + 4 cores → low; 2G / Save-Data → low; 8 GB + 8 cores → high;
+unknown → mid; policy for low; manual override; low tier forces low-bandwidth with reason `device-tier`); transliteration
+(Telugu/Devanagari/Tamil/Kannada → Latin; one phonetic key for Simhachalam/సింహాచలం/सिंहाचलम, Visakhapatnam/విశాఖపట్నం, Gajuwaka,
+Kailasagiri, Kanchipuram/காஞ்சிபுரம், Bengaluru/ಬೆಂಗಳೂರು, Charminar, Vijayawada; Latin → Telugu); offline search v2 on the **real
+bundled index** — **8 query groups with the right top hit offline**: `simhachalam` → the place OSM names సింహాచలం; `సింహాచలం` and
+`सिंहाचलम` → Simhachalam; `గాజువాక` → Gajuwaka; `చార్మినార్` / `चारमीनार` / `charminar` → Charminar (Hyderabad); `ఋషికొండ` → Rushikonda;
+`rushikonda` → ఋషి కొండ; `vizag steel` → Visakhapatnam Steel Plant; `kailasgiri` → Kailasagiri; pincode `530016`; DIGIPIN; index
+shape (11 regions, > 55 k places, > 1 k Telugu and Hindi names, > 100 pincodes, sorted keys); a tiny hand-built index; **server FTS5
+agrees with the device index** for 4 queries; road hints (conditional parsing, odd-even notes, width, flags; **real** Valhalla
+trace for Dwaraka Nagar → Anakapalli finds the Port Main Road Flyover at ≈ 2.6 km and never derives "narrow" from Valhalla
+lane counts; Overpass next to Valhalla adds tag facts only; **synthetic** restriction fixture → badge, narrow + service hints, IST
+in-force evaluation); i18n en/hi/te for the new keys; voice picker (filter + order, English-India fallback, persisted choice sets
+the guidance language, missing voice → null).
+`tests/v06-api.test.js` (2): `GET /api/v1/places/search` (engine `fts5`; Latin ↔ Telugu/Hindi; pincode; DIGIPIN),
+`POST /api/v1/road-hints` (real fixtures → flyover events; non-India line → 400).
+
+### New E2E steps (11)
+| Step | Desktop | Mobile |
+|---|:-:|:-:|
+| Device tier: faked 2 GB device → Lite (no 3D, label shift 1, max pitch 0, no prefetch, low-bandwidth `device-tier`); Settings shows "Automatic (Lite…)" + reason; override to Full persists | ✅ | ✅ |
+| Offline search v2 suggestions: `simhachalam` → "Simhachalam · సింహాచలం", `గాజువాక` → Gajuwaka, `530016` → Pincode | ✅ | ✅ |
+| Offline search v2 with the network off: Hindi `सिंहाचलम` submitted → Simhachalam from the bundled index | ✅ | — |
+| Road hint "Take the flyover" ~380 m before the Port Main Road Flyover (real NH16 Valhalla edges), spoken once; Telugu chip | ✅ | ✅ |
+| Service-road hint + time-restriction badge "No entry · Mo-Sa 08:00-11:00 · In force now/Not in force now" + narrow event (**synthetic fixture**) | ✅ | ✅ |
+| Indic voice picker: te/hi/ta + English-India listed, fr-FR filtered out; Telugu sample spoken with the te-IN voice; guidance then speaks te-IN; back to Automatic | ✅ | ✅ |
+
+### Test-harness change
+E2E contexts now pin `navigator.deviceMemory = 8` and `hardwareConcurrency = 8`: the 2-vCPU sandbox would otherwise be detected
+as a Lite device (≤ 2 cores) and the v0.3 "3D buildings" step failed on the disabled 3D button in the first full run. The device-tier
+step overrides the pin with a 2 GB profile.
+
+### Fixtures caveat (new fixtures)
+`valhalla-roadhints-*.json` and `overpass-roadhints-dwarakanagar-anakapalli.json` are **real responses** captured 19 Oct 2026 from
+valhalla1.openstreetmap.de `/trace_attributes` and the Overpass API (User-Agent `BharatMap-test-fixture/0.6`).
+`overpass-roadhints-synthetic-rkbeach.json` is **synthetic** (marked `"synthetic": true`, way ids negative, names prefixed
+"(synthetic)") — no captured route carries `*:conditional` tags, so the restriction badge, narrow-road and service-road UI are
+verified on invented tags laid on the real RK Beach route geometry. The search index and pincodes are real OSM data
+(`scripts/search-data/osm-extras/`, ODbL).
+
+### Known gaps
+- Real Android devices: TTS voice lists (Capacitor `getSupportedVoices`), tier detection in the WebView, hint timing while driving.
+- No Indic search benchmark set yet; on-device engine for offline routing not started; Overpass path of `build-graph.sh` untested
+  (public endpoints refused the bbox query; Geofabrik path tested).
+
+---
+
 # Bharat Map v0.5 — Test report
 
 Run date: 19 Oct 2026 (IST). Raw outputs: `docs/test-output.txt` (npm test), `docs/e2e-results.txt` (Chromium E2E),

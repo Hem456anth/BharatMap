@@ -8,11 +8,12 @@ export function readConnection(nav = globalThis.navigator) {
   return c ? { saveData: !!c.saveData, effectiveType: c.effectiveType || '', type: c.type || '', downlink: c.downlink ?? null } : { saveData: false, effectiveType: '', type: '', downlink: null };
 }
 
-/** manual: 'auto' | 'on' | 'off' */
+/** manual: 'auto' | 'on' | 'off' | 'tier' (v0.6: forced on by a low device tier, see web/lib/device-tier.js) */
 export function bandwidthPolicy(conn = {}, manual = 'auto') {
   const slow = /^(slow-2g|2g|3g)$/.test(conn.effectiveType || '');
   let reason = null;
   if (manual === 'on') reason = 'manual';
+  else if (manual === 'tier') reason = 'device-tier'
   else if (manual !== 'off') reason = conn.saveData ? 'save-data' : slow ? conn.effectiveType : null;
   const active = !!reason;
   const unmetered = conn.type === 'wifi' || conn.type === 'ethernet';

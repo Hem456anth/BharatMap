@@ -1,24 +1,24 @@
 {
-  "measured": "2026-10-18T20:42:06.168Z",
+  "measured": "2026-10-19T05:00:25.524Z",
   "desktop": {
-    "load_ms": 625,
-    "map_ready_ms": 2544,
-    "dom_content_loaded_ms": 580,
-    "load_event_ms": 609,
+    "load_ms": 641,
+    "map_ready_ms": 2530,
+    "dom_content_loaded_ms": 599,
+    "load_event_ms": 633,
     "fps_ease_2s": 8.2,
-    "js_files_loaded": 68,
-    "js_decoded_bytes": 2210417,
+    "js_files_loaded": 76,
+    "js_decoded_bytes": 2273977,
     "lazy_modules_loaded_at_boot": [],
     "renderer": "headless Chromium, SwiftShader (software GL)"
   },
   "mobile": {
-    "load_ms": 637,
-    "map_ready_ms": 2235,
-    "dom_content_loaded_ms": 596,
-    "load_event_ms": 630,
-    "fps_ease_2s": 13.9,
-    "js_files_loaded": 68,
-    "js_decoded_bytes": 2210417,
+    "load_ms": 786,
+    "map_ready_ms": 2506,
+    "dom_content_loaded_ms": 751,
+    "load_event_ms": 776,
+    "fps_ease_2s": 12.7,
+    "js_files_loaded": 76,
+    "js_decoded_bytes": 2273977,
     "lazy_modules_loaded_at_boot": [],
     "renderer": "headless Chromium, SwiftShader (software GL)"
   }

@@ -10,6 +10,7 @@ import { STRINGS } from '../shared/i18n.js';
 import { parseQuery } from '../shared/search.js';
 import { BUSINESSES } from '../shared/seed.js';
 import { indexFor, searchIndex } from '../lib/offline-index.js';
+import { offlineSearch, displayName } from '../lib/offline-search.js';
 
 // Vocabulary of the (demo) catalogue: decides when to offer "Search products in Shop".
 const PRODUCT_VOCAB = new Set(BUSINESSES.flatMap((b) => b.products.flatMap((p) => [p.category, ...p.tags.flatMap((t) => t.split(' ')), ...p.name.toLowerCase().split(/[^a-z0-9]+/)])).filter((w) => w && w.length >= 2 && !/^\d+$/.test(w)));
@@ -54,6 +55,23 @@ export function initSearch(ctx) {
   const kindLabel = (k) => String(k || '').replace(/_/g, ' ');
   const distLabel = (m) => (m == null ? '' : formatDistance(m));
   const photonDebounced = debounceAsync((text, c) => photonSearch(text, { lat: c.lat, lng: c.lng, lang: ctx.lang() }), 350);
+  // Offline lookup: v2 index (all regions) first, else the v0.5 index of the region around the origin.
+  async function offlineLookup(text, c, limit) {
+    const v2 = await offlineSearch(text, { near: c, limit }).catch(() => []);
+    if (v2.length) return v2;
+    const ix = await indexFor(c).catch(() => null);
+    return ix ? searchIndex(ix, text, { near: c, limit }) : null;
+  }
+  // The place's name in the UI language when OSM has it (e.g. సింహాచలం for Telugu), else in the script typed.
+  // In English, the local-script name (Telugu in Andhra/Telangana, Hindi in Delhi, …) is shown next to the Latin one.
+  const REGION_LANG = { vizag: 'te', hyderabad: 'te', vijayawada: 'te', guntur: 'te', tirupati: 'te', bengaluru: 'kn', chennai: 'ta', mumbai: 'mr', pune: 'mr', delhi: 'hi', kolkata: 'bn' };
+  function nativeLabel(p) {
+    const n = displayName(p, ctx.lang());
+    if (n && n !== p.name) return n;
+    const names = p.names || {};
+    const local = names[REGION_LANG[p.region]] || names.te || names.hi || Object.values(names)[0];
+    return local && local !== p.name ? local : '';
+  }
   async function suggest() {
     const mySeq = ++sugSeq;
     const text = q.value.trim();
@@ -70,13 +88,14 @@ export function initSearch(ctx) {
     const shop = isProductQuery(text) ? [{ kind: 'shop', icon: 'bag', label: ctx.tf('search_products', { q: text }), q: text }] : [];
     items = [...recents, ...cats, ...local, ...shop];
     renderSuggest();
-    // v0.5: bundled offline place index (real OSM names from the bundled region tiles) — works with no network.
+    // v0.6: offline search v2 — every bundled region, OSM native-script names, Latin↔Indic transliteration,
+    // pincodes and DIGIPIN — works with no network (falls back to the v0.5 per-region index).
     try {
-      const ix = await indexFor(c);
-      if (ix && mySeq === sugSeq && q.value.trim() === text) {
+      const res = await offlineLookup(text, c, navigator.onLine === false ? 8 : 4);
+      if (res && mySeq === sugSeq && q.value.trim() === text) {
         const seen = new Set(items.filter((x) => x.place).map((x) => x.place.name.toLowerCase()));
-        const off = searchIndex(ix, text, { near: c, limit: navigator.onLine === false ? 8 : 4 }).filter((p) => !seen.has(p.name.toLowerCase()))
-          .map((p) => ({ kind: 'place', icon: 'pin', label: p.name, sub: [ctx.t('offline_index'), kindLabel(p.kind), distLabel(p.distance_m)].filter(Boolean).join(' · '), place: p }));
+        const off = res.filter((p) => !seen.has(p.name.toLowerCase()))
+          .map((p) => ({ kind: 'place', icon: 'pin', label: p.name, sub: [ctx.t('offline_index'), nativeLabel(p), p.kind === 'postcode' ? ctx.t('pincode') : p.kind === 'digipin' ? 'DIGIPIN' : kindLabel(p.kind), distLabel(p.distance_m)].filter(Boolean).join(' · '), place: p }));
         if (off.length) { items = [...items.filter((x) => x.kind !== 'shop'), ...off, ...items.filter((x) => x.kind === 'shop')]; renderSuggest(); }
       }
     } catch { /* index optional */ }
@@ -129,11 +148,14 @@ export function initSearch(ctx) {
     const c = ctx.origin();
     ctx.views.show('results', { detent: 'half' });
     $('resTitle').textContent = text; $('resMeta').textContent = ctx.t('loading'); $('poiList').innerHTML = '';
-    const r = await geocode(text, { city: ctx.state.city, origin: c, lang: ctx.lang(), saved: ctx.saved?.data });
+    // v0.6: with no network, skip the online geocoder (its timeouts/retries would delay the on-device answer).
+    const r = navigator.onLine === false
+      ? { source: 'local', items: localResolve(text, { city: ctx.state.city, origin: c, saved: ctx.saved?.data }), error: 'offline' }
+      : await geocode(text, { city: ctx.state.city, origin: c, lang: ctx.lang(), saved: ctx.saved?.data });
+    if (r.error === 'offline' && r.items.length) r.error = null;
     if (!r.items.length || r.error) {
       // Offline / service down: answer from the bundled place index of this region.
-      const ix = await indexFor(c).catch(() => null);
-      const off = ix ? searchIndex(ix, text, { near: c, limit: 20 }) : [];
+      const off = (await offlineLookup(text, c, 20).catch(() => null)) || [];
       if (off.length) { r.items = off; r.error = null; }
     }
     if (!r.items.length) {
