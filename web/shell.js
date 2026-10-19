@@ -53,7 +53,9 @@ export function createShell({ map, maplibregl, state, api, apiBase, toast, onSho
     set(manual) { bw.manual = manual; store.setItem('bm-lowbw', manual); this.refresh(); },
     refresh() {
       const prev = bw.policy.active; bw.policy = bandwidthPolicy(readConnection(), bwEffective());
-      if (map.loaded() || map.isStyleLoaded()) ctx.style?.applyBandwidth(bw.policy);
+      // Apply even while tiles are loading: map.loaded()/isStyleLoaded() are false then, and skipping left the
+      // zoom cap stuck at 16 after turning low-bandwidth off (CI run 11, 'low-bandwidth toggle … restored').
+      ctx.style?.applyBandwidth(bw.policy);
       document.documentElement.classList.toggle('low-bw', bw.policy.active);
       if (bw.policy.active !== prev) { ctx.emit('bandwidth', bw.policy); if (bw.policy.active && bw.policy.reason !== 'manual') ctx.toast(ctx.t('low_bw_auto')); }
     },
@@ -63,7 +65,7 @@ export function createShell({ map, maplibregl, state, api, apiBase, toast, onSho
     set(manual) {
       tierState.manual = manual; store.setItem('bm-tier', manual);
       tierState.policy = resolveTier(readDeviceSignals(), manual);
-      if (map.isStyleLoaded()) ctx.style?.applyTier(tierState.policy);
+      ctx.style?.applyTier(tierState.policy);
       document.documentElement.dataset.tier = tierState.policy.tier;
       ctx.bw.refresh(); ctx.emit('tier', tierState.policy);
     },

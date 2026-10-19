@@ -534,9 +534,13 @@ for (const vp of [{ name: 'desktop', width: 1366, height: 820 }, { name: 'mobile
     const st = await page.evaluate(() => ({ max: window.__bm.ctx.map.getMaxZoom(), pol: window.__bm.ctx.bw.policy, td: document.querySelector('#tdBtn').disabled }));
     assert(st.max === 16 && st.pol.overpassMaxKm === 3 && !st.pol.allow3D && st.td, JSON.stringify(st));
     if (V === 'mobile') await shot4(page, `${V}-04-low-bandwidth-settings`);
+    // regression (CI run 11): turning it off while tiles are still loading (map.loaded()/isStyleLoaded() false) must
+    // still lift the zoom cap — simulate that state for the toggle
+    await page.evaluate(() => { const m = window.__bm.ctx.map; m.__ld = m.loaded; m.__isl = m.isStyleLoaded; m.loaded = () => false; m.isStyleLoaded = () => false; });
     await page.uncheck('#lowBwSet');
     await page.waitForFunction(() => !document.documentElement.classList.contains('low-bw'));
-    assert(await page.evaluate(() => window.__bm.ctx.map.getMaxZoom()) === 20, 'restored');
+    const restored = await page.evaluate(() => { const m = window.__bm.ctx.map; const z = m.getMaxZoom(); m.loaded = m.__ld; m.isStyleLoaded = m.__isl; delete m.__ld; delete m.__isl; return z; });
+    assert(restored === 20, `restored (maxZoom ${restored})`);
   });
   await step(`v04 ${V}: offline region download manager (mocked region host) — progress, downloaded, used offline, delete`, async () => {
     const bytes = fs.readFileSync('web/offline/vizag.pmtiles');

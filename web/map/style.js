@@ -185,10 +185,12 @@ export function createMapStyle(ctx) {
     get lowBandwidth() { return S.lowBw; },
     /** Apply the low-bandwidth policy (web/lib/bandwidth.js): zoom cap, no low-zoom prefetch, no 3D. */
     applyBandwidth(policy) {
+      // The zoom cap and prefetch delta are map options and apply at any time, including while tiles are still
+      // loading (MapLibre's isStyleLoaded()/loaded() are false then); only the layer change needs a loaded style.
       S.lowBw = !!policy.active;
       map.setMaxZoom(policy.maxZoom);
       if (typeof map.setPrefetchZoomDelta === 'function') map.setPrefetchZoomDelta(policy.prefetchZoomDelta);
-      if (map.getLayer('bm-buildings-3d')) map.setLayoutProperty('bm-buildings-3d', 'visibility', policy.allow3D && S.buildings3d && S.tier?.allow3D !== false ? 'visible' : 'none');
+      try { if (map.getLayer('bm-buildings-3d')) map.setLayoutProperty('bm-buildings-3d', 'visibility', policy.allow3D && S.buildings3d && S.tier?.allow3D !== false ? 'visible' : 'none'); } catch { /* style mid-swap: style.load re-applies */ }
       if (!policy.allow3D && map.getPitch() > 0) ctx.cam?.ease?.({ pitch: 0, duration: 300 });
     },
     /** v0.6 device tier (web/lib/device-tier.js): 3D/terrain allowed, label density (later minzoom), max pitch. */
@@ -196,12 +198,15 @@ export function createMapStyle(ctx) {
       S.tier = policy;
       if (!policy) return;
       map.setMaxPitch(policy.maxPitch ?? 70);
-      if (!policy.allow3D && map.getLayer('bm-buildings-3d')) map.setLayoutProperty('bm-buildings-3d', 'visibility', 'none');
-      else if (policy.allow3D && map.getLayer('bm-buildings-3d')) map.setLayoutProperty('bm-buildings-3d', 'visibility', S.buildings3d && !S.lowBw ? 'visible' : 'none');
-      if (!policy.allowTerrain && map.getTerrain?.()) map.setTerrain(null);
+      try {
+        if (!policy.allow3D && map.getLayer('bm-buildings-3d')) map.setLayoutProperty('bm-buildings-3d', 'visibility', 'none');
+        else if (policy.allow3D && map.getLayer('bm-buildings-3d')) map.setLayoutProperty('bm-buildings-3d', 'visibility', S.buildings3d && !S.lowBw ? 'visible' : 'none');
+        if (!policy.allowTerrain && map.getTerrain?.()) map.setTerrain(null);
+      } catch { /* style mid-swap: style.load re-applies */ }
       const shift = labelMinzoomShift(policy.labelDensity);
       S.labelShift = shift;
-      for (const l of map.getStyle()?.layers || []) {
+      let layers = []; try { layers = map.getStyle()?.layers || []; } catch { /* style mid-swap */ }
+      for (const l of layers) {
         if (l.type !== 'symbol' || l.id.startsWith('bm-')) continue;
         if (S.labelZoom[l.id] == null) S.labelZoom[l.id] = l.minzoom ?? 0;
         try { map.setLayerZoomRange(l.id, Math.min(22, S.labelZoom[l.id] + shift), l.maxzoom ?? 24); } catch { /* ignore */ }
