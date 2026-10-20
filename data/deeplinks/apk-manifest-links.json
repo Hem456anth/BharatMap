@@ -10190,6 +10190,332 @@
      ]
     }
    ]
+  },
+  {
+   "app": "CoMaps",
+   "package": "app.comaps.google",
+   "versionName": "2026.09.23-2-Google",
+   "versionCode": "26092302",
+   "upload": "base.apk",
+   "apkSha256": "e9c5099c0795450bd87a4290f3f90b19ffde7b01abacef707b11b005dd32aa00",
+   "signers": [
+    {
+     "sha256": "8c3dde72d3b1d59841afb4f28067a7d7bc86b51cc7adf485b6c81149f9faac19",
+     "schemes": [
+      "v1",
+      "v2",
+      "v3"
+     ]
+    }
+   ],
+   "signerSubject": "Common Name: Android, Organizational Unit: Android, Organization: Google Inc., Locality: Mountain View, State/Province: California, Country: US",
+   "skip": "Reference teardown (open source, Apache-2.0; docs/re/COMAPS_TEARDOWN.md), not a hand-off provider",
+   "summary": {
+    "customSchemes": [
+     "cm",
+     "comaps",
+     "content",
+     "data",
+     "file",
+     "ge0",
+     "geo",
+     "mapsme"
+    ],
+    "webHosts": [
+     "*",
+     "comaps.at",
+     "ge0.me",
+     "www.openstreetmap.org"
+    ],
+    "autoVerifyHttpsHosts": [
+     "comaps.at"
+    ],
+    "hasUpiScheme": false
+   },
+   "browsableFilters": [
+    {
+     "component": "app.organicmaps.SplashActivity",
+     "type": "activity",
+     "exported": "true",
+     "autoVerify": false,
+     "categories": [
+      "android.intent.category.BROWSABLE",
+      "android.intent.category.DEFAULT"
+     ],
+     "schemes": [
+      "cm",
+      "comaps",
+      "ge0",
+      "geo"
+     ]
+    },
+    {
+     "component": "app.organicmaps.SplashActivity",
+     "type": "activity",
+     "exported": "true",
+     "autoVerify": false,
+     "categories": [
+      "android.intent.category.BROWSABLE",
+      "android.intent.category.DEFAULT"
+     ],
+     "schemes": [
+      "http",
+      "https"
+     ],
+     "hosts": [
+      "ge0.me"
+     ]
+    },
+    {
+     "component": "app.organicmaps.SplashActivity",
+     "type": "activity",
+     "exported": "true",
+     "autoVerify": true,
+     "categories": [
+      "android.intent.category.BROWSABLE",
+      "android.intent.category.DEFAULT"
+     ],
+     "schemes": [
+      "http",
+      "https"
+     ],
+     "hosts": [
+      "comaps.at"
+     ]
+    },
+    {
+     "component": "app.organicmaps.SplashActivity",
+     "type": "activity",
+     "exported": "true",
+     "autoVerify": false,
+     "categories": [
+      "android.intent.category.BROWSABLE",
+      "android.intent.category.DEFAULT"
+     ],
+     "schemes": [
+      "http",
+      "https"
+     ],
+     "hosts": [
+      "www.openstreetmap.org"
+     ],
+     "path": [
+      "/",
+      "/search"
+     ]
+    },
+    {
+     "component": "app.organicmaps.SplashActivity",
+     "type": "activity",
+     "exported": "true",
+     "autoVerify": false,
+     "categories": [
+      "android.intent.category.BROWSABLE",
+      "android.intent.category.DEFAULT"
+     ],
+     "schemes": [
+      "mapsme"
+     ]
+    },
+    {
+     "component": "app.organicmaps.SplashActivity",
+     "type": "activity",
+     "exported": "true",
+     "autoVerify": false,
+     "categories": [
+      "android.intent.category.BROWSABLE",
+      "android.intent.category.DEFAULT"
+     ],
+     "schemes": [
+      "content",
+      "data",
+      "file",
+      "http",
+      "https"
+     ],
+     "hosts": [
+      "*"
+     ],
+     "mimeType": [
+      "application/gpx",
+      "application/gpx+xml",
+      "application/vnd.google-earth.kml+xml",
+      "application/vnd.google-earth.kmz",
+      "application/vnd.google-earth.kmz+xml"
+     ]
+    },
+    {
+     "component": "app.organicmaps.SplashActivity",
+     "type": "activity",
+     "exported": "true",
+     "autoVerify": false,
+     "categories": [
+      "android.intent.category.BROWSABLE",
+      "android.intent.category.DEFAULT"
+     ],
+     "schemes": [
+      "content",
+      "data",
+      "file"
+     ],
+     "hosts": [
+      "*"
+     ],
+     "pathPattern": [
+      "/.*\\..*\\..*\\..*\\..*\\..*\\..*\\..*\\.GPX",
+      "/.*\\..*\\..*\\..*\\..*\\..*\\..*\\..*\\.KMB",
+      "/.*\\..*\\..*\\..*\\..*\\..*\\..*\\..*\\.KML",
+      "/.*\\..*\\..*\\..*\\..*\\..*\\..*\\..*\\.KMZ",
+      "/.*\\..*\\..*\\..*\\..*\\..*\\..*\\..*\\.gpx",
+      "/.*\\..*\\..*\\..*\\..*\\..*\\..*\\..*\\.kmb",
+      "/.*\\..*\\..*\\..*\\..*\\..*\\..*\\..*\\.kml",
+      "/.*\\..*\\..*\\..*\\..*\\..*\\..*\\..*\\.kmz",
+      "/.*\\..*\\..*\\..*\\..*\\..*\\..*\\.GPX",
+      "/.*\\..*\\..*\\..*\\..*\\..*\\..*\\.KMB",
+      "/.*\\..*\\..*\\..*\\..*\\..*\\..*\\.KML",
+      "/.*\\..*\\..*\\..*\\..*\\..*\\..*\\.KMZ",
+      "/.*\\..*\\..*\\..*\\..*\\..*\\..*\\.gpx",
+      "/.*\\..*\\..*\\..*\\..*\\..*\\..*\\.kmb",
+      "/.*\\..*\\..*\\..*\\..*\\..*\\..*\\.kml",
+      "/.*\\..*\\..*\\..*\\..*\\..*\\..*\\.kmz",
+      "/.*\\..*\\..*\\..*\\..*\\..*\\.GPX",
+      "/.*\\..*\\..*\\..*\\..*\\..*\\.KMB",
+      "/.*\\..*\\..*\\..*\\..*\\..*\\.KML",
+      "/.*\\..*\\..*\\..*\\..*\\..*\\.KMZ",
+      "/.*\\..*\\..*\\..*\\..*\\..*\\.gpx",
+      "/.*\\..*\\..*\\..*\\..*\\..*\\.kmb",
+      "/.*\\..*\\..*\\..*\\..*\\..*\\.kml",
+      "/.*\\..*\\..*\\..*\\..*\\..*\\.kmz",
+      "/.*\\..*\\..*\\..*\\..*\\.GPX",
+      "/.*\\..*\\..*\\..*\\..*\\.KMB",
+      "/.*\\..*\\..*\\..*\\..*\\.KML",
+      "/.*\\..*\\..*\\..*\\..*\\.KMZ",
+      "/.*\\..*\\..*\\..*\\..*\\.gpx",
+      "/.*\\..*\\..*\\..*\\..*\\.kmb",
+      "/.*\\..*\\..*\\..*\\..*\\.kml",
+      "/.*\\..*\\..*\\..*\\..*\\.kmz",
+      "/.*\\..*\\..*\\..*\\.GPX",
+      "/.*\\..*\\..*\\..*\\.KMB",
+      "/.*\\..*\\..*\\..*\\.KML",
+      "/.*\\..*\\..*\\..*\\.KMZ",
+      "/.*\\..*\\..*\\..*\\.gpx",
+      "/.*\\..*\\..*\\..*\\.kmb",
+      "/.*\\..*\\..*\\..*\\.kml",
+      "/.*\\..*\\..*\\..*\\.kmz",
+      "/.*\\..*\\..*\\.GPX",
+      "/.*\\..*\\..*\\.KMB",
+      "/.*\\..*\\..*\\.KML",
+      "/.*\\..*\\..*\\.KMZ",
+      "/.*\\..*\\..*\\.gpx",
+      "/.*\\..*\\..*\\.kmb",
+      "/.*\\..*\\..*\\.kml",
+      "/.*\\..*\\..*\\.kmz",
+      "/.*\\..*\\.GPX",
+      "/.*\\..*\\.KMB",
+      "/.*\\..*\\.KML",
+      "/.*\\..*\\.KMZ",
+      "/.*\\..*\\.gpx",
+      "/.*\\..*\\.kmb",
+      "/.*\\..*\\.kml",
+      "/.*\\..*\\.kmz",
+      "/.*\\.GPX",
+      "/.*\\.KMB",
+      "/.*\\.KML",
+      "/.*\\.KMZ",
+      "/.*\\.gpx",
+      "/.*\\.kmb",
+      "/.*\\.kml",
+      "/.*\\.kmz"
+     ],
+     "mimeType": [
+      "*/*"
+     ]
+    },
+    {
+     "component": "app.organicmaps.SplashActivity",
+     "type": "activity",
+     "exported": "true",
+     "autoVerify": false,
+     "categories": [
+      "android.intent.category.BROWSABLE",
+      "android.intent.category.DEFAULT"
+     ],
+     "schemes": [
+      "content",
+      "data",
+      "file"
+     ],
+     "hosts": [
+      "*"
+     ],
+     "pathPattern": [
+      "/.*\\..*\\..*\\..*\\..*\\..*\\..*\\..*\\.GPX",
+      "/.*\\..*\\..*\\..*\\..*\\..*\\..*\\..*\\.KMB",
+      "/.*\\..*\\..*\\..*\\..*\\..*\\..*\\..*\\.KML",
+      "/.*\\..*\\..*\\..*\\..*\\..*\\..*\\..*\\.KMZ",
+      "/.*\\..*\\..*\\..*\\..*\\..*\\..*\\..*\\.gpx",
+      "/.*\\..*\\..*\\..*\\..*\\..*\\..*\\..*\\.kmb",
+      "/.*\\..*\\..*\\..*\\..*\\..*\\..*\\..*\\.kml",
+      "/.*\\..*\\..*\\..*\\..*\\..*\\..*\\..*\\.kmz",
+      "/.*\\..*\\..*\\..*\\..*\\..*\\..*\\.GPX",
+      "/.*\\..*\\..*\\..*\\..*\\..*\\..*\\.KMB",
+      "/.*\\..*\\..*\\..*\\..*\\..*\\..*\\.KML",
+      "/.*\\..*\\..*\\..*\\..*\\..*\\..*\\.KMZ",
+      "/.*\\..*\\..*\\..*\\..*\\..*\\..*\\.gpx",
+      "/.*\\..*\\..*\\..*\\..*\\..*\\..*\\.kmb",
+      "/.*\\..*\\..*\\..*\\..*\\..*\\..*\\.kml",
+      "/.*\\..*\\..*\\..*\\..*\\..*\\..*\\.kmz",
+      "/.*\\..*\\..*\\..*\\..*\\..*\\.GPX",
+      "/.*\\..*\\..*\\..*\\..*\\..*\\.KMB",
+      "/.*\\..*\\..*\\..*\\..*\\..*\\.KML",
+      "/.*\\..*\\..*\\..*\\..*\\..*\\.KMZ",
+      "/.*\\..*\\..*\\..*\\..*\\..*\\.gpx",
+      "/.*\\..*\\..*\\..*\\..*\\..*\\.kmb",
+      "/.*\\..*\\..*\\..*\\..*\\..*\\.kml",
+      "/.*\\..*\\..*\\..*\\..*\\..*\\.kmz",
+      "/.*\\..*\\..*\\..*\\..*\\.GPX",
+      "/.*\\..*\\..*\\..*\\..*\\.KMB",
+      "/.*\\..*\\..*\\..*\\..*\\.KML",
+      "/.*\\..*\\..*\\..*\\..*\\.KMZ",
+      "/.*\\..*\\..*\\..*\\..*\\.gpx",
+      "/.*\\..*\\..*\\..*\\..*\\.kmb",
+      "/.*\\..*\\..*\\..*\\..*\\.kml",
+      "/.*\\..*\\..*\\..*\\..*\\.kmz",
+      "/.*\\..*\\..*\\..*\\.GPX",
+      "/.*\\..*\\..*\\..*\\.KMB",
+      "/.*\\..*\\..*\\..*\\.KML",
+      "/.*\\..*\\..*\\..*\\.KMZ",
+      "/.*\\..*\\..*\\..*\\.gpx",
+      "/.*\\..*\\..*\\..*\\.kmb",
+      "/.*\\..*\\..*\\..*\\.kml",
+      "/.*\\..*\\..*\\..*\\.kmz",
+      "/.*\\..*\\..*\\.GPX",
+      "/.*\\..*\\..*\\.KMB",
+      "/.*\\..*\\..*\\.KML",
+      "/.*\\..*\\..*\\.KMZ",
+      "/.*\\..*\\..*\\.gpx",
+      "/.*\\..*\\..*\\.kmb",
+      "/.*\\..*\\..*\\.kml",
+      "/.*\\..*\\..*\\.kmz",
+      "/.*\\..*\\.GPX",
+      "/.*\\..*\\.KMB",
+      "/.*\\..*\\.KML",
+      "/.*\\..*\\.KMZ",
+      "/.*\\..*\\.gpx",
+      "/.*\\..*\\.kmb",
+      "/.*\\..*\\.kml",
+      "/.*\\..*\\.kmz",
+      "/.*\\.GPX",
+      "/.*\\.KMB",
+      "/.*\\.KML",
+      "/.*\\.KMZ",
+      "/.*\\.gpx",
+      "/.*\\.kmb",
+      "/.*\\.kml",
+      "/.*\\.kmz"
+     ]
+    }
+   ]
   }
  ],
  "otherUploads": [

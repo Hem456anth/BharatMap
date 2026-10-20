@@ -74,6 +74,16 @@ const P = {
   roundabout: '<circle cx="12" cy="10" r="4"/><path d="M12 20v-6M16 10h4.5m-2-2 2 2-2 2"/>',
   depart: '<circle cx="12" cy="17" r="2.5"/><path d="M12 14.5V4.5M8.5 8 12 4.5 15.5 8"/>',
   arrive: '<path d="M7 21V4h10l-2.5 3.5L17 11H7"/>',
+  // v0.8 (list editor, tracks, import/export)
+  edit: '<path d="M4.5 19.5 5.3 15.6 15.8 5.1a1.9 1.9 0 0 1 2.7 0l.4.4a1.9 1.9 0 0 1 0 2.7L8.4 18.7z"/><path d="m13.8 7.1 3.1 3.1"/>',
+  up: '<path d="m6 14.5 6-6 6 6"/>',
+  down: '<path d="m6 9.5 6 6 6-6"/>',
+  record: '<circle cx="12" cy="12" r="7.5"/><circle cx="12" cy="12" r="3.6" fill="currentColor"/>',
+  pause: '<path d="M9 6v12M15 6v12"/>',
+  stop: '<rect x="6.5" y="6.5" width="11" height="11" rx="1.6"/>',
+  upload: '<path d="M12 15V5m-4.5 4.5L12 5l4.5 4.5M5 19.5h14"/>',
+  track: '<path d="M5 19c2-5 5.5-3 7-7s4-6 7-7"/><circle cx="5" cy="19" r="1.6" fill="currentColor"/><circle cx="19" cy="5" r="1.6"/>',
+  trash: '<path d="M5 7h14M10 7V5h4v2M7 7l1 12.5h8L17 7"/>',
   sun: '<circle cx="12" cy="12" r="4"/><path d="M12 2.8v2.4M12 18.8v2.4M2.8 12h2.4M18.8 12h2.4M5.5 5.5l1.7 1.7M16.8 16.8l1.7 1.7M5.5 18.5l1.7-1.7M16.8 7.2l1.7-1.7"/>',
 };
 

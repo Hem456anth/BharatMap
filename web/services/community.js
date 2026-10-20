@@ -2,6 +2,7 @@
 // (Bharat Map server when configured; otherwise kept on this device only and labelled so).
 import { buildNotePayload, parseNoteResponse, noteRateLimit, validateIncident, INCIDENT_TTL_MS, activeIncidents, confidence, minutesLeft } from '../shared/community.js';
 import { store } from '../shared/storage.js';
+import { buildEditNotePayload } from '../shared/osm-edit.js';
 import { useServer, v1 } from './server.js';
 
 const read = (k, d) => { try { return JSON.parse(store.getItem(k) || '') ?? d; } catch { return d; } };
@@ -16,6 +17,19 @@ export async function sendOsmNote({ lat, lng, category, text }, { fetchImpl = fe
   const id = parseNoteResponse(await r.text());
   store.setItem('bm-notes-history', JSON.stringify([...hist.filter((t) => now - t < 3600_000), now]));
   return { id, url: id ? `https://www.openstreetmap.org/note/${id}` : null };
+}
+
+/** v0.8: "Suggest an edit" → structured anonymous OSM note on the place (shares the notes rate limit above). */
+export async function sendOsmEditSuggestion({ place, changes, comment }, { fetchImpl = fetch, now = Date.now() } = {}) {
+  const hist = read('bm-notes-history', []);
+  const rl = noteRateLimit(hist, now);
+  if (!rl.ok) { const e = new Error('rate_limited'); e.waitMs = rl.waitMs; throw e; }
+  const p = buildEditNotePayload({ place, changes, comment });
+  const r = await fetchImpl(`${p.url}.json`, { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded', Accept: 'application/json' }, body: p.body });
+  if (!r.ok) throw new Error(`http_${r.status}`);
+  const id = parseNoteResponse(await r.text());
+  store.setItem('bm-notes-history', JSON.stringify([...hist.filter((t) => now - t < 3600_000), now]));
+  return { id, url: id ? `https://www.openstreetmap.org/note/${id}` : null, text: p.text };
 }
 
 export const incidentsMode = () => (useServer() ? 'server' : 'device');

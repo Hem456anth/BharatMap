@@ -49,6 +49,7 @@ is a byte-identical copy of `base(11).apk` (Uber) and was not analysed separatel
 | PhonePe | `com.phonepe.app` | 26.09.25.0 | `5335bc4961580b2e…` | 9 | `upi://pay`, `ppe://pay`, `phonepe://`, www.phonepe.com `/applink` | — | **None** | Payments only inside a gateway checkout (PhonePe PG prototype adapter on the server). No `upi://` is ever built |
 | Google Pay | `com.google.android.apps.nbu.paisa.user` | 352.1.1 | `c17b8e3e427bfcd9…` | 12 | `upi://pay`, `gpay://upi`, `tez://upi`, pay.google.com `/app` | — | **None** | UPI-only; appears as a UPI app inside the gateway checkout |
 | EasyPark | `net.easypark.android` | 26.40.1 | `0639fa559a0571df…` | 9 | invite.easypark.com, easypark.onelink.me; `easypark://` | — | **None (not in India)** | Not an India service and not on the requested list: catalogued as Unavailable (`notInIndia`), never linked |
+| CoMaps | `app.comaps.google` | 2026.09.23-2-Google | `8c3dde72d3b1d598…` | 8 | comaps.at (autoVerify via `@bool`), ge0.me, openstreetmap.org; `geo:` `ge0:` `cm:` `comaps:` `mapsme:`; KML/KMZ/GPX/KMB files | — | **None (reference app)** | Open-source teardown reference (`COMAPS_TEARDOWN.md`), not a hand-off provider. Bharat's shared `geo:` links already open it |
 
 assetlinks.json evidence (fetched 20 Oct 2026; `CERT-MATCH` = package listed with the APK's certificate): m.uber.com,
 www.swiggy.com, www.zomato.com, www.district.in, in.bookmyshow.com, blinkit.com, www.agoda.com, www.makemytrip.com,

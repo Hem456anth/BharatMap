@@ -37,7 +37,7 @@ function appLinkFilters(pkg, url) {
 }
 
 test('inventory: every analysed app is in the manifest JSON with the same package, version and signer certificate', () => {
-  assert.equal(INV.apps.length, 15);
+  assert.equal(INV.apps.length, 16);
   for (const [pkg, a] of Object.entries(APPS)) {
     const rec = byPkg[pkg];
     assert.ok(rec, `${pkg} missing from apk-manifest-links.json`);
@@ -46,6 +46,7 @@ test('inventory: every analysed app is in the manifest JSON with the same packag
   }
   assert.match(INV.scope, /no code, resources or assets/);
   assert.equal(byPkg['net.easypark.android'].skip ? true : false, true, 'EasyPark marked skip');
+  assert.match(byPkg['app.comaps.google'].skip || '', /Reference teardown/, 'CoMaps is a reference app, not a hand-off provider');
   assert.ok(INV.otherUploads.every((o) => o.duplicateOf), 'extra uploads are duplicates');
   // Nothing secret-shaped leaks into the inventory (Facebook app ids are redacted).
   assert.ok(!/fb\d{6,}|kakao[0-9a-f]{16,}|line\.\d{6,}/.test(JSON.stringify(INV)));

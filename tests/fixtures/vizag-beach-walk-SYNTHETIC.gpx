@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- SYNTHETIC test fixture (hand-written for Bharat Map tests; coordinates around RK Beach, Visakhapatnam). -->
+<gpx version="1.1" creator="Bharat Map tests" xmlns="http://www.topografix.com/GPX/1/1">
+  <metadata><name>Vizag beach walk</name><time>2026-10-18T00:30:00Z</time></metadata>
+  <wpt lat="17.714500" lon="83.323400"><name>Kali Temple &amp; beach entrance</name><desc>Meet here at 6 AM</desc></wpt>
+  <wpt lat="17.7106" lon="83.3176"><name>విశాఖ మ్యూజియం</name></wpt>
+  <wpt lat="95" lon="83.3"><name>Invalid latitude</name></wpt>
+  <rte><name>To the submarine</name><rtept lat="17.7180" lon="83.3307"><name>INS Kursura Submarine Museum</name></rtept></rte>
+  <trk><name>Morning walk</name>
+    <trkseg>
+      <trkpt lat="17.7145" lon="83.3234"><ele>4.0</ele><time>2026-10-18T00:30:00Z</time></trkpt>
+      <trkpt lat="17.7152" lon="83.3248"><ele>5.5</ele><time>2026-10-18T00:32:00Z</time></trkpt>
+      <trkpt lat="17.7161" lon="83.3266"><ele>6.0</ele><time>2026-10-18T00:34:30Z</time></trkpt>
+    </trkseg>
+    <trkseg>
+      <trkpt lat="17.7172" lon="83.3289"><ele>5.0</ele><time>2026-10-18T00:45:00Z</time></trkpt>
+      <trkpt lat="17.7180" lon="83.3307"><ele>4.5</ele><time>2026-10-18T00:48:00Z</time></trkpt>
+    </trkseg>
+  </trk>
+</gpx>

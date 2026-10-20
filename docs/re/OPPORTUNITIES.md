@@ -1,4 +1,74 @@
-# Opportunities for Bharat Map from the AMap APK teardown
+# Opportunities for Bharat Map
+
+> **20 Oct 2026 — CoMaps is now the primary blueprint.** The owner set CoMaps (open source, Apache-2.0) as Bharat Map's main
+> reference: offline-first, downloadable regions, on-device routing and search, lean core. The CoMaps section and adoption
+> roadmap below come first and take priority. The AMap (#1–#27, D1–D24) lists further down remain a feature backlog; Apple
+> Maps (web) is a UI/UX reference only. Evidence: `COMAPS_TEARDOWN.md`.
+
+## CoMaps — ranked opportunities (C1–C17)
+Scoring as elsewhere in this file: Impact H/M/L for Indian users, Effort S (≤ 2 days) / M (≤ 2 weeks) / L (longer); rank =
+impact × (1 / effort), with C1 placed first by instruction because it decides the architecture. Status: ✅ done this sprint ·
+⏸ waits for the owner's approval · ⬜ not started.
+
+| # | Opportunity | Impact | Effort | Status | CoMaps evidence | Open, legitimate route for Bharat |
+|---|---|---|---|---|---|---|
+| **C1** | **On-device offline routing + search (feasibility, decides the core)** | H | L | ⬜ spike next | One mwm per region carries render + search index + routing graph; `IndexRouter` + cross-mwm leaps; offline geocoder in `libs/search` | **Feasible with Valhalla, not with the CoMaps engine.** See the C1 verdict below |
+| C2 | **Region packs v2, CoMaps-style catalogue:** one pack per city = PMTiles + Valhalla `tiles.tar` + `search.sqlite` + POIs, a catalogue with hierarchy, size, sha256, version, a mirror list and a resumable queue | H | M | ⬜ | `countries.txt` (size + checksum per file), `libs/storage` downloader / pinger / queue | Extend `web/lib/region-manager.js` + `regions.json`; host packs on GitHub Releases or an Indian VM/CDN |
+| C3 | **Bundle only Vizag + Hyderabad, make the other 9 cities downloadable** (APK ≈ 32 MB from 100 MB) | H | S | ⏸ approval | World overview in the APK, every region downloaded | Move `web/offline/*.pmtiles` (68 MB) to packs; split `offline/search/index.json` per city |
+| C4 | **"Download the map for this view / this route" prompts** with total size | H | S | ⬜ | `DownloadMapsForViewScreen`, `DownloadMapsForRouteScreen` | Intersect viewport / route bbox with pack bounds (D22 extends this) |
+| C5 | **GPX/KML import + export of saved lists and tracks** | M | S | ✅ | `libs/kml` serdes for KML/KMZ/GPX | `shared/geoformats.js` (spec-based, XXE-safe), share sheet via Capacitor Filesystem + Share |
+| C6 | **Bookmark list editor** (rename, reorder, notes, delete) | M | S | ✅ | `BookmarkCategorySettingsActivity`, list screens | `web/lib/saved-model.js` (`renameList`, `moveItem`, `updateItem`) |
+| C7 | **Track recording** (filters, pause = new segment, stats, map line) | M | S | ✅ foreground | `TrackRecordingService` (location FGS) | `web/lib/track-model.js`, `web/ui/tracks.js` |
+| C8 | **"Suggest an edit" for OSM places** (name, Telugu/Hindi name, hours, phone, website, wheelchair) | M | S | ✅ as OSM note | Built-in OSM editor (`libs/editor`, `editor.config`) with OAuth2 | `shared/osm-edit.js`: structured anonymous note with the element link, validated values |
+| C9 | **Screen-off track recording** using the existing navigation location foreground service + a notification | M | S | ⬜ | `TrackRecordingService` FGS type location | Reuse `web/nav/background.js` / `BackgroundNavService` with a "recording" notification; no background-location permission |
+| C10 | **Receive GPX/KML from other apps** (Android VIEW/SEND intent filters → import screen) | M | S–M | ⬜ | Manifest claims KML/KMZ/GPX/KMB by MIME + extension and SEND | Add intent filters; read the `content://` URI with Capacitor Filesystem; reuse `parseGeoFile` |
+| C11 | **Font-coverage gate in CI:** every Indic script we label must have a real font (CoMaps falls back to code2000 for Telugu) | M | S | ⬜ | Fonts whitelist + `code2000.ttf` fallback | Script that checks glyph PBF ranges vs `name:*` scripts present in each pack |
+| C12 | **Custom maps-server / mirror setting** for an Indian host | M | S | ⬜ | Settings → Advanced → Custom maps server | Base URL in Settings; catalogue fetched from it; sha256 still verified |
+| C13 | **Trim glyph fonts + R8 minify/shrink on release** | M | S | ⏸ approval | R8 + `isShrinkResources` on release | Same as AMap #1/#2 (measured: fonts 9.7 MB, dex 2.9 MB) |
+| C14 | **Real OSM editing** behind an OSM account (OAuth2), same fields as C8, with changeset comments | M | M | ⬜ | `editor/` + `OsmLoginActivity` | OSM API 0.6 changesets; reuse CoMaps' `editor.config` *field lists per POI type* as data (Apache-2.0, attributed) |
+| C15 | **Public-transport map style** (light/dark) + per-pack GTFS | M | M | ⬜ | `drules_proto_public-transport_*`, `transit/` | New MapLibre style variant; HMRL GTFS already bundled; TGSRTC when published |
+| C16 | **Delta updates for packs** (binary diffs between monthly builds) | M | M–L | ⬜ | `libs/mwm_diff` + bsdiff | bsdiff per PMTiles/graph file, or PMTiles re-extract of changed tiles only |
+| C17 | **Android Auto** (MapLibre Native on the car surface) | M | L | 📄 doc only | `CarAppService`, car screens, `SurfaceRenderer` | `docs/ANDROID_AUTO.md`; not shipped untested |
+
+Also noted, lower priority: offline Wikipedia extracts on place cards (CoMaps `descriptions`), a KMZ reader (zip) for C5,
+`geo:`/OSM-URL intent handling parity (Bharat already accepts `geo:`).
+
+### C1 verdict — on-device routing and search
+| Option | What it means | Verdict |
+|---|---|---|
+| **Valhalla on device** via `valhalla-mobile` (MIT; Android shared library on Maven Central `io.github.rallista:valhalla-mobile`, builds Valhalla 3.9.0; on-device `route`, `trace_route`, `trace_attributes`, `height`, `sources_to_targets` against a downloaded tileset — github.com/Rallista/valhalla-mobile README, read 20 Oct 2026) | Reads our existing graph: Vizag `tiles.tar` 10.9 MB (≈ 3.7 MB gz) built with pyvalhalla 3.9.1 (`docs/OFFLINE_ROUTING.md`); output is Valhalla JSON, which `shared/valhalla.js` already parses (lanes, maneuvers, `motor_scooter`) | **Recommended.** Keeps two-wheeler costing, road hints, lanes. To verify in the spike: tile compatibility (3.9.0 library vs 3.9.1 tiles), native size per ABI, cold-start + memory on 2–3 GB phones |
+| CoMaps engine via JNI | Build `routing` + `search` + `indexer` + `storage` + `platform` from CoMaps (Apache-2.0) with the NDK, and generate mwm files for our cities with its `generator_tool` | **Not recommended.** No motorcycle/scooter router type (`RouterType` = Vehicle, Pedestrian, Bicycle, Transit, Ruler); mwm is state-level (AP 115 MB, Telangana 99 MB) unless we run our own generator per city; the core is monolithic; a second rendering data set next to PMTiles |
+| GraphHopper (Apache-2.0, Java) | Separate graph format | Fallback only (a second engine to keep in sync) |
+| **Search:** SQLite FTS5 per pack | Same schema as the server FTS5 (v0.5.11), shipped in each pack; transliteration in JS stays | **Recommended.** Plugin: `@capacitor-community/sqlite` (MIT) or a small native plugin. CoMaps' in-mwm search index is not usable outside its engine |
+
+Fallback order once built: on-device engine when the pack is present → our server → public FOSSGIS services → straight line
+(labelled). Spike plan (≈ 1 week): Capacitor plugin `OfflineRouter.route(json)` with valhalla-mobile, Vizag pack only, measure
+size/latency on 3 phones, then decide C2's pack format.
+
+## CoMaps adoption roadmap
+| Phase | Scope | Exit criteria | Size impact |
+|---|---|---|---|
+| **0 — done (this sprint, 20 Oct 2026)** | C5 GPX/KML, C6 list editor, C7 track recording (foreground), C8 edit suggestions, C17 doc; CoMaps added to the deep-link inventory as a reference app | 199 unit/API tests incl. `tests/v08.test.js`; v0.8 E2E steps desktop + mobile | +≈ 60 kB JS, +@capacitor/filesystem |
+| **1 — lean core (≈ 2 weeks, after the owner approves slimming)** | C3 bundle Vizag + Hyderabad only; C13 font trim + R8; C2 catalogue v1 (size, sha256, version, mirror); C4 download prompts; C12 mirror setting; CI size budget (fail > 40 MB) | Fresh install works offline in Vizag and Hyderabad; other cities download, verify and work offline; APK ≤ 40 MB | 100 MB → ≈ 32 MB (city move) → ≈ 21–24 MB (fonts + R8) [estimates] |
+| **2 — on-device engine (3–5 weeks)** | C1 spike → `OfflineRouter` plugin (valhalla-mobile) + per-pack graphs built in CI; FTS5 search per pack; fallback order; offline turn-by-turn | Offline route Vizag + Hyderabad on 3 real phones (2/3/4 GB RAM); p95 route < 1.5 s; offline search parity with the server | + native lib (measure; ship per-ABI splits / App Bundle) + graphs inside packs (Vizag ≈ 3.7 MB gz) |
+| **3 — data lifecycle (3–4 weeks)** | Monthly pack pipeline (Geofabrik → osmium clip → Planetiler/PMTiles + `valhalla_build_tiles` + FTS5); C16 deltas; C9 screen-off tracks; C10 receive files; C11 font gate | Packs rebuilt in CI with checksums; update download ≤ 30 % of a full pack | none in APK |
+| **4 — CoMaps-parity extras** | C14 OSM editing with login; C15 public-transport style; C17 Android Auto (after DHU + car tests); offline Wikipedia extracts | Each behind its own tests; Android Auto passes Google review | AA adds MapLibre Native (≈ 10 MB/ABI, estimate) — consider a dynamic feature module |
+
+### What to reuse under CoMaps' licence vs re-implement
+| CoMaps part | Decision | Why / how |
+|---|---|---|
+| Architecture (one engine layer, region catalogue semantics, pack-per-region, download prompts, privacy defaults) | **Adopt as design** | Ideas are not copyrightable; implemented in our stack |
+| `data/editor.config` (which OSM tags are editable per POI type), `categories.txt` synonyms (has `hi`, `mr`; no `te`) | **Candidate data reuse** under Apache-2.0 | Keep `LICENSE` + `NOTICE` in `third_party/comaps/`, mark changes, list each file in `docs/THIRD_PARTY.md`; extend with Telugu ourselves |
+| `ge0` short-link encoding (`libs/ge0`) | **Port if wanted** (Apache-2.0) | Small algorithm; port to JS with attribution, or keep our `geo:` + `bharatmap://` links |
+| C++ routing / search / storage engine | **Do not embed** (for now) | Monolithic, mwm-bound, no two-wheeler; use valhalla-mobile + FTS5 (C1) |
+| KML/GPX serialisers, track recorder, editor UI, car module | **Re-implemented clean** (done or planned) | Formats are open standards; our UI and stack differ |
+| Drape renderer, `drules_proto` styles, MapCSS | **Do not reuse** | Different renderer; MapLibre styles are ours |
+| Icons, symbol atlases, logos, store art, the CoMaps / Organic Maps names | **Never** | Apache-2.0 §6 (no trademark grant); NOTICE says some icons are © My.com B.V. |
+| `World.mwm` / CDN-hosted mwm files | **Do not use** | Not our format; hot-linking their CDN is not ours to do; we build our own packs from OSM (ODbL) |
+
+---
+
+## AMap-derived backlog (18–19 Oct 2026)
 
 Date: 18 Oct 2026. Evidence: `APK_ANALYSIS.md` (AMap v17.01.0.2012, static analysis), `REVERSE_ENGINEERING_REPORT.md`, `FEATURE_COMPARISON.md`, Bharat v0.3 `README.md` and `docs/AUDIT.md`.
 
@@ -13,7 +83,7 @@ Date: 18 Oct 2026. Evidence: `APK_ANALYSIS.md` (AMap v17.01.0.2012, static analy
 - Rank = impact first, then lower effort.
 - A "Bharat today" column shows what v0.3 already has.
 
-## Size baseline (measured in this repo)
+### Size baseline (measured in this repo)
 | | AMap 17.01 | Bharat v0.3 |
 |---|---|---|
 | Download | 194 MB (arm64 only) | ~29 MB (per project notes) |

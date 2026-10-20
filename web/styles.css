@@ -484,3 +484,30 @@ html.sheet-hidden .maplibregl-ctrl-bottom-right { bottom: 0 !important; }
 /* v0.7 admin listings: long provider names must not overflow the sheet */
 #adminBody form select, #adminBody form input { max-width: 100%; min-width: 0; }
 #adminBody form label { max-width: 100%; }
+
+/* v0.8: list editor, tracks, suggest-an-edit */
+.list-tools { gap: 8px; margin: 10px 0; }
+.btn.sm { min-height: 44px; height: auto; padding: 6px 14px; font-size: 14px; }
+.list-editbar { display: flex; flex-direction: column; gap: 6px; margin: 4px 0 10px; }
+.list-editbar input { flex: 1; min-height: 44px; border: 1px solid var(--line); border-radius: 12px; padding: 0 12px; background: var(--surface); color: var(--ink); min-width: 0; }
+.item-ctl { display: flex; gap: 2px; }
+.item-note { display: block; color: var(--ink2); font-style: italic; }
+.track-rec { border: 1px solid var(--line); border-radius: var(--r-card); padding: 12px; margin-bottom: 12px; background: var(--paper); }
+.track-state { margin: 0 0 6px; font-weight: 650; }
+.track-state[data-state=recording]::before { content: ''; display: inline-block; width: 10px; height: 10px; border-radius: 50%; background: var(--danger); margin-right: 8px; animation: bm-blink 1.2s infinite; }
+@keyframes bm-blink { 50% { opacity: .25; } }
+@media (prefers-reduced-motion: reduce) { .track-state[data-state=recording]::before { animation: none; } }
+.track-stats { grid-template-columns: repeat(4, auto); }
+.track-actions { display: flex; flex-wrap: wrap; gap: 4px; }
+.edit-fields { display: grid; grid-template-columns: 1fr; gap: 6px; max-height: 46vh; overflow: auto; }
+.edit-fields label { font-size: 14px; color: var(--ink2); }
+.edit-fields input, .edit-fields select { min-height: 44px; border: 1px solid var(--line); border-radius: 12px; padding: 0 12px; background: var(--surface); color: var(--ink); }
+.edit-fields .err { color: var(--danger); font-size: 13px; }
+.edit-preview { font-size: 14px; white-space: pre-wrap; background: var(--sheet); border-radius: 12px; padding: 8px 10px; }
+.edit-preview:empty { display: none; }
+.track-actions { flex-wrap: nowrap; align-items: center; }
+.track-actions .btn.sm { padding: 6px 10px; }
+#trackList .row-btn, #listItems .row-btn { flex: 1; min-width: 0; }
+#listItems [data-idx] > .row-txt { flex: 1; min-width: 0; display: grid; grid-template-columns: auto 1fr; column-gap: 10px; align-items: center; }
+#listItems [data-idx] > .row-txt > b { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+#listItems [data-idx] > .row-txt > .item-note { grid-column: 2; }

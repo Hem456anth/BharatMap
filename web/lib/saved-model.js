@@ -1,6 +1,7 @@
 // Saved places & recents data model. Pure (unit-tested); persistence lives in web/ui/saved.js.
 // Shape: { v:1, home: Place|null, work: Place|null, lists:[{id,name,items:[Place]}], updated_ms }
-// Place: { id, name, lat, lng, address?, category?, seller_id? } — only what is needed to show and route.
+// Place: { id, name, lat, lng, address?, category?, seller_id?, note? } — only what is needed to show and route.
+// v0.8 list editor (CoMaps-inspired): rename a list, reorder places, edit a place's name and a personal note.
 
 const MAX_ITEMS = 200, MAX_LISTS = 20, MAX_RECENTS = 12;
 const okNum = (x) => Number.isFinite(x);
@@ -11,6 +12,7 @@ export function cleanPlace(p) {
   if (p.address) out.address = String(p.address).slice(0, 240);
   if (p.category) out.category = String(p.category).slice(0, 30);
   if (p.seller_id) out.seller_id = String(p.seller_id).slice(0, 20);
+  if (p.note) out.note = String(p.note).slice(0, 500);
   return out;
 }
 
@@ -48,6 +50,31 @@ export function createList(s, name) {
 export function deleteList(s, listId) {
   if (listId === 'favorites') return s;
   return touch({ ...s, lists: s.lists.filter((l) => l.id !== listId) });
+}
+/** v0.8: rename a custom list (Favourites keeps its translated name). Empty names are ignored. */
+export function renameList(s, listId, name) {
+  const n = String(name ?? '').replace(/\s+/g, ' ').trim().slice(0, 60);
+  if (!n || listId === 'favorites') return s;
+  return touch({ ...s, lists: s.lists.map((l) => (l.id === listId ? { ...l, name: n } : l)) });
+}
+/** v0.8: move a place within a list (from/to are indexes; out-of-range targets are clamped). */
+export function moveItem(s, listId, from, to) {
+  const l = s.lists.find((x) => x.id === listId); if (!l) return s;
+  if (!Number.isInteger(from) || from < 0 || from >= l.items.length) return s;
+  const dest = Math.max(0, Math.min(l.items.length - 1, Number.isInteger(to) ? to : from));
+  if (dest === from) return s;
+  const items = [...l.items]; const [it] = items.splice(from, 1); items.splice(dest, 0, it);
+  return touch({ ...s, lists: s.lists.map((x) => (x.id === listId ? { ...x, items } : x)) });
+}
+/** v0.8: edit a saved place's display name and personal note (coordinates and id never change). */
+export function updateItem(s, listId, placeId, { name, note } = {}) {
+  return touch({ ...s, lists: s.lists.map((l) => (l.id !== listId ? l : { ...l, items: l.items.map((p) => {
+    if (p.id !== placeId) return p;
+    const q = { ...p };
+    if (name !== undefined) q.name = String(name).replace(/\s+/g, ' ').trim().slice(0, 120);
+    if (note !== undefined) { const n = String(note).trim().slice(0, 500); if (n) q.note = n; else delete q.note; }
+    return q;
+  }) })) });
 }
 export function isSaved(s, placeId) { return s.lists.some((l) => l.items.some((x) => x.id === placeId)); }
 

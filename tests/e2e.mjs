@@ -1120,6 +1120,121 @@ for (const vp of [{ name: 'desktop', width: 1366, height: 820 }, { name: 'mobile
   await ctx.close();
 }
 
+// ---------------- v0.8 (CoMaps-inspired): GPX/KML import-export, list editor, track recording, suggest an OSM edit ----------------
+const shot8 = (page, name) => page.screenshot({ path: `${OUT}/v08-${name}.png` });
+const GPX_FX = fs.readFileSync(new URL('./fixtures/vizag-beach-walk-SYNTHETIC.gpx', import.meta.url));
+const KML_FX = fs.readFileSync(new URL('./fixtures/hyderabad-places-SYNTHETIC.kml', import.meta.url));
+const TIFFIN = { id: 'osm:node/9000000101', osm_type: 'node', osm_id: 9000000101, name: 'Sri Sai Tiffins', lat: 17.7231, lng: 83.3012, tags: { amenity: 'restaurant', cuisine: 'indian', phone: '+91 98765 43210', opening_hours: 'Mo-Su 06:00-11:00' } };
+const readDownload = async (dl) => fs.readFileSync(await dl.path(), 'utf8');
+const ensureBoot = async (page) => { if (!(await page.evaluate(() => !!window.__bm?.ctx).catch(() => false))) await boot(page); };
+for (const vp of [{ name: 'desktop', width: 1366, height: 820 }, { name: 'mobile', width: 390, height: 844, isMobile: true }]) {
+  const { ctx, page, errors, netLog } = await newPage(vp, { blockSW: true });
+  const V = vp.name;
+  await step(`v08 ${V}: import GPX → new saved list (3 places, Telugu name, note) + track; list editor rename, reorder, edit note; export GPX`, async () => {
+    await boot(page);
+    await home(page);
+    const [fc] = await Promise.all([page.waitForEvent('filechooser'), page.click('#importGeo')]);
+    await fc.setFiles({ name: 'vizag-walk.gpx', mimeType: 'application/gpx+xml', buffer: GPX_FX });
+    await waitView(page, 'list');
+    await page.waitForFunction(() => document.querySelectorAll('#listItems [data-open]').length === 3, null, { timeout: 8000 });
+    assert((await page.textContent('#listTitle')) === 'Vizag beach walk', 'list named from GPX metadata');
+    const txt = await page.textContent('#listItems');
+    assert(/Kali Temple & beach entrance/.test(txt) && /విశాఖ మ్యూజియం/.test(txt) && /Meet here at 6 AM/.test(txt), `items ${txt.slice(0, 160)}`);
+    assert((await page.evaluate(() => window.__bm.ctx.tracks.tracks.length)) === 1, 'track imported');
+    // edit mode: rename, move the last place to the top, edit a note
+    await page.click('#listEdit');
+    await page.waitForSelector('#listEditBar:not([hidden])');
+    await page.fill('#listNameInput', 'Beach day'); await page.press('#listNameInput', 'Enter'); await page.$eval('#listNameInput', (el) => el.dispatchEvent(new Event('change')));
+    await page.click('#listItems [data-up="2"]');
+    await page.click('#listItems [data-up="1"]');
+    let order = await page.$$eval('#listItems [data-idx] b', (b) => b.map((x) => x.textContent));
+    assert(order[0] === 'INS Kursura Submarine Museum', `order ${order.join(' | ')}`);
+    await page.click('#listItems [data-idx="0"] [data-edit]');
+    await page.waitForSelector('#itemDlg[open]');
+    await page.fill('#itemNote', 'Closed on Mondays');
+    await page.click('#itemSave');
+    await page.waitForFunction(() => /Closed on Mondays/.test(document.getElementById('listItems').textContent), null, { timeout: 5000 });
+    await shot8(page, `${V}-01-list-editor`);
+    await page.click('#listEdit');
+    assert((await page.textContent('#listTitle')) === 'Beach day', 'renamed');
+    const [dl] = await Promise.all([page.waitForEvent('download'), page.click('#listGpx')]);
+    assert(dl.suggestedFilename() === 'Beach-day.gpx', dl.suggestedFilename());
+    const gpx = await readDownload(dl);
+    assert(/<gpx version="1\.1"/.test(gpx) && /<name>Beach day<\/name>/.test(gpx), 'gpx header');
+    assert(gpx.indexOf('INS Kursura') < gpx.indexOf('Kali Temple'), 'exported in the edited order');
+    assert(/Closed on Mondays/.test(gpx) && /Kali Temple &amp; beach entrance/.test(gpx), 'note + escaping');
+    const saved = await page.evaluate(() => JSON.parse(localStorage.getItem('bm-saved-v1')).lists.find((l) => l.name === 'Beach day'));
+    assert(saved && saved.items[0].note === 'Closed on Mondays', 'persisted');
+  });
+  await step(`v08 ${V}: track recording — simulated GPS walk (inaccurate fix skipped), pause/resume, stop → saved, drawn, KML export; KML import adds 2 tracks`, async () => {
+    await ensureBoot(page);
+    await page.evaluate(() => window.__bm.ctx.views.show('tracks', { detent: 'half' }));
+    await waitView(page, 'tracks');
+    const n0 = await page.evaluate(() => window.__bm.ctx.tracks.tracks.length);
+    await ctx.setGeolocation({ latitude: 17.7145, longitude: 83.3234, accuracy: 8 });
+    await page.click('#trackStart');
+    await page.waitForFunction(() => window.__bm.ctx.tracks.recording && document.getElementById('trackState').dataset.state === 'recording', null, { timeout: 8000 });
+    const walk = [[17.71462, 83.3235], [17.71474, 83.3236], [17.71486, 83.3237]]; // ~16 m steps, ~18 m/s
+    for (const [la, lo] of walk) { await ctx.setGeolocation({ latitude: la, longitude: lo, accuracy: 8 }); await page.waitForTimeout(900); }
+    await ctx.setGeolocation({ latitude: 17.71498, longitude: 83.3238, accuracy: 200 }); await page.waitForTimeout(900); // skipped (inaccurate)
+    await page.click('#trackPause');
+    await page.waitForFunction(() => document.getElementById('trackState').dataset.state === 'paused');
+    await page.click('#trackPause'); // resume → new segment
+    await page.waitForFunction(() => document.getElementById('trackState').dataset.state === 'recording'); await page.waitForTimeout(800);
+    for (const [la, lo] of [[17.71520, 83.3241], [17.71532, 83.3242], [17.71544, 83.3243]]) { await ctx.setGeolocation({ latitude: la, longitude: lo, accuracy: 8 }); await page.waitForTimeout(900); }
+    const pts = await page.evaluate(() => window.__bm.ctx.tracks.recording.segments.map((s) => s.length));
+    assert(pts.length === 2 && pts.every((n) => n >= 2), `segments ${JSON.stringify(pts)}`);
+    assert(/\d/.test(await page.textContent('[data-stat=distance]')), 'live distance');
+    await shot8(page, `${V}-02-track-recording`);
+    await page.click('#trackStop');
+    await page.waitForFunction((n) => !window.__bm.ctx.tracks.recording && window.__bm.ctx.tracks.tracks.length === n + 1, n0, { timeout: 5000 });
+    const drawn = await page.evaluate(() => window.__bm.ctx.map.getSource('bm-track')?.serialize?.().data?.features?.[0]?.geometry?.coordinates?.length);
+    assert(drawn === 2, `drawn segments ${drawn}`);
+    const [dl] = await Promise.all([page.waitForEvent('download'), page.click('#trackList li:first-child [data-kml]')]);
+    const kml = await readDownload(dl);
+    assert(/<kml xmlns="http:\/\/www\.opengis\.net\/kml\/2\.2">/.test(kml) && (kml.match(/<LineString>/g) || []).length === 2, 'KML with 2 segments');
+    const [fc] = await Promise.all([page.waitForEvent('filechooser'), page.click('#trackImport')]);
+    await fc.setFiles({ name: 'hyd.kml', mimeType: 'application/vnd.google-earth.kml+xml', buffer: KML_FX });
+    await page.waitForFunction((n) => window.__bm.ctx.tracks.tracks.length === n + 3, n0, { timeout: 8000 });
+    await waitView(page, 'list'); // the KML also had 2 points → new list
+    assert(/Charminar/.test(await page.textContent('#listItems')), 'KML points imported');
+    await page.evaluate(() => window.__bm.ctx.views.show('tracks', { detent: 'half' }));
+    await shot8(page, `${V}-03-tracks-list`);
+    // a KMZ is refused with a clear message
+    const [fc2] = await Promise.all([page.waitForEvent('filechooser'), page.click('#trackImport')]);
+    await fc2.setFiles({ name: 'trip.kmz', mimeType: 'application/vnd.google-earth.kmz', buffer: Buffer.from('PK\u0003\u0004') });
+    await page.waitForFunction(() => /KMZ is not supported/.test(document.getElementById('toast').textContent), null, { timeout: 5000 });
+  });
+  await step(`v08 ${V}: suggest an edit — prefilled from OSM tags, invalid website flagged, structured anonymous OSM note (mocked API)`, async () => {
+    await ensureBoot(page);
+    await page.evaluate((p) => { localStorage.removeItem('bm-notes-history'); window.__bm.ctx.place.open(p); }, TIFFIN);
+    await waitView(page, 'place');
+    await page.click('#pcEdit');
+    await page.waitForSelector('#editDlg[open]');
+    assert((await page.inputValue('#ef_phone')) === '+91 98765 43210', 'prefilled phone');
+    await page.fill('#ef_website', 'not a url');
+    await page.waitForSelector('#ef_website_err:not([hidden])');
+    await page.fill('#ef_website', 'saitiffins.in');
+    await page.fill('#ef_opening_hours', 'Mo-Su 06:00-12:00');
+    await page.fill('#ef_name_te', 'శ్రీ సాయి టిఫిన్స్');
+    await page.waitForFunction(() => /opening_hours/.test(document.getElementById('editPreview').textContent));
+    await shot8(page, `${V}-04-suggest-edit`);
+    await page.click('#editSend');
+    await page.waitForFunction(() => /4242/.test(document.getElementById('editStatus').textContent), null, { timeout: 8000 });
+    const sent = netLog.filter((l) => l.startsWith('osmnote')).map((l) => l.replace(/\+/g, ' '));
+    assert(sent.length === 1 && /Place details update/.test(sent[0]) && /node\/9000000101/.test(sent[0]), `note ${sent[0]}`);
+    await page.waitForFunction(() => !document.getElementById('editDlg').open, null, { timeout: 5000 });
+    // dropped pins have no OSM element → no "Suggest an edit"
+    await page.evaluate(() => window.__bm.ctx.place.open({ id: 'pin:17.70000,83.30000', name: '', lat: 17.7, lng: 83.3, kind: 'pin', tags: {} }, { fly: false }));
+    await page.waitForSelector('#pcReport');
+    assert(!(await page.$('#pcEdit')), 'no edit for a dropped pin');
+    await home(page);
+    const real = errors.filter((e) => !/ERR_INTERNET_DISCONNECTED|ERR_FAILED|Failed to load resource/.test(e));
+    assert(!real.length, `console errors: ${real.slice(0, 2).join(' | ')}`);
+  });
+  await ctx.close();
+}
+
 await browser.close();
 console.log(results.join('\n'));
 fs.writeFileSync('docs/e2e-results.txt', `${results.join('\n')}\n`);

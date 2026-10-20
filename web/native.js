@@ -66,7 +66,7 @@ export async function openExternal(url) {
 /** Watch position. Returns a stop() function. Only started on user action (locate follow) or navigation. */
 export async function watchPosition(onFix, onError) {
   const G = plugin('Geolocation');
-  const toFix = (c, ts) => ({ lat: c.latitude, lng: c.longitude, accuracy: c.accuracy, heading: Number.isFinite(c.heading) ? c.heading : null, speed: Number.isFinite(c.speed) ? c.speed : null, ts: ts || Date.now() });
+  const toFix = (c, ts) => ({ lat: c.latitude, lng: c.longitude, accuracy: c.accuracy, heading: Number.isFinite(c.heading) ? c.heading : null, speed: Number.isFinite(c.speed) ? c.speed : null, altitude: Number.isFinite(c.altitude) ? c.altitude : null, ts: ts || Date.now() });
   if (G) {
     const perm = await G.checkPermissions().catch(() => ({}));
     if (perm.location !== 'granted') {

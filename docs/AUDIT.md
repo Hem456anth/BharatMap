@@ -1,3 +1,19 @@
+# Audit — CoMaps-blueprint sprint (20 Oct 2026)
+
+CoMaps is now the primary architecture reference (`docs/re/COMAPS_TEARDOWN.md`, roadmap in `docs/re/OPPORTUNITIES.md`).
+
+| Area | Feature | Status | Evidence · dependency |
+|---|---|---|---|
+| Saved | GPX 1.1 / KML 2.2 **import** (waypoints, route points, tracks, `gx:Track`; DTD/ENTITY rejected; size and count caps; KMZ refused with a message) → waypoints become a new list, tracks go to My tracks | ✅ | `shared/geoformats.js`; unit + E2E (desktop, mobile) |
+| Saved | GPX / KML **export** of a list or a track (web download; Android: app cache + system share sheet) | ✅ web · 🟡 Android share path not tested on a device | `web/lib/file-io.js`, `@capacitor/filesystem` (MIT) |
+| Saved | List editor: rename, reorder (↑/↓, keyboard focus kept), edit name + personal note, delete list (Favourites protected) | ✅ | `web/lib/saved-model.js`, `web/ui/saved.js`; unit + E2E |
+| Tracks | Track recording: accuracy ≤ 35 m, min 8 m / 60 s, jump filter 70 m/s, pause = new segment, stats, map line, kept on device, restored as paused after a restart, screen wake lock | ✅ foreground · ⬜ screen-off | `web/lib/track-model.js`, `web/ui/tracks.js`; unit + E2E (simulated GPS) |
+| Community | "Suggest an edit" for OSM places → structured anonymous OSM note (element link, old → new for name / name:te / name:hi / opening_hours / phone / website / wheelchair), validation, shared rate limit | ✅ (mocked API in tests; nothing written to OSM by the app) | `shared/osm-edit.js`, `web/ui/osm-edit.js` |
+| Car | Android Auto | 📄 feasibility only | `docs/ANDROID_AUTO.md` |
+| i18n | 69 new keys en/hi/te (`shared/i18n-v08.js`) | 🟡 | hi/te need native review; other 8 languages fall back to English for these keys |
+| Deep links | CoMaps added to the manifest inventory (16 apps) as a reference app (`skip`); `autoVerify` `@bool` resources now resolved | ✅ | `scripts/extract-deeplinks.py`, `data/deeplinks/apk-manifest-links.json` |
+| Size | APK slimming (bundle 2 cities, font trim, R8) | ⏸ awaiting the owner's approval | `COMAPS_TEARDOWN.md` §6 |
+
 # Audit — Bharat Map v0.7 + app deep links (20 Oct 2026)
 
 | Area | Feature | Status | Evidence · dependency |

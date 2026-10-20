@@ -108,11 +108,12 @@ import { V4, V4_KEYS, V4_NEEDS_REVIEW } from './i18n-v04.js';
 import { V5, V5_KEYS, V5_NEEDS_REVIEW } from './i18n-v05.js';
 import { V6, V6_KEYS, V6_NEEDS_REVIEW } from './i18n-v06.js';
 import { V7, V7_KEYS, V7_NEEDS_REVIEW, V7_FALLBACK, V7_LABEL_KEYS } from './i18n-v07.js';
+import { V8, V8_KEYS, V8_NEEDS_REVIEW } from './i18n-v08.js';
 
 export const STRINGS = Object.fromEntries(
-  Object.entries(T).map(([lang, arr]) => [lang, { ...V3.en, ...(V3[lang] || {}), ...V4.en, ...(V4[lang] || {}), ...V5.en, ...(V5[lang] || {}), ...V6.en, ...(V6[lang] || {}), ...V7.en, ...(V7[lang] || {}), ...Object.fromEntries(K.map((k, i) => [k, arr[i]])) }])
+  Object.entries(T).map(([lang, arr]) => [lang, { ...V3.en, ...(V3[lang] || {}), ...V4.en, ...(V4[lang] || {}), ...V5.en, ...(V5[lang] || {}), ...V6.en, ...(V6[lang] || {}), ...V7.en, ...(V7[lang] || {}), ...V8.en, ...(V8[lang] || {}), ...Object.fromEntries(K.map((k, i) => [k, arr[i]])) }])
 );
-export { V4_KEYS, V4_NEEDS_REVIEW, V5_KEYS, V5_NEEDS_REVIEW, V6_KEYS, V6_NEEDS_REVIEW, V7_KEYS, V7_NEEDS_REVIEW, V7_FALLBACK, V7_LABEL_KEYS };
+export { V8_KEYS, V8_NEEDS_REVIEW, V4_KEYS, V4_NEEDS_REVIEW, V5_KEYS, V5_NEEDS_REVIEW, V6_KEYS, V6_NEEDS_REVIEW, V7_KEYS, V7_NEEDS_REVIEW, V7_FALLBACK, V7_LABEL_KEYS };
 /** v0.7 keys a language serves from the English fallback (spec §1 rule 5: allowed but logged). */
 export const fallbackKeys = (lang) => (lang === 'en' ? [] : V7_KEYS.filter((k) => !V7[lang]?.[k]));
 /** Languages with complete (non-fallback) v0.3 strings. */

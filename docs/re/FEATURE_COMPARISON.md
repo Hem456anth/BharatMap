@@ -1,4 +1,4 @@
-# Feature comparison: Apple Maps vs AMap Global vs Bharat Maps
+# Feature comparison: Apple Maps vs AMap Global vs Bharat Maps (+ CoMaps, the primary blueprint — §10)
 
 Date: 18 Oct 2026.
 - Apple and AMap evidence: `REVERSE_ENGINEERING_REPORT.md` (source IDs A1–A16, B1–B10).
@@ -239,3 +239,43 @@ Most AMap UI sits in a 92 MB proprietary script bundle that was not opened, so a
 | Third-party analytics / ads | Several | None |
 
 Bottom line: the APK confirms AMap's depth in navigation (lanes, cameras, signals, per-mode guidance, offline TTS) and in surfaces outside the app (widgets, car, deep links). It also shows the cost: size, permissions and tracking. Bharat's open, small and private posture is a real advantage. The ranked follow-ups are in `OPPORTUNITIES.md`.
+
+## 10. CoMaps (primary blueprint from 20 Oct 2026) vs Bharat Map
+Source: `COMAPS_TEARDOWN.md` (APK `app.comaps.google` 2026.09.23-2-Google, static only, plus CoMaps' Apache-2.0 public source).
+CoMaps marks: ● present [A/S], ◐ partial, — absent, [U] unknown. Bharat column = release 0.7.16 plus this sprint (✅ new = added
+from this teardown). The owner made CoMaps the main architecture reference; Apple Maps (web) stays a UI/UX reference only.
+
+| Area | Feature | CoMaps | Bharat Map |
+|---|---|---|---|
+| Core | Offline-first engine shared by all platforms | ● C++ core (`libs/`) | 🟡 MapLibre + JS modules; routing/search mostly online |
+| Core | Renderer | ● own (Drape: OpenGL ES / Vulkan / Metal) | ✅ MapLibre GL JS |
+| Offline | Map data model | ● one `.mwm` per region (render + search + routing) | 🟡 PMTiles + POI JSON + one search JSON per app |
+| Offline | Region granularity in India | ● state-level (AP 115 MB, Telangana 99 MB; 34 files, 2.19 GB) | ✅ city-level packs (Vizag 4.1 MB, Hyderabad 9.3 MB) |
+| Offline | Shipped in the APK | ● world overview + coastlines + borders only | ✅/⚠ 11 cities bundled (81 MB) — slimming awaits approval |
+| Offline | Catalogue with size + checksum, download queue, mirrors | ● `countries.txt`, custom map server | 🟡 `regions.json` (size, sha256), no mirror, no hierarchy |
+| Offline | Incremental updates | ◐ `mwm_diff` (bsdiff) in source; CDN use [U] | — |
+| Offline | Download prompts for view / route | ● | — (planned C4 / D22) |
+| Routing | On-device routing | ● car, pedestrian, bicycle, subway/transit | — straight-line fallback; Valhalla graph built for Vizag, no on-device engine (C1) |
+| Routing | Two-wheeler (motorcycle/scooter) profile | — no router type | ✅ Valhalla `motor_scooter` (online) |
+| Routing | Lanes, speed limits | ● (`lanes/`, `maxspeeds`) | ✅ lanes (OSRM/Valhalla), speed limit when known |
+| Search | Offline search | ● in-mwm geocoder + categories | 🟡 bundled index (11 cities, translit, pincode, DIGIPIN); FTS5 on the server |
+| Search | Indic category synonyms | ◐ `hi`, `mr` (no `te`, `ta`, `kn`) | ✅ te/hi + 9 more via vocabulary + transliteration |
+| Labels | Telugu font | ◐ code2000 fallback | ✅ Telugu glyph stack |
+| Voice | Telugu guidance phrases | — (`sound-strings` has hi, mr, ta) | ✅ te/hi (need native review) |
+| Saved | Bookmarks / lists | ● categories with settings | ✅ lists + Home/Work + server sync; **✅ new list editor** (rename, reorder, notes, delete) |
+| Saved | KML / KMZ / GPX import + export | ● incl. binary KMB, receive via SEND | **✅ new GPX + KML import/export** (KMZ refused with a message; receiving from other apps planned C10) |
+| Saved | Track recording | ● foreground service | **✅ new (foreground)**; screen-off planned C9 |
+| Community | Edit OSM data | ● built-in editor, OSM login | **✅ new "Suggest an edit"** → structured anonymous OSM note; OSM notes for problems (v0.5) |
+| Transit | Subway layer + routing | ● OSM subway layer; GTFS experimental | ✅ rail & metro lines overlay, HMRL GTFS scheduled journeys |
+| Car | Android Auto | ● CarAppService (nav category) + native surface renderer | — feasibility only (`docs/ANDROID_AUTO.md`) |
+| Places | Offline Wikipedia | ● `descriptions` | — |
+| Commerce | Shop, sellers, delivery, payments, service hand-offs | — | ✅/🟡 (Bharat's own scope) |
+| Privacy | Background location | — not requested | — not requested |
+| Privacy | Analytics / ads | — none | — none |
+| Engineering | Release shrinking | ● R8 + resource shrinking | ⏸ off by the owner's choice (awaiting decision) |
+| Engineering | Uncompressed, memory-mapped assets | ● `noCompress` for mwm/ttf/png/bin/txt | — (PMTiles read through the WebView) |
+| Engineering | APK size | 114.6 MB base (65.7 MB is world overview) + ABI split [U] | 100.2 MB (81 MB city tiles) |
+
+Bottom line: CoMaps shows the shape Bharat should grow into — a small app shell plus downloadable regions that work fully
+offline, including routing and search. Bharat already beats it on Indian specifics (city packs, two-wheeler routing, Telugu,
+commerce). The gap to close is the on-device engine (C1) and the pack catalogue (C2); the roadmap is in `OPPORTUNITIES.md`.

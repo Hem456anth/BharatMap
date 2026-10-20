@@ -131,4 +131,5 @@ Map data © OpenStreetMap contributors (ODbL). Online tiles: OpenFreeMap / OpenM
 (OSM). Map problems are reported as public OpenStreetMap notes. Routing: OSRM and Valhalla on FOSSGIS servers (routing.openstreetmap.de, valhalla1.openstreetmap.de) or self-hosted.
 Transit: *Contains data provided by Hyderabad Metro Rail Ltd.* (HMRL GTFS, HMRL open-data terms). EV: Open Charge Map (CC BY 4.0) when enabled. Geocoding: Nominatim, Photon (komoot). Rendering:
 MapLibre GL JS (BSD-3). Fonts: Noto (OFL). Icons, colours and UI are original to this project (clean-room; no third-party
-brand assets).
+brand assets). Reused code and reference projects: `docs/THIRD_PARTY.md` (CoMaps, Apache-2.0, studied as the architecture
+blueprint; no CoMaps code or assets copied).

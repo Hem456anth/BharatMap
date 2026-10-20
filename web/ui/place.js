@@ -1,6 +1,7 @@
 // Place card: name, category, distance, address, opening hours (parsed → open/closed, else raw), phone,
 // website, wheelchair, DIGIPIN; actions Directions · Save · Share · Call; "Shop here" for demo sellers.
 // Dropped pins are reverse-geocoded with Nominatim (only the tapped coordinate is sent).
+import { canSuggestEdit } from '../shared/osm-edit.js';
 import { reverseGeocode } from '../services/geocode.js';
 import { openingStatus } from '../lib/opening-hours.js';
 import { formatDistance } from '../nav/maneuver.js';
@@ -110,7 +111,7 @@ export function initPlace(ctx) {
         ${wc ? `<li class="detail">${icon('wheelchair', { size: 20 })}<div><div>${esc(ctx.t(wc === 'yes' ? 'wc_yes' : wc === 'limited' ? 'wc_limited' : 'wc_no'))}</div><small>${esc(ctx.t('wheelchair'))}</small></div></li>` : ''}
         <li class="detail">${icon('locate', { size: 20 })}<div><div class="mono">${esc(digipin || '')}</div><small>${esc(ctx.t('digipin'))} · ${p.lat.toFixed(5)}, ${p.lng.toFixed(5)}</small></div><button class="icon-btn sm" data-copy="digipin" aria-label="${esc(ctx.t('digipin'))}: copy">${icon('copy', { size: 18 })}</button></li>
       </ul>
-      <div class="row wrap"><button class="link" id="pcHome">${esc(ctx.t('set_as_home'))}</button><button class="link" id="pcWork">${esc(ctx.t('set_as_work'))}</button>${ctx.directions.state?.to ? `<button class="link" id="pcStop">${icon('plus', { size: 16 })} ${esc(ctx.t('add_stop'))}</button>` : ''}<button class="link" id="pcReport">${icon('flag', { size: 16 })} ${esc(ctx.t('report_title'))}</button></div>
+      <div class="row wrap"><button class="link" id="pcHome">${esc(ctx.t('set_as_home'))}</button><button class="link" id="pcWork">${esc(ctx.t('set_as_work'))}</button>${ctx.directions.state?.to ? `<button class="link" id="pcStop">${icon('plus', { size: 16 })} ${esc(ctx.t('add_stop'))}</button>` : ''}<button class="link" id="pcReport">${icon('flag', { size: 16 })} ${esc(ctx.t('report_title'))}</button>${canSuggestEdit(p) ? `<button class="link" id="pcEdit">${icon('edit', { size: 16 })} ${esc(ctx.t('edit_suggest'))}</button>` : ''}</div>
       <section id="pcAlso" class="pc-also" hidden aria-labelledby="pcAlsoH"></section>
       <p class="small muted">${p.source === 'seller' || (seller && p.kind === 'seller') ? esc(ctx.t('demo_seller')) : p.source === 'ocm' ? 'Open Charge Map (CC BY 4.0)' : esc(ctx.t('osm_credit'))}</p>`;
     $('pcDir').onclick = () => ctx.directions.open(p);
@@ -120,6 +121,7 @@ export function initPlace(ctx) {
     $('pcHome').onclick = () => { ctx.saved.setShortcut('home', p); ctx.toast(ctx.tf('saved_ok', { list: ctx.t('home') })); };
     $('pcWork').onclick = () => { ctx.saved.setShortcut('work', p); ctx.toast(ctx.tf('saved_ok', { list: ctx.t('work') })); };
     $('pcReport').onclick = () => ctx.report.open({ lat: p.lat, lng: p.lng, name: p.name });
+    if ($('pcEdit')) $('pcEdit').onclick = () => ctx.osmEdit.open(current);
     if ($('pcStop')) $('pcStop').onclick = () => ctx.directions.addStop({ lat: p.lat, lng: p.lng, name: p.name || ctx.t('dropped_pin') });
     // v0.7 service panel (Map → Place → Services → Book/Order → Track) and "Also here" (OSM containment, online only).
     ctx.services?.mount($('pcServices'), p, { seller, origin: from });

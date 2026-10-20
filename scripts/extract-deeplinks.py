@@ -41,6 +41,7 @@ EXPECTED = {
     'base(12)-': {'app': 'Agoda', 'package': 'com.agoda.mobile.consumer'},
     'base(13)-': {'app': 'MakeMyTrip', 'package': 'com.makemytrip'},
     'base(15)-': {'app': 'Zomato', 'package': 'com.application.zomato'},
+    'base-436d': {'app': 'CoMaps', 'package': 'app.comaps.google', 'skip': 'Reference teardown (open source, Apache-2.0; docs/re/COMAPS_TEARDOWN.md), not a hand-off provider'},
 }
 
 
@@ -142,6 +143,9 @@ def browsable_filters(apk):
                         else:
                             d[k].add(f'<unresolved {v}>')
             av = attr(f, 'autoVerify')
+            if av is not None and str(av).startswith('@'):  # @bool resource (e.g. CoMaps sets it per build flavour)
+                r = resolve(av)
+                av = 'true' if r and any(str(x).lower() in ('true', '-1', '1') for x in r) else 'false'
             entry = {'component': name, 'type': comp.tag, 'exported': exported, 'autoVerify': str(av).lower() == 'true' if av is not None else False,
                      'categories': sorted(c for c in cats if c), **{k: sorted(v) for k, v in d.items() if v}}
             res.append(entry)

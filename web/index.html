@@ -61,7 +61,7 @@
         <div class="chiprow" id="cats" role="list" aria-label="Find nearby"></div>
         <div class="commute" id="commute" hidden></div>
         <div class="section">
-          <div class="section-h"><h3 data-i18n="saved">Saved places</h3></div>
+          <div class="section-h"><h3 data-i18n="saved">Saved places</h3><button class="link" id="importGeo" type="button" data-i18n="import_file">Import GPX / KML</button></div>
           <div class="shortcuts" id="shortcuts"></div>
           <div id="savedLists"></div>
         </div>
@@ -71,6 +71,7 @@
         </div>
         <div class="section">
           <button class="tile" id="openShop"><span class="tile-ic" data-icon="bag"></span><span><b data-i18n="shop">Shop</b><small data-i18n="shop_desc">Products, prices &amp; delivery from local sellers</small></span><span data-icon="chev"></span></button>
+          <button class="tile" id="openTracks"><span class="tile-ic" data-icon="track"></span><span><b data-i18n="tracks">My tracks</b><small data-i18n="tracks_desc">Record walks, rides and drives; export as GPX or KML</small></span><span data-icon="chev"></span></button>
           <button class="tile" id="openOffline"><span class="tile-ic" data-icon="download"></span><span><b data-i18n="offline_maps">Offline maps</b><small id="offlineSummary"></small></span><span data-icon="chev"></span></button>
           <button class="tile" id="openSettings"><span class="tile-ic" data-icon="gear"></span><span><b data-i18n="settings">Settings</b><small data-i18n="privacy">Privacy</small></span><span data-icon="chev"></span></button>
         </div>
@@ -106,8 +107,34 @@
       <!-- SAVED LIST -->
       <div class="view" data-view="list" hidden>
         <header class="view-h"><button class="icon-btn" data-back data-i18n-aria="back" aria-label="Back" data-icon="back"></button><h3 id="listTitle"></h3><button class="icon-btn" data-home data-i18n-aria="close" aria-label="Close" data-icon="close"></button></header>
+        <div id="listEditBar" class="list-editbar" hidden>
+          <label for="listNameInput" data-i18n="list_rename">List name</label>
+          <div class="row"><input id="listNameInput" maxlength="60" autocomplete="off" /><button class="btn sm ghost" id="listDelete" type="button"><span data-icon="trash"></span> <span data-i18n="list_delete">Delete list</span></button></div>
+        </div>
         <ul id="listItems" class="rows"></ul>
+        <div class="row wrap list-tools" id="listTools">
+          <button id="listEdit" class="btn sm ghost" type="button" aria-pressed="false"><span data-icon="edit"></span> <span id="listEditLbl" data-i18n="list_edit">Edit list</span></button>
+          <button id="listGpx" class="btn sm ghost" type="button"><span data-icon="download"></span> <span data-i18n="export_gpx">Export GPX</span></button>
+          <button id="listKml" class="btn sm ghost" type="button"><span data-icon="download"></span> <span data-i18n="export_kml">Export KML</span></button>
+        </div>
         <button id="listShare" class="btn" type="button" hidden><span data-icon="share"></span> <span data-i18n="share_list">Share this list</span></button>
+      </div>
+
+      <!-- v0.8 TRACKS (record, list, import/export) -->
+      <div class="view" data-view="tracks" hidden>
+        <header class="view-h"><button class="icon-btn" data-back data-i18n-aria="back" aria-label="Back" data-icon="back"></button><h3 data-i18n="tracks">My tracks</h3><button class="icon-btn" data-home data-i18n-aria="close" aria-label="Close" data-icon="close"></button></header>
+        <div class="track-rec" id="trackRec">
+          <p class="track-state" id="trackState" role="status" aria-live="polite"></p>
+          <dl class="kv track-stats" id="trackStats"></dl>
+          <div class="row wrap">
+            <button class="btn primary" id="trackStart" type="button"><span data-icon="record"></span> <span data-i18n="track_start">Start recording</span></button>
+            <button class="btn" id="trackPause" type="button" hidden></button>
+            <button class="btn" id="trackStop" type="button" hidden><span data-icon="stop"></span> <span data-i18n="track_stop">Stop and save</span></button>
+          </div>
+          <p class="small muted" data-i18n="track_note"></p>
+        </div>
+        <div class="section-h"><h3 data-i18n="tracks">My tracks</h3><button class="link" id="trackImport" type="button" data-i18n="import_file">Import GPX / KML</button></div>
+        <ul class="rows" id="trackList"></ul>
       </div>
 
       <!-- LAYERS -->
@@ -327,6 +354,34 @@
       <label for="newListName" data-i18n="add_list">New list</label>
       <div class="row"><input id="newListName" maxlength="60" /><button type="button" class="btn" id="newListBtn" data-i18n="add_list">New list</button></div>
       <div class="row end"><button type="button" class="btn ghost" id="listDlgClose" data-i18n="done">Done</button></div>
+    </form>
+  </dialog>
+
+  <!-- v0.8 list editor: a saved place's name + personal note -->
+  <dialog id="itemDlg" aria-labelledby="itemDlgTitle">
+    <form method="dialog" class="dlg" id="itemForm">
+      <h2 id="itemDlgTitle" data-i18n="item_edit">Edit place</h2>
+      <label for="itemName" data-i18n="item_name">Name</label>
+      <input id="itemName" maxlength="120" autocomplete="off" />
+      <label for="itemNote" data-i18n="item_note">Personal note</label>
+      <textarea id="itemNote" rows="3" maxlength="500"></textarea>
+      <p class="small muted" data-i18n="item_note_hint"></p>
+      <div class="row end"><button type="button" class="btn ghost" id="itemCancel" data-i18n="cancel">Cancel</button><button value="save" class="btn primary" id="itemSave" data-i18n="save_changes">Save</button></div>
+    </form>
+  </dialog>
+
+  <!-- v0.8 suggest an edit → anonymous OpenStreetMap note -->
+  <dialog id="editDlg" aria-labelledby="editTitle">
+    <form method="dialog" class="dlg" id="editForm">
+      <h2 id="editTitle" data-i18n="edit_title">Suggest an edit</h2>
+      <p class="small muted" id="editPlace"></p>
+      <div id="editFields" class="edit-fields"></div>
+      <label for="editComment" data-i18n="edit_comment">Anything else? (optional)</label>
+      <textarea id="editComment" rows="2" maxlength="500"></textarea>
+      <div id="editPreview" class="edit-preview" aria-live="polite"></div>
+      <p class="small muted" data-i18n="edit_intro"></p>
+      <p class="small" id="editStatus" role="status"></p>
+      <div class="row end"><button type="button" class="btn ghost" id="editCancel" data-i18n="cancel">Cancel</button><button type="button" class="btn primary" id="editSend" data-i18n="edit_send">Send suggestion</button></div>
     </form>
   </dialog>
 

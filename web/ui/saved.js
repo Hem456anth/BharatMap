@@ -1,7 +1,9 @@
 // Saved places (Home, Work, Favourites, custom lists) and search recents. Stored on this device
 // (localStorage); when signed in to a backend server, also synced via GET/PUT /api/me/places.
 import { store } from '../shared/storage.js';
-import { normalizeSaved, setShortcut as setSc, addToList, removeFromList, createList, isSaved as isIn, mergeSaved, pushRecent } from '../lib/saved-model.js';
+import { normalizeSaved, setShortcut as setSc, addToList, removeFromList, createList, deleteList, renameList, moveItem, updateItem, isSaved as isIn, mergeSaved, pushRecent } from '../lib/saved-model.js';
+import { toGPX, toKML, listToDoc, safeFileName, GEO_MIME } from '../shared/geoformats.js';
+import { exportTextFile } from '../lib/file-io.js';
 import { formatDistance } from '../nav/maneuver.js';
 import { haversineKm } from '../shared/geo.js';
 import { icon } from './icons.js';
@@ -17,7 +19,7 @@ export function initSaved(ctx) {
   const $ = (id) => document.getElementById(id);
   let S = normalizeSaved(read(KEY, null));
   let R = read(RKEY, []);
-  let syncT = null, openListId = null;
+  let syncT = null, openListId = null, editing = false;
 
   const listName = (l) => (l.id === 'favorites' ? ctx.t('favorites') : l.name);
   function persist({ sync = true } = {}) {
@@ -95,17 +97,64 @@ export function initSaved(ctx) {
 
   function openList(id, { push = true } = {}) {
     const l = S.lists.find((x) => x.id === id); if (!l) return;
+    if (openListId !== id) editing = false;
     openListId = id;
     if (push) ctx.views.show('list', { detent: 'half' });
     $('listTitle').textContent = listName(l);
-    $('listShare').hidden = !l.items.length;
-    $('listItems').innerHTML = l.items.length ? l.items.map((p) => `<li class="row-split"><button class="row-btn" data-open="${esc(p.id)}">${icon('pin', { size: 20 })}<span class="row-txt"><b>${esc(p.name || ctx.t('dropped_pin'))}</b><small>${esc([eta(p), p.address].filter(Boolean).join(' · '))}</small></span></button><button class="icon-btn sm" data-del="${esc(p.id)}" aria-label="${esc(ctx.t('unsave'))}: ${esc(p.name)}">${icon('close', { size: 18 })}</button></li>`).join('') : `<li class="muted">${esc(ctx.t('empty_list'))}</li>`;
+    $('listShare').hidden = !l.items.length || editing;
+    $('listGpx').hidden = $('listKml').hidden = !l.items.length || editing;
+    $('listEdit').setAttribute('aria-pressed', String(editing));
+    $('listEditLbl').textContent = ctx.t(editing ? 'list_done' : 'list_edit');
+    // v0.8 list editor: rename + delete (custom lists only), reorder, edit name/note, remove.
+    $('listEditBar').hidden = !editing || l.id === 'favorites';
+    if (editing && document.activeElement !== $('listNameInput')) $('listNameInput').value = l.name;
+    const last = l.items.length - 1;
+    const note = (p) => (p.note ? `<span class="item-note">${esc(p.note)}</span>` : '');
+    $('listItems').innerHTML = l.items.length ? l.items.map((p, i) => (editing
+      ? `<li class="row-split" data-idx="${i}"><span class="row-txt">${icon('pin', { size: 20 })}<b>${esc(p.name || ctx.t('dropped_pin'))}</b>${note(p)}</span><span class="item-ctl"><button class="icon-btn sm" data-up="${i}" ${i === 0 ? 'disabled' : ''} aria-label="${esc(ctx.t('item_up'))}: ${esc(p.name)}">${icon('up', { size: 18 })}</button><button class="icon-btn sm" data-down="${i}" ${i === last ? 'disabled' : ''} aria-label="${esc(ctx.t('item_down'))}: ${esc(p.name)}">${icon('down', { size: 18 })}</button><button class="icon-btn sm" data-edit="${esc(p.id)}" aria-label="${esc(ctx.t('item_edit'))}: ${esc(p.name)}">${icon('edit', { size: 18 })}</button><button class="icon-btn sm" data-del="${esc(p.id)}" aria-label="${esc(ctx.t('unsave'))}: ${esc(p.name)}">${icon('close', { size: 18 })}</button></span></li>`
+      : `<li class="row-split"><button class="row-btn" data-open="${esc(p.id)}">${icon('pin', { size: 20 })}<span class="row-txt"><b>${esc(p.name || ctx.t('dropped_pin'))}</b><small>${esc([eta(p), p.address].filter(Boolean).join(' · '))}</small>${note(p)}</span></button><button class="icon-btn sm" data-del="${esc(p.id)}" aria-label="${esc(ctx.t('unsave'))}: ${esc(p.name)}">${icon('close', { size: 18 })}</button></li>`)).join('') : `<li class="muted">${esc(ctx.t('empty_list'))}</li>`;
   }
   $('listItems').addEventListener('click', (e) => {
     const l = S.lists.find((x) => x.id === openListId); if (!l) return;
     const o = e.target.closest('[data-open]'); if (o) { ctx.place.open(l.items.find((p) => p.id === o.dataset.open)); return; }
-    const d = e.target.closest('[data-del]'); if (d) { S = removeFromList(S, openListId, d.dataset.del); persist(); }
+    const d = e.target.closest('[data-del]'); if (d) { S = removeFromList(S, openListId, d.dataset.del); persist(); return; }
+    const u = e.target.closest('[data-up]'); if (u) { const i = +u.dataset.up; S = moveItem(S, openListId, i, i - 1); persist(); focusCtl('up', i - 1); return; }
+    const dn = e.target.closest('[data-down]'); if (dn) { const i = +dn.dataset.down; S = moveItem(S, openListId, i, i + 1); persist(); focusCtl('down', i + 1); return; }
+    const ed = e.target.closest('[data-edit]'); if (ed) openItemDialog(l.items.find((p) => p.id === ed.dataset.edit));
   });
+  // Keep keyboard focus on the moved item's control (or its sibling when it hit the end).
+  const focusCtl = (dir, i) => { const b = $('listItems').querySelector(`[data-${dir}="${i}"]:not([disabled])`) || $('listItems').querySelector(`[data-idx="${i}"] [data-edit]`); b?.focus(); };
+  $('listEdit').addEventListener('click', () => { editing = !editing; openList(openListId, { push: false }); });
+  $('listNameInput').addEventListener('change', () => { S = renameList(S, openListId, $('listNameInput').value); persist(); });
+  $('listDelete').addEventListener('click', () => {
+    const l = S.lists.find((x) => x.id === openListId); if (!l || l.id === 'favorites') return;
+    if (!window.confirm(ctx.tf('list_delete_confirm', { name: l.name, n: l.items.length }))) return;
+    S = deleteList(S, l.id); openListId = null; editing = false; persist();
+    ctx.views.show('home', { detent: 'half' });
+  });
+  async function exportList(fmt) {
+    const l = S.lists.find((x) => x.id === openListId); if (!l?.items.length) return;
+    const doc = listToDoc(l, { title: listName(l) });
+    const file = safeFileName(listName(l), fmt);
+    const r = await exportTextFile(file, GEO_MIME[fmt], fmt === 'gpx' ? toGPX(doc) : toKML(doc), { title: listName(l) });
+    ctx.emit('exported', { file, format: fmt, kind: 'list' });
+    if (r === 'downloaded') ctx.toast(ctx.tf('exported', { file }));
+  }
+  $('listGpx').addEventListener('click', () => exportList('gpx').catch((e) => ctx.toast(e.message)));
+  $('listKml').addEventListener('click', () => exportList('kml').catch((e) => ctx.toast(e.message)));
+  // Item editor dialog (name + personal note).
+  let itemId = null;
+  function openItemDialog(p) {
+    if (!p) return; itemId = p.id;
+    $('itemName').value = p.name || ''; $('itemNote').value = p.note || '';
+    $('itemDlg').returnValue = ''; $('itemDlg').showModal(); $('itemName').focus();
+  }
+  $('itemCancel').addEventListener('click', () => $('itemDlg').close('cancel'));
+  $('itemDlg').addEventListener('close', () => {
+    if ($('itemDlg').returnValue === 'save' && itemId) { S = updateItem(S, openListId, itemId, { name: $('itemName').value, note: $('itemNote').value }); persist(); }
+    itemId = null;
+  });
+  $('importGeo').addEventListener('click', () => ctx.tracks?.importFile());
 
   // ---- save dialog: choose lists, create a new list ----
   let dlgPlace = null, dlgDone = null;
@@ -149,7 +198,7 @@ export function initSaved(ctx) {
     setShortcut(which, p) { S = setSc(S, which, p); persist(); },
     openSaveDialog, pull,
     get data() { return S; },
-    /** v0.5: import a shared list (from a bharatmap://list link) as a new list. */
+    /** v0.5: import a shared list (from a bharatmap://list link) as a new list. v0.8: also GPX/KML waypoints (notes kept). */
     importList({ name, items }) {
       S = createList(S, name); const id = S.lists[S.lists.length - 1].id;
       for (const it of [...items].reverse()) S = addToList(S, id, it);

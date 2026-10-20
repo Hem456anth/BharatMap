@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- SYNTHETIC test fixture (hand-written for Bharat Map tests; points around Hyderabad). -->
+<kml xmlns="http://www.opengis.net/kml/2.2" xmlns:gx="http://www.google.com/kml/ext/2.2">
+<Document>
+  <name>Hyderabad weekend</name>
+  <Folder><name>Sights</name>
+    <Placemark><name>Charminar</name><description><![CDATA[<b>Iconic</b> monument &amp; market]]></description><Point><coordinates>78.4747,17.3616,0</coordinates></Point></Placemark>
+    <Placemark><name>Golconda Fort</name><Point><coordinates> 78.4011,17.3833 </coordinates></Point></Placemark>
+  </Folder>
+  <Placemark><name>Necklace Road drive</name><LineString><tessellate>1</tessellate><coordinates>78.4691,17.4239 78.4735,17.4180 78.4790,17.4120</coordinates></LineString></Placemark>
+  <Placemark><name>Metro ride</name><gx:Track><when>2026-10-19T04:00:00Z</when><when>2026-10-19T04:05:00Z</when><gx:coord>78.4867 17.4375 510</gx:coord><gx:coord>78.4983 17.4344 512</gx:coord></gx:Track></Placemark>
+</Document>
+</kml>
