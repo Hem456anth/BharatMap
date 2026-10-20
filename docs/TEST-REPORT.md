@@ -1,3 +1,25 @@
+# Bharat Map 0.7.17 — CoMaps phase 0 (GPX/KML, list editor, track recording, Suggest an edit) — Test report
+
+Run date: 20 Oct 2026 (IST).
+
+## Summary
+| Suite | Result |
+|---|---|
+| Unit + API (`npm test`) | **199 / 199 pass** in CI (184 + 15 new in `tests/v08.test.js`: GPX/KML import/export round-trip, XXE/DTD rejection and size caps, track filters, list editor model, OSM-edit validation/diff/note text, en/hi/te strings, service-worker precache) |
+| Browser E2E | **120 PASS, 0 FAIL** on GitHub's Chromium (114 + 6 new: `v08 desktop/mobile` — GPX import → list + track and list editor + GPX export; track recording with simulated GPS, pause/resume, KML export/import; Suggest an edit with a mocked OSM notes API) |
+| CI | [run 17](https://github.com/Hem456anth/BharatMap/actions/runs/39393802018) (`a9e29d9`): all three jobs green (Unit + API, Android build, Browser E2E) |
+
+## Release v0.7.17
+| Check | Result |
+|---|---|
+| Signing | Signed offline (`zipalign -P 16 4`, `apksigner`, release key alias `bharatmap`): **Verifies**, v1 ✅ v2 ✅ v3 ✅, one signer `CN=Bharat Map`, cert SHA-256 `d04d20f9fd727d7ca6d966e771e2ed5760b20fefe9c139d36f0e3e86b7997c6c` (same key as 0.5.13 and 0.7.14–0.7.16 → installs over them); `zipalign -c -P 16 4` OK |
+| Manifest | `package com.indiamapos.app versionCode='17' versionName='0.7.17'`, compile SDK 35; no `android:debuggable` → **debuggable=false** |
+| Attached | [attach run 4](https://github.com/Hem456anth/BharatMap/actions/runs/39395062610) (`attach-apk.yml`: SHA-256 matched, apksigner/zipalign/aapt re-checked on GitHub) |
+| Release | [v0.7.17](https://github.com/Hem456anth/BharatMap/releases/tag/v0.7.17): **`bharat-map-0.7.17.apk` 100,613,695 bytes** (95.9 MiB), SHA-256 `e8506e04f435e1815b33c4e1865a8b96b84ef2e9ad1bbdab34b9cf5b1116e1ca` (re-downloaded and matched) + `bharat-map-0.7.17-debug.apk` 102,987,500 bytes |
+
+### Known gaps
+Track recording is foreground-only (no background location service for tracks yet); not run on a real device; Suggest an edit is tested against a mocked OSM notes API.
+
 # Bharat Map 0.7.16 — app hand-offs for every remaining provider — Test report
 
 Run date: 20 Oct 2026 (IST). Raw outputs: `docs/test-output.txt` (npm test, local), `docs/e2e-results.txt` (CI run 16 E2E).
