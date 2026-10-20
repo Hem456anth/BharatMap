@@ -7,7 +7,7 @@ import fs from 'node:fs';
 import { panelTypeFor, PANEL_TYPES, stationKind } from '../shared/services/panel-types.js';
 import { buildServicePanel, buildRidePanel } from '../shared/services/build.js';
 import { pv, effectiveLabel, mayShowAmount, panelViolations, displayRow, LABELS } from '../shared/services/labels.js';
-import { uberLink, olaLink, safeLinkout, swiggySearch, cityOf, hmrlWhatsApp } from '../shared/services/linkouts.js';
+import { uberLink, olaLink, safeLinkout, swiggyLink, cityOf, hmrlWhatsApp } from '../shared/services/linkouts.js';
 import { PROVIDERS, BY_ID, statusOf, linkable, metroFor, busFor } from '../shared/services/catalog.js';
 import { matrixMarkdown } from '../scripts/gen-integration-matrix.mjs';
 import { resolveLandmarkAddress, extractAnchors } from '../shared/address.js';
@@ -118,7 +118,7 @@ test('Uber universal link: client_id from config, pickup/dropoff lat/lng + nickn
   assert.equal(olaLink({ dropoff: { lat: 17.36, lng: 78.47 } }).verified, false);
   assert.match(olaLink({ dropoff: { lat: 17.36, lng: 78.47 }, pickup: HYD, xappToken: 'T' }).url, /^https:\/\/book\.olacabs\.com\/\?/);
   assert.equal(safeLinkout('javascript:alert(1)'), false); assert.equal(safeLinkout('upi://pay?pa=x@y'), false); assert.equal(safeLinkout('https://www.swiggy.com/'), true);
-  assert.match(swiggySearch('Paradise', 'hyderabad').url, /^https:\/\/www\.swiggy\.com\/search\?query=Paradise/);
+  assert.equal(swiggyLink().url, 'https://www.swiggy.com/'); assert.equal(swiggyLink().deeplink.type, 'applink'); // no guessed search parameter
   assert.equal(hmrlWhatsApp().url, 'https://wa.me/918341146468?text=Hi');
 });
 

@@ -1,3 +1,16 @@
+# Audit — Bharat Map v0.7 + app deep links (20 Oct 2026)
+
+| Area | Feature | Status | Evidence · dependency |
+|---|---|---|---|
+| Deep links | Manifest-only inventory of 15 user-supplied APKs (package, version, signer cert, VIEW+BROWSABLE filters, autoVerify); no code/assets read, SDK ids redacted | ✅ | `scripts/extract-deeplinks.py` → `data/deeplinks/apk-manifest-links.json`, `docs/re/DEEPLINKS.md` |
+| Deep links | Uber **Documented** (pickup/drop); **App Links** for Swiggy (+Instamart, Dineout), Zomato, District, BookMyShow, Blinkit, Agoda, MakeMyTrip, Park+, Apollo 24\|7 / Apollo Pharmacy, Tata 1mg — declared path, autoVerify host, assetlinks.json cert match, no query params; Rapido **Declared · Unverified** intent URL with www.rapido.bike fallback; PhonePe / Google Pay **None**; EasyPark not-in-India | ✅ | `shared/services/deeplinks.js`, `catalog.js` (`deeplink`, `appPackage`), generated `docs/INTEGRATION_MATRIX.md` |
+| Link-out | Interstitial shows Documented / App Link / Declared · Unverified, app + package, web fallback, what is prefilled; intent URLs only on Android (https fallback elsewhere) | ✅ | `web/ui/linkout.js`; E2E `v07-*-01`, `v07-*-03` |
+| Android | `ExternalApp` plugin: App Links via ACTION_VIEW+BROWSABLE; intent URLs parsed with URI_INTENT_SCHEME, component/selector cleared, package allow-list, https fallback on ActivityNotFound; payment schemes refused | ✅ / 🔌 | `ExternalAppPlugin.java`; compiles in CI; not tried on a device |
+| Safety | `safeLinkout` accepts intent URLs only for a known package + its declared scheme/host + https fallback; admin provider links reject `intent:`; no `upi://` anywhere (source scan test) | ✅ | `tests/deeplinks.test.js` |
+
+### Tests (deep links)
+- `tests/deeplinks.test.js` (9): inventory vs `APPS` (package, version, cert), intent URL format/round-trip/refusals, `safeIntent`, every link on a declared + autoVerify path with an https fallback and no query, package match across catalogue/panels/intent URLs, ride prefill only for Uber, platform choice, payments none, no `upi://` scan. `npm test`: **175 / 175**.
+
 # Audit — Bharat Map v0.7 (20 Oct 2026) — place-card service panels, provider catalogue, payments
 
 Legend as below (✅ implemented · 🟡 prototype · 🔌 needs external dependency · ⛔ not built). Everything from 0.5.11 keeps its status.

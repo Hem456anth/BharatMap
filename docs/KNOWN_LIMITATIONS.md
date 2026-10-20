@@ -1,4 +1,4 @@
-# Known limitations (v0.7)
+# Known limitations (v0.7, + verified app deep links)
 
 What Bharat Map v0.7 does **not** do yet, or has not been verified to do. Earlier per-release gaps are in
 `docs/AUDIT.md` ("Remaining gaps") and still apply unless fixed there.
@@ -17,7 +17,17 @@ What Bharat Map v0.7 does **not** do yet, or has not been verified to do. Earlie
 - **No live traffic.** No TomTom/HERE key is configured, so the app always shows "Live traffic unavailable" and drive
   times are free-flow estimates. The tile proxy is tested with a mocked provider only.
 
+- **App deep links not tried on a phone.** App Links (Swiggy, Zomato, District, BookMyShow, Blinkit, Agoda,
+  MakeMyTrip, Park+, Apollo 24|7, Tata 1mg) and the Rapido intent URL were checked against the APK manifests and the
+  sites' `assetlinks.json`, and the native `ExternalApp` opener compiles in CI, but nothing was opened on a real device
+  with the apps installed. If Android has not verified a domain on that phone, the same https page opens in the browser.
+
 ## By design (honesty rules)
+- **Deep links carry no guessed parameters** (`docs/re/DEEPLINKS.md`). Only Uber (documented universal link) gets
+  pickup/drop. Swiggy/Zomato restaurant-name search and BookMyShow city pages from v0.7 were removed (undocumented
+  formats); those apps open at their home/section page. Rapido opens its app home via the manifest-declared
+  `rapido://open` (labelled Declared · Unverified) or www.rapido.bike. No deep links to PhonePe or Google Pay; EasyPark
+  (not an India service) is catalogued Unavailable and never linked.
 - **Link-out only** for almost every Indian provider (Swiggy, Zomato, District, PVR INOX, Bharat Taxi, Yatri Sathi,
   KSRTC, TNSTC, DMart Ready, JioMart, ParkMate, Highway Delite, ChargeZone, non-Hyderabad metros, …): no API access, so
   no menus, prices, slots, showtimes, fares or availability are shown. Ola needs an affiliate token; BluSmart is shown

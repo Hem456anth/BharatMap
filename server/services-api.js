@@ -205,7 +205,7 @@ export function mountServices(app, { db, v1, placeOrder, orderView, env = proces
   });
   app.post('/api/admin/provider-links', admin, (req, res) => {
     const pid = str(req.body?.place_id, 80); if (!PLACE_ID.test(pid)) return bad(res, 'invalid_place_id');
-    const url = str(req.body?.url, 500); if (!safeLinkout(url) || url.startsWith('tel:')) return bad(res, 'invalid_url');
+    const url = str(req.body?.url, 500); if (!safeLinkout(url) || url.startsWith('tel:') || url.startsWith('intent:')) return bad(res, 'invalid_url');
     const provider = str(req.body?.provider_id, 40) || 'website';
     if (provider !== 'website' && !BY_ID[provider]) return bad(res, 'unknown_provider');
     if (BY_ID[provider]?.class === 'unavailable') return bad(res, 'provider_unavailable');

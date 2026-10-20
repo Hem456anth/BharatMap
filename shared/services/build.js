@@ -13,16 +13,19 @@
 import { pv } from './labels.js';
 import { panelTypeFor, stationKind, fuelKind, healthKind, emergencyCapable, secondaryFor } from './panel-types.js';
 import {
-  cityOf, uberLink, olaLink, rapidoLink, nammaYatriLink, swiggySearch, zomatoSearch, bookMyShowCity, districtMovies, GROCERY_APPS,
+  cityOf, uberLink, olaLink, rapidoLink, nammaYatriLink, swiggyLink, zomatoLink, bookMyShowLink, districtMovies,
   hmrlWhatsApp, tsavaariSearch, hmrlOfficial, irctc, indiaPostTracking, telLink, osmLinks, EMERGENCY,
 } from './linkouts.js';
 import { BY_ID, PROVIDERS, linkable, metroFor, busFor } from './catalog.js';
+import { appLink } from './deeplinks.js';
 
-/** Link-out action for a catalogue provider (official URL; `verified` from the catalogue). Null when not linkable. */
+/** Link-out action for a catalogue provider: its app deep link when one is verified (deeplinks.js), else the official URL. Null when not linkable. */
 function provAction(id, extra = {}) {
   const p = BY_ID[id];
   if (!linkable(p)) return null;
-  return { id: `p-${id}`, kind: 'linkout', k: extra.k || 'sv_open_provider', text: p.name, url: extra.url || p.url, host: hostOf(extra.url || p.url), verified: !!p.verified, provider: id, class: p.class, note: extra.note || p.reason || '', label: 'linkout', needsNet: true, ...(extra.group ? { group: extra.group } : {}) };
+  const al = extra.url ? null : appLink(id);
+  const url = extra.url || al?.url || p.url;
+  return { id: `p-${id}`, kind: 'linkout', k: extra.k || 'sv_open_provider', text: p.name, url, host: al?.host || hostOf(url), verified: al ? al.verified : !!p.verified, provider: id, class: p.class, note: extra.note || p.reason || '', label: 'linkout', needsNet: true, ...(al ? { deeplink: al.deeplink } : {}), ...(extra.group ? { group: extra.group } : {}) };
 }
 const hostOf = (u) => { try { return new URL(u).host; } catch { return ''; } };
 /** An "Unavailable" row for a provider that cannot be used (reason shown, no link). */
@@ -49,7 +52,7 @@ function paymentFacts(tags) {
   return out.length ? [fact('payment', 'sv_payment', out.join(' · '))] : [];
 }
 function linkAction(id, k, l, extra = {}) {
-  return { id, kind: 'linkout', k, url: l.url, host: l.host, verified: !!l.verified, provider: l.provider, note: l.note || '', label: 'linkout', needsNet: true, ...extra };
+  return { id, kind: 'linkout', k, url: l.url, host: l.host, verified: !!l.verified, provider: l.provider, note: l.note || '', label: 'linkout', needsNet: true, ...(l.deeplink ? { deeplink: l.deeplink } : {}), ...extra };
 }
 function sellerOrder(seller) {
   return { id: 'order-demo', kind: 'order', k: 'sv_order_demo', sellerId: seller.id, provenance: 'demo', needsNet: false };
@@ -93,7 +96,8 @@ export function buildServicePanel(place, ctx = {}) {
     if (res) P.actions.push(linkAction('reserve', 'sv_reserve', res));
     if (cfg.ondcPrototype) P.actions.push(ondcAction('food'));
     const name = place.name || '';
-    if (name) { P.actions.push(linkAction('swiggy', 'sv_open_swiggy', swiggySearch(name, city))); P.actions.push(linkAction('zomato', 'sv_open_zomato', zomatoSearch(name, city))); }
+    // App Links to the apps' home screens (no restaurant-name parameter: the search format is not documented).
+    if (name) { P.actions.push(linkAction('swiggy', 'sv_open_swiggy', swiggyLink())); P.actions.push(linkAction('zomato', 'sv_open_zomato', zomatoLink())); }
     pushAll(P, [provAction('magicpin', { group: 'food' }), provAction('dineout', { group: 'reserve' }), provAction('eazydiner', { group: 'reserve' })]);
     P.primary = seller ? 'order-demo' : name ? 'swiggy' : null;
   } else if (type === 'cinema') {
@@ -107,7 +111,7 @@ export function buildServicePanel(place, ctx = {}) {
     P.compact.push(show);
     sec('shows', 'sv_shows_title', [show]);
     if (websiteLink) P.actions.push(linkAction('tickets-site', 'sv_tickets_site', websiteLink));
-    P.actions.push(linkAction('bookmyshow', 'sv_open_bms', bookMyShowCity(city)));
+    P.actions.push(linkAction('bookmyshow', 'sv_open_bms', bookMyShowLink()));
     P.actions.push(linkAction('district', 'sv_open_district', districtMovies()));
     const brand = `${place.name || ''} ${tags.brand || ''} ${tags.operator || ''}`;
     if (/\b(pvr|inox)\b/i.test(brand)) pushAll(P, [provAction('pvr-inox')]);

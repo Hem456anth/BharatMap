@@ -46,7 +46,17 @@ export async function deviceNotify(title, body) {
   if (L) { await L.schedule({ notifications: [{ id: ++nid, title, body, channelId: 'orders' }] }); return true; }
   try { new Notification(title, { body, icon: 'icon.svg' }); return true; } catch { return false; }
 }
-export function openExternal(url) {
+/** Is this an Android device (native app or Android Chrome)? Intent URLs only resolve there. */
+export const isAndroid = () => (isNative() && cap()?.getPlatform?.() === 'android') || /Android/i.test(navigator.userAgent || '');
+/**
+ * Open a link-out. Native Android: the local ExternalApp plugin (ExternalAppPlugin.java) — App Links open the provider's
+ * app when installed, intent URLs open the declared app or their https fallback. Web: intent URLs only on Android
+ * Chrome (callers pass the https fallback elsewhere, see deeplinks.openUrlFor).
+ */
+export async function openExternal(url) {
+  const X = plugin('ExternalApp');
+  if (X) { try { return await X.open({ url }); } catch { /* fall through */ } }
+  if (url.startsWith('intent:')) { window.location.href = url; return; }
   const B = plugin('Browser');
   if (B) return B.open({ url });
   window.open(url, '_blank', 'noopener');

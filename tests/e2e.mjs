@@ -988,7 +988,7 @@ for (const vp of [{ name: 'desktop', width: 1366, height: 820 }, { name: 'mobile
   const { ctx, page, errors } = await newPage(vp, { init: V7_INIT });
   const V = vp.name;
   const panelReady = (type) => page.waitForFunction((t) => { const p = document.querySelector('#pcServices .sv-panel'); return p && p.dataset.type === t && p.getAttribute('aria-busy') === 'false'; }, type, { timeout: 20000 });
-  await step(`v07 ${V}: restaurant panel — labelled rows, Swiggy link-out through the interstitial (host named, unverified flagged)`, async () => {
+  await step(`v07 ${V}: restaurant panel — labelled rows, Swiggy App Link through the interstitial (host + app package named, no guessed search parameter)`, async () => {
     await boot(page);
     await page.evaluate((p) => window.__bm.ctx.place.open(p), PARADISE);
     await panelReady('restaurant');
@@ -998,11 +998,12 @@ for (const vp of [{ name: 'desktop', width: 1366, height: 820 }, { name: 'mobile
     await page.click('[data-sva=swiggy]');
     await page.waitForSelector('#linkoutDlg[open]');
     const body = await page.textContent('#loBody');
-    assert(/www\.swiggy\.com/.test(body) && /not verified/i.test(body), body);
+    assert(/www\.swiggy\.com/.test(body) && /App Link/.test(body) && /in\.swiggy\.android/.test(body) && !(await page.$('#loBody [data-unverified]')), body);
+    assert((await page.getAttribute('#loBody [data-dl]', 'data-dl')) === 'applink', 'deep-link type shown');
     await shot7(page, `${V}-01-restaurant-linkout`);
     await page.click('#loGo');
     const urls = await page.evaluate(() => window.__BM_LINKOUT_TEST__);
-    assert(urls.length === 1 && urls[0].startsWith('https://www.swiggy.com/search?query=Paradise'), urls.join());
+    assert(urls.length === 1 && urls[0] === 'https://www.swiggy.com/', urls.join());
     assert(await page.isVisible('[data-sva=p-magicpin]') || await page.$('[data-sva=p-magicpin]'), 'magicpin from the provider catalogue');
   });
   await step(`v07 ${V}: metro station — Scheduled departures from the bundled HMRL GTFS, WhatsApp ticket link-out, live arrivals Unavailable`, async () => {
@@ -1025,11 +1026,20 @@ for (const vp of [{ name: 'desktop', width: 1366, height: 820 }, { name: 'mobile
     assert(/Unavailable|Shown in the ride app/.test(fare) && !/₹/.test(fare), fare);
     await page.click('[data-sva=uber]');
     await page.waitForSelector('#linkoutDlg[open]');
-    assert(/m\.uber\.com/.test(await page.textContent('#loBody')), 'host named');
+    const ub = await page.textContent('#loBody');
+    assert(/m\.uber\.com/.test(ub) && /Documented/.test(ub) && /com\.ubercab/.test(ub) && /Prefilled/.test(ub), ub);
     await shot7(page, `${V}-03-ride-uber`);
     await page.click('#loGo');
     const u = (await page.evaluate(() => window.__BM_LINKOUT_TEST__)).pop();
     assert(u.startsWith('https://m.uber.com/ul/?action=setPickup') && /pickup\[latitude\]=17\.437/.test(decodeURIComponent(u)) && /dropoff\[latitude\]=17\.441/.test(decodeURIComponent(u)), u);
+    // Rapido: manifest-declared entry point only → "Declared · Unverified", no pickup/drop; off Android the https fallback opens.
+    await page.click('[data-sva=rapido]');
+    await page.waitForSelector('#linkoutDlg[open]');
+    const rb = await page.textContent('#loBody');
+    assert(/Declared · Unverified/.test(rb) && /com\.rapido\.passenger/.test(rb) && (await page.$('#loBody [data-unverified]')) && !/Prefilled/.test(rb), rb);
+    await page.click('#loGo');
+    const ru = (await page.evaluate(() => window.__BM_LINKOUT_TEST__)).pop();
+    assert(ru === 'https://www.rapido.bike/', ru);
     assert(/BluSmart/.test(await page.textContent('#svRide')), 'BluSmart shown as Unavailable');
     await home(page);
   });

@@ -6,6 +6,10 @@
 //                   says so. We never build item/price URLs (no fabricated menus, fares or stock), only home, city or
 //                   name-search pages, and we never claim the provider endorses Bharat Map.
 // Pure module: used by the app (web/services/providers/) and the server (/api/v1/places/:id/services).
+// App hand-offs (Uber, Swiggy, Zomato, BookMyShow, District, Blinkit, Rapido …) come from shared/services/deeplinks.js:
+// documented links, https App Links verified against the APK manifest + the site's assetlinks.json, or a declared
+// custom-scheme intent URL with an official https fallback. No query parameters are guessed.
+import { appLink, safeIntent } from './deeplinks.js';
 
 export const CITY_SLUGS = {
   vizag: { name: 'Visakhapatnam', bms: 'visakhapatnam', zomato: 'vizag' },
@@ -58,7 +62,8 @@ export function uberLink({ pickup = null, dropoff, clientId = '' } = {}) {
   add('dropoff[latitude]', r6(dropoff.lat)); add('dropoff[longitude]', r6(dropoff.lng));
   add('dropoff[nickname]', (dropoff.name || '').slice(0, 60));
   add('dropoff[formatted_address]', (dropoff.address || '').slice(0, 120));
-  return { ...L('uber', `https://m.uber.com/ul/?${q.join('&')}`, 'ride', true, clientId ? '' : 'client_id not configured'), clientIdConfigured: !!clientId };
+  const al = appLink('uber', { kind: 'ride', url: `https://m.uber.com/ul/?${q.join('&')}` });
+  return { ...L('uber', al.url, 'ride', true, clientId ? al.note : `${al.note} (client_id not configured)`), deeplink: al.deeplink, clientIdConfigured: !!clientId };
 }
 /** Ola: the documented web booking link needs an Ola-issued affiliate token (utm_source). Without one: the home page (unverified as an app opener). */
 export function olaLink({ pickup = null, dropoff, xappToken = '' } = {}) {
@@ -68,30 +73,21 @@ export function olaLink({ pickup = null, dropoff, xappToken = '' } = {}) {
   }
   return L('ola', 'https://book.olacabs.com/', 'ride', false, 'Ola deep links need an Ola affiliate token; opens Ola without pickup or drop');
 }
-export const rapidoLink = () => L('rapido', 'https://www.rapido.bike/', 'ride', false, 'No documented Rapido deep link; opens the Rapido site');
+/** Rapido: no documented deep link or ride API — the manifest-declared rapido://open entry point (app home, no pickup/drop) with www.rapido.bike as fallback. */
+export const rapidoLink = () => appLink('rapido', { kind: 'ride' });
 export const nammaYatriLink = () => L('namma-yatri', 'https://nammayatri.in/', 'ride', false, 'No documented consumer deep link; opens the Namma Yatri site');
 
-/** Food: name + city search pages (format unverified per INTEGRATIONS.md); never a menu item or price. */
-export function swiggySearch(name, city) {
-  const q = [name, CITY_SLUGS[city]?.name].filter(Boolean).join(' ');
-  return L('swiggy', `https://www.swiggy.com/search?query=${encodeURIComponent(q)}`, 'food', false, 'Search page; format not documented by Swiggy');
-}
-export function zomatoSearch(name, city) {
-  const slug = CITY_SLUGS[city]?.zomato;
-  const url = slug ? `https://www.zomato.com/${slug}/restaurants?q=${encodeURIComponent(name || '')}` : `https://www.zomato.com/search?q=${encodeURIComponent(name || '')}`;
-  return L('zomato', url, 'food', false, 'Search page; format not documented by Zomato');
-}
-/** Movies: city pages only (no showtimes in Bharat Map). */
-export function bookMyShowCity(city) {
-  const slug = CITY_SLUGS[city]?.bms;
-  return L('bookmyshow', slug ? `https://in.bookmyshow.com/explore/movies-${slug}` : 'https://in.bookmyshow.com/', 'tickets', false, 'City page; format not documented by BookMyShow');
-}
-export const districtMovies = () => L('district', 'https://www.district.in/movies/', 'tickets', false, 'District movies page (city chosen there)');
-/** Quick commerce: home pages only — no fabricated product or search-result URLs. */
+/** Food: App Links to the Swiggy / Zomato home (no restaurant search parameter: the format is undocumented). Never a menu item or price. */
+export const swiggyLink = () => appLink('swiggy', { kind: 'food' });
+export const zomatoLink = () => appLink('zomato', { kind: 'food' });
+/** Movies: App Links (BookMyShow home, District movies); no showtimes in Bharat Map, no city slug guessed. */
+export const bookMyShowLink = () => appLink('bookmyshow', { kind: 'tickets' });
+export const districtMovies = () => appLink('district', { kind: 'tickets' });
+/** Quick commerce: home pages only — no fabricated product or search-result URLs. Blinkit / Instamart are App Links. */
 export const GROCERY_APPS = {
-  blinkit: () => L('blinkit', 'https://blinkit.com/', 'grocery', false),
+  blinkit: () => appLink('blinkit', { kind: 'grocery' }),
   zepto: () => L('zepto', 'https://www.zeptonow.com/', 'grocery', false),
-  instamart: () => L('instamart', 'https://www.swiggy.com/instamart', 'grocery', false),
+  instamart: () => appLink('instamart', { kind: 'grocery' }),
   'flipkart-minutes': () => L('flipkart-minutes', 'https://www.flipkart.com/', 'grocery', false, 'Flipkart Minutes is chosen inside Flipkart'),
   bigbasket: () => L('bigbasket', 'https://www.bigbasket.com/', 'grocery', false),
 };
@@ -114,9 +110,10 @@ export function osmLinks(tags = {}) {
   return out;
 }
 
-/** Is a URL safe to hand to the interstitial (https/http/tel/wa.me only, no javascript:/data:)? */
+/** Is a URL safe to hand to the interstitial (https/http/tel, or an intent URL from deeplinks.js; never javascript:/data:/upi:)? */
 export function safeLinkout(u) {
   if (typeof u !== 'string') return false;
   if (/^tel:\+?\d{2,15}$/.test(u)) return true;
+  if (u.startsWith('intent:')) return safeIntent(u);
   try { const x = new URL(u); return (x.protocol === 'https:' || x.protocol === 'http:') && !!x.host && !/\s/.test(u); } catch { return false; }
 }

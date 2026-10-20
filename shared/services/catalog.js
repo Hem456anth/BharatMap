@@ -13,7 +13,9 @@
 // status (adapter contract): live | partner-pending | link-out | unavailable — derived from class.
 // url: the official site/app page (verified=true when confirmed from an official source; see `evidence`).
 // ticketing (transit): 'ondc' | 'official-app' | 'whatsapp' | 'website' | null — shown ONLY when official e-ticketing exists.
+// deeplink (from shared/services/deeplinks.js, user-supplied APK manifests + assetlinks.json): documented | applink | declared | none | null.
 // No entry here claims API support we do not have.
+import { DEEPLINKS } from './deeplinks.js';
 
 const E_INT = 'docs/INTEGRATIONS.md';
 const E_WEB = 'web check 20 Oct 2026 (docs/INTEGRATIONS.md §18)';
@@ -29,21 +31,22 @@ export const VERIFIED_HOSTS = new Set(['www.swiggy.com', 'www.zomato.com', 'ondc
 const hostOf = (u) => { try { return new URL(u).host; } catch { return ''; } };
 const P = (id, name, domain, cls, url, extra = {}) => {
   const ok = !!url && VERIFIED_HOSTS.has(hostOf(url));
-  return { id, name, domain, class: cls, url, ...extra, verified: ok, evidence: url ? (ok ? (extra.evidence && extra.evidence !== 'not verified' ? extra.evidence : E_INT) : E_KNOWN) : (extra.evidence || E_INT) };
+  const dl = DEEPLINKS[id];
+  return { id, name, domain, class: cls, url, ...extra, deeplink: dl ? dl.type : null, ...(dl && dl.type !== 'none' ? { appPackage: dl.pkg } : {}), verified: ok, evidence: url ? (ok ? (extra.evidence && extra.evidence !== 'not verified' ? extra.evidence : E_INT) : E_KNOWN) : (extra.evidence || E_INT) };
 };
 
 export const PROVIDERS = [
   // ---------------- Food ----------------
-  P('swiggy', 'Swiggy', 'food', 'partner-pending', 'https://www.swiggy.com/', { reason: 'Swiggy Builders Club MCP is invite-only; until approved Bharat opens a Swiggy search for the restaurant name + city (format undocumented)', linkout: true }),
-  P('zomato', 'Zomato', 'food', 'linkout', 'https://www.zomato.com/', { reason: 'Zomato MCP forbids third-party apps; link-out search only (format undocumented)' }),
+  P('swiggy', 'Swiggy', 'food', 'partner-pending', 'https://www.swiggy.com/', { reason: 'Swiggy Builders Club MCP is invite-only; until approved Bharat opens the Swiggy app via its verified App Link (www.swiggy.com, home — no restaurant search, the format is undocumented)', linkout: true }),
+  P('zomato', 'Zomato', 'food', 'linkout', 'https://www.zomato.com/', { reason: 'Zomato MCP forbids third-party apps; verified App Link to the Zomato home only (no search parameter: undocumented)' }),
   P('magicpin', 'magicpin', 'food', 'linkout', 'https://magicpin.in/', { reason: 'Largest F&B seller app on ONDC; reachable in-app only through an ONDC buyer integration (prototype); otherwise link-out', evidence: E_WEB }),
   P('ondc-food', 'ONDC (food & beverage)', 'food', 'prototype', 'https://ondc.org/', { reason: 'Beckn buyer flow implemented against Bharat\'s demo network only (ONDC_PROTOTYPE=1); real network needs registry onboarding + signing' }),
   P('eazydiner', 'EazyDiner', 'food', 'linkout', 'https://www.eazydiner.com/', { reason: 'Table reservations in the EazyDiner app/site; no public API found', evidence: E_WEB }),
   P('dineout', 'Swiggy Dineout', 'food', 'linkout', 'https://www.swiggy.com/dineout', { reason: 'Dineout was acquired by Swiggy (May 2022) and lives inside Swiggy; table booking via Swiggy (Builders Club Dineout tools are invite-only)', evidence: E_WEB }),
   P('restaurant-website', 'Restaurant websites', 'food', 'linkout', null, { reason: 'From OSM website / website:menu / reservation:url tags when mapped; never scraped' }),
   // ---------------- Movies ----------------
-  P('bookmyshow', 'BookMyShow', 'movies', 'linkout', 'https://in.bookmyshow.com/', { reason: 'No public API (partner portal is for cinemas/organisers); city page link-out, no showtimes' }),
-  P('district', 'District (Zomato/Eternal)', 'movies', 'linkout', 'https://www.district.in/', { reason: 'No developer programme; link-out. Paytm Insider and TicketNew were folded into District' }),
+  P('bookmyshow', 'BookMyShow', 'movies', 'linkout', 'https://in.bookmyshow.com/', { reason: 'No public API (partner portal is for cinemas/organisers); verified App Link to the BookMyShow home, no showtimes' }),
+  P('district', 'District (Zomato/Eternal)', 'movies', 'linkout', 'https://www.district.in/', { reason: 'No developer programme; verified App Link (www.district.in/movies/). Paytm Insider and TicketNew were folded into District' }),
   P('pvr-inox', 'PVR INOX', 'movies', 'linkout', 'https://www.pvrcinemas.com/', { reason: 'No public API (private endpoints must not be used); link-out on PVR/INOX cinemas' }),
   P('cinepolis', 'Cinépolis India', 'movies', 'linkout', 'https://www.cinepolisindia.com/', { reason: 'No public API; link-out on Cinépolis cinemas' }),
   P('ticketnew', 'TicketNew', 'movies', 'unavailable', null, { reason: 'Acquired by Zomato (Aug 2024) and consolidated into District; use District', mergedInto: 'district' }),
@@ -61,7 +64,7 @@ export const PROVIDERS = [
   // ---------------- Rides ----------------
   P('uber', 'Uber', 'ride', 'deeplink', 'https://m.uber.com/', { reason: 'Documented universal link with pickup/drop (client_id from server config); Ride Request API is partner-only; no fares in Bharat' }),
   P('ola', 'Ola', 'ride', 'partner-pending', 'https://book.olacabs.com/', { reason: 'Documented deep link needs an Ola affiliate token (OLA_XAPP_TOKEN); without it opens Ola without pickup/drop', linkout: true }),
-  P('rapido', 'Rapido', 'ride', 'linkout', 'https://www.rapido.bike/', { reason: 'No documented deep link or ride API (unverified link-out)', verified: true }),
+  P('rapido', 'Rapido', 'ride', 'linkout', 'https://www.rapido.bike/', { reason: 'No documented deep link or ride API: opens the app home via the manifest-declared rapido://open entry point (Unverified, no pickup/drop), www.rapido.bike without the app', verified: true }),
   P('namma-yatri', 'Namma Yatri', 'ride', 'linkout', 'https://nammayatri.in/', { reason: 'Rides via ONDC mobility once Bharat is an onboarded buyer app; no documented consumer deep link' }),
   P('bharat-taxi', 'Bharat Taxi', 'ride', 'linkout', 'https://www.bharattaxiapp.com/', { reason: 'Cooperative ride app (Sahakar Taxi Cooperative, launched Feb 2026; Delhi-NCR, Gujarat, Maharashtra, Rajasthan); live on ONDC mobility — no consumer deep link', evidence: E_WEB, regions: ['delhi', 'mumbai', 'pune'] }),
   P('yatri-sathi', 'Yatri Sathi', 'ride', 'linkout', 'https://yatrisathi.in/', { reason: 'Government of West Bengal ride app (Kolkata, Siliguri, Durgapur, Asansol); live on ONDC mobility — no consumer deep link', evidence: E_WEB, regions: ['kolkata'] }),
@@ -107,6 +110,7 @@ export const PROVIDERS = [
   P('incredible-india', 'Incredible India', 'hotel', 'linkout', 'https://www.incredibleindia.gov.in/', { reason: 'Government tourism INFORMATION portal — not a booking site', info: true, evidence: E_WEB }),
   // ---------------- Parking / tolls ----------------
   P('parkplus', 'Park+', 'parking', 'linkout', 'https://parkplus.io/', { reason: 'B2B only; no public API; link-out' }),
+  P('easypark', 'EasyPark', 'parking', 'unavailable', null, { reason: 'Not an India service (Europe/US parking app); APK analysed on request, skipped — never linked', notInIndia: true }),
   P('parkmate', 'ParkMate', 'parking', 'linkout', 'https://parkmate.in/', { reason: 'Valet/parking app (select cities); no public API; link-out', evidence: E_WEB }),
   P('nhai', 'NHAI (TIS toll info)', 'parking', 'functional', 'http://tis.nhai.gov.in/', { reason: 'Toll plazas on route from OSM (functional); fees are NOT available as open data — "fee unknown" + TIS link-out' }),
   P('highway-delite', 'Highway Delite', 'parking', 'linkout', 'https://www.highwaydelite.com/', { reason: 'Highway amenities / FASTag app; no public API; link-out', evidence: E_WEB }),
@@ -136,7 +140,7 @@ export const PROVIDERS = [
   P('cashfree', 'Cashfree Payments', 'payments', 'prototype', 'https://www.cashfree.com/', { reason: 'Adapter: server order (PG API 2023-08-01), status re-check, webhook HMAC (CASHFREE_APP_ID/SECRET); not exercised against a live sandbox', evidence: E_WEB, verified: true }),
   P('phonepe-pg', 'PhonePe Payment Gateway', 'payments', 'prototype', 'https://www.phonepe.com/business-solutions/payment-gateway/', { reason: 'Adapter: PG v2 OAuth token + server pay request + order-status re-check + webhook auth hash (PHONEPE_CLIENT_ID/SECRET/VERSION); not exercised against a live sandbox', evidence: E_WEB, verified: true }),
   P('paytm-pg', 'Paytm Payment Gateway (Paytm Payments Services)', 'payments', 'prototype', 'https://www.paytmpayments.com/payment-gateway', { reason: 'Adapter: initiateTransaction + Paytm checksum + status API (PAYTM_MID/MERCHANT_KEY); not exercised against a live sandbox', evidence: E_WEB, verified: true }),
-  P('upi', 'UPI (via a gateway)', 'payments', 'partner-pending', null, { reason: 'Only inside a gateway checkout once that gateway\'s keys are configured (Google Pay, PhonePe, Paytm etc. appear as UPI apps there). No hand-built upi://pay intents' }),
+  P('upi', 'UPI (via a gateway)', 'payments', 'partner-pending', null, { reason: 'Only inside a gateway checkout once that gateway\'s keys are configured (Google Pay, PhonePe, Paytm etc. appear as UPI apps there). No hand-built UPI pay links' }),
   P('google-pay', 'Google Pay', 'payments', 'unavailable', null, { reason: 'Not a direct integration: it appears as a UPI app inside the gateway checkout' }),
 ];
 
