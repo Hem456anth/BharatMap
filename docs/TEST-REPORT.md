@@ -1,3 +1,24 @@
+# Bharat Map 0.7.18 — UI/UX pass (A1–A7, A15) — Test report
+
+Run date: 20 Oct 2026 (IST).
+
+## Summary
+| Suite | Result |
+|---|---|
+| Unit + API (`npm test`) | **209 / 209 pass** in CI (199 + 10 new in `tests/v0718.test.js`) |
+| Browser E2E | **137 PASS, 0 FAIL** on GitHub's Chromium (17 new v0718 desktop/mobile steps); raw output `docs/e2e-results.txt` |
+| CI | [run 18](https://github.com/Hem456anth/BharatMap/actions/runs/39401249841) (`e89b317`): all jobs green on the first try |
+
+## Release v0.7.18
+| Check | Result |
+|---|---|
+| Signing | Signed offline, v1 ✅ v2 ✅ v3 ✅, `CN=Bharat Map`, cert SHA-256 `d04d20f9…7c6c` (same key; installs over earlier releases); zipalign OK; versionCode 18; debuggable=false |
+| Attached | [attach run](https://github.com/Hem456anth/BharatMap/actions/runs/39402943240) (SHA-256 matched, re-verified on GitHub) |
+| Release | [v0.7.18](https://github.com/Hem456anth/BharatMap/releases/tag/v0.7.18): **`bharat-map-0.7.18.apk` 100,638,568 bytes**, SHA-256 `28fcb84108435ca22af7599c13c551ea1cf0fdb6b81aa63040a5d52b1d8c58b9` (re-downloaded and matched) |
+
+### Known gaps
+Not run on a real device; photos/ratings on place cards have no data source yet; Shop/admin/settings still use older type sizes; A8–A14, A16–A18 not done.
+
 # Bharat Map 0.7.17 — CoMaps phase 0 (GPX/KML, list editor, track recording, Suggest an edit) — Test report
 
 Run date: 20 Oct 2026 (IST).
