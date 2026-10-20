@@ -14,3 +14,4 @@ android/app/release.keystore
 .scratch/
 web/vendor/maplibre-gl-5.js
 signing/
+docs/screenshots/v0718/e2e-*.png

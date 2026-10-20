@@ -12,6 +12,8 @@ import { buildInstruction, maneuverIcon, formatDistance, findLandmark } from '..
 import { currentPosition } from '../native.js';
 import { icon } from './icons.js';
 import { esc, serviceError } from './search.js';
+import { routeTotals, routeDescriptor } from '../lib/ux.js';
+import { renderState } from './states.js';
 
 export const fmtDuration = (s, ctx) => { const m = Math.max(1, Math.round(s / 60)); return m < 60 ? `${m} ${ctx.t('min_short')}` : `${Math.floor(m / 60)} ${ctx.t('hr_short')} ${m % 60} ${ctx.t('min_short')}`; };
 export const clock = (date) => date.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: false });
@@ -86,23 +88,43 @@ export function initDirections(ctx) {
     else if (S.mode === 'two' && res.estimate) notes.push(`<p class="note warn" role="note">${esc(ctx.t('est_two'))}</p>`);
     else if (S.mode === 'drive') notes.push(`<p class="note" role="note">${esc(ctx.t('no_traffic'))}</p>`);
     const now = Date.now();
-    el.innerHTML = `${notes.join('')}<ul class="routes" role="radiogroup" aria-label="${esc(ctx.t('directions'))}">${res.routes.map((r, i) => `
+    const desc = (r, i) => routeDescriptor(r, i, { routes: res.routes, mode: S.mode, avoidTolls: S.avoidTolls, avoidHighways: S.avoidHighways, avoidApplied: res.avoid_applied, estimate: !!res.estimate });
+    // v0.7.18 (A3): option cards (selected = filled neel) under a header with the selected route's totals and Start.
+    el.innerHTML = `${summaryHtml(now)}${notes.join('')}${res.fallback ? '<div id="dirFallback"></div>' : ''}<ul class="routes" role="radiogroup" aria-label="${esc(ctx.t('directions'))}">${res.routes.map((r, i) => { const d = desc(r, i); return `
       <li><button class="route-opt" role="radio" aria-checked="${i === S.selected}" data-route="${i}">
         <span class="r-time">${esc(fmtDuration(r.duration_s, ctx))}</span>
-        <span class="r-meta">${esc(formatDistance(r.distance_m))} · ${esc(ctx.tf('arrive_at', { t: clock(new Date(now + r.duration_s * 1000)) }))}${r.summary ? ` · ${esc(ctx.tf('via', { road: r.summary.split(',')[0].trim() }))}` : ''}</span>
-        <span class="r-tag">${i === 0 && !r.fallback ? esc(ctx.t('fastest')) : r.fallback ? '' : esc(ctx.tf('alt_n', { n: i }))}</span>
-      </button></li>`).join('')}</ul>
+        <span class="r-meta">${esc(ctx.tf('arrive_at', { t: clock(new Date(now + r.duration_s * 1000)) }))} · ${esc(formatDistance(r.distance_m))}</span>
+        ${r.summary ? `<span class="r-desc">${esc(ctx.tf('via', { road: r.summary.split(',')[0].trim() }))}</span>` : ''}
+        <span class="r-tag">${esc(ctx.t(d.key))}</span>
+        <span class="r-badges">${d.badges.map((b) => `<span class="rbadge ${b.tone}">${esc(ctx.tf(b.key, { n: b.n }))}</span>`).join('')}</span>
+      </button></li>`; }).join('')}</ul>
       ${motor() ? `<div class="avoid row wrap" role="group" aria-label="${esc(ctx.t('directions'))}"><label class="chk"><input type="checkbox" id="avoidTolls" ${S.avoidTolls ? 'checked' : ''}/><span>${esc(ctx.t('avoid_tolls'))}</span></label><label class="chk"><input type="checkbox" id="avoidHw" ${S.avoidHighways ? 'checked' : ''}/><span>${esc(ctx.t('avoid_highways'))}</span></label></div>
       <section class="tolls" id="dirTolls" aria-live="polite"></section>` : ''}
-      <div class="row nav-start"><button class="btn primary big" id="dirStart">${icon('directions', { size: 20 })} ${esc(ctx.t('start'))}</button><button class="btn big" id="dirSim">${esc(ctx.t('simulate'))}</button></div>
-      <details class="steps" id="dirSteps"><summary>${esc(ctx.t('steps'))} (${S.result.routes[S.selected].steps.length})</summary><ol>${stepsHtml()}</ol></details>
+      <div class="row nav-start"><button class="btn big" id="dirSim">${esc(ctx.t('simulate'))}</button></div>
+      <details class="steps" id="dirSteps">${stepsSummary()}<ol>${stepsHtml()}</ol></details>
       <p class="small muted">${esc(ctx.t('osm_credit'))} · ${esc(engineCredit(res))}</p>`;
+    if (res.fallback) renderState(document.getElementById('dirFallback'), { icon: 'alert', title: ctx.t('st_route_est_t'), body: ctx.t('st_route_est_b'),
+      actions: [{ id: 'retry', label: ctx.t('st_retry'), icon: 'swap' }, ...(S.mode !== 'two' ? [{ id: 'two', label: ctx.t('st_try_two'), icon: 'scooter' }] : [])] },
+    { retry: () => compute(), two: () => { S.mode = 'two'; compute(); } });
     const at = document.getElementById('avoidTolls'); if (at) at.onchange = () => { S.avoidTolls = at.checked; store.setItem('bm-avoid-tolls', at.checked ? '1' : '0'); compute(); };
     const ah = document.getElementById('avoidHw'); if (ah) ah.onchange = () => { S.avoidHighways = ah.checked; store.setItem('bm-avoid-hw', ah.checked ? '1' : '0'); compute(); };
     loadTolls();
     el.querySelectorAll('[data-route]').forEach((b) => { b.onclick = () => select(+b.dataset.route); });
     document.getElementById('dirStart').onclick = () => ctx.nav.start(selected(), { mode: S.mode, dest: S.to, simulate: false, estimate: res.estimate });
     document.getElementById('dirSim').onclick = () => ctx.nav.start(selected(), { mode: S.mode, dest: S.to, simulate: true, estimate: res.estimate });
+  }
+  // Totals for the selected route (time · distance · arrival) — shown in the header and on the steps list.
+  function totalsText(now = Date.now()) {
+    const t = routeTotals(selected(), now);
+    return { time: fmtDuration(t.duration_s, ctx), meta: `${formatDistance(t.distance_m)} · ${ctx.tf('dir_arrive', { t: clock(t.arrive) })}` };
+  }
+  function summaryHtml(now) {
+    const t = totalsText(now);
+    return `<div class="dir-sum" id="dirSummary" role="group" aria-label="${esc(ctx.t('dir_selected'))}"><span class="ds-txt"><span class="ds-time" id="dsTime">${esc(t.time)}</span><span class="ds-meta" id="dsMeta">${esc(t.meta)}</span></span><button class="btn primary" id="dirStart">${icon('directions', { size: 20 })} ${esc(ctx.t('start'))}</button></div>`;
+  }
+  function stepsSummary() {
+    const t = totalsText();
+    return `<summary>${esc(ctx.t('steps'))} (${selected().steps.length}) <span class="ds-meta">· ${esc(t.time)} · ${esc(t.meta)}</span></summary>`;
   }
   function stepsHtml() {
     return selected().steps.map((s) => { const lm = findLandmark(s.location); return `<li>${icon(maneuverIcon(s), { size: 20 })}<span>${esc(buildInstruction(s, ctx.lang(), { landmark: lm, destinationName: S.to.label }))}${s.distance_m ? `<small>${esc(formatDistance(s.distance_m))}</small>` : ''}</span></li>`; }).join('');
@@ -136,7 +158,8 @@ export function initDirections(ctx) {
   function select(i) {
     S.selected = i;
     document.querySelectorAll('#dirRoutes [data-route]').forEach((b) => b.setAttribute('aria-checked', String(+b.dataset.route === i)));
-    const st = document.getElementById('dirSteps'); if (st) st.innerHTML = `<summary>${esc(ctx.t('steps'))} (${selected().steps.length})</summary><ol>${stepsHtml()}</ol>`;
+    const st = document.getElementById('dirSteps'); if (st) st.innerHTML = `${stepsSummary()}<ol>${stepsHtml()}</ol>`;
+    const t = totalsText(); const a = document.getElementById('dsTime'), b = document.getElementById('dsMeta'); if (a) a.textContent = t.time; if (b) b.textContent = t.meta;
     draw(false); loadTolls();
   }
   function draw(fit) {
@@ -212,14 +235,25 @@ export function initDirections(ctx) {
       const li = (x) => `<li><button class="row-btn" data-stop="${esc(x.id)}">${icon(x.kind === 'metro' ? 'metro' : x.kind === 'rail' ? 'rail' : 'bus', { size: 20 })}<span class="row-txt"><b>${esc(x.name || ctx.t(`cat_${x.kind}`))}</b><small>${esc(ctx.t(`cat_${x.kind}`))} · ${esc(formatDistance(x.distance_m))}</small></span></button></li>`;
       const all = [...a, ...b];
       const why = plan?.reason === 'no_trip_found' || plan?.reason === 'no_service_on_date' ? ctx.t('transit_none_found') : ctx.t('transit_no_feed');
-      el().innerHTML = `<p class="note warn" role="note">${esc(why)} ${esc(ctx.t('transit_none'))}</p>
+      el().innerHTML = `<div id="transitAlt"></div>
         <h4>${esc(ctx.t('near_start'))}</h4><ul class="rows">${a.map(li).join('') || `<li class="muted">${esc(ctx.t('no_stops'))}</li>`}</ul>
         <h4>${esc(ctx.t('near_dest'))}</h4><ul class="rows">${b.map(li).join('') || `<li class="muted">${esc(ctx.t('no_stops'))}</li>`}</ul>
         <p class="small muted">${esc(ctx.t('osm_credit'))}</p>`;
+      // v0.7.18 (A4): unavailable mode → reason + an alternative to try, never a dead end.
+      const km = Math.round(Math.hypot(S.to.lat - S.from.lat, (S.to.lng - S.from.lng) * Math.cos(S.from.lat * Math.PI / 180)) * 111);
+      renderState(document.getElementById('transitAlt'), { icon: 'transit', title: ctx.t('st_transit_t'), body: `${why} ${ctx.t('transit_none')}`,
+        actions: [{ id: 'two', label: ctx.t('st_try_two'), icon: 'scooter' }, { id: 'drive', label: ctx.t('st_try_drive'), icon: 'car' }, ...(km <= 3 ? [{ id: 'walk', label: ctx.t('st_try_walk'), icon: 'walk' }] : [])] },
+      { two: () => { S.mode = 'two'; compute(); }, drive: () => { S.mode = 'drive'; compute(); }, walk: () => { S.mode = 'walk'; compute(); } });
       el().onclick = (e) => { const s = e.target.closest('[data-stop]'); if (s) { const x = all.find((y) => y.id === s.dataset.stop); if (x) ctx.place.open(x); } };
       ctx.style.setPois({ type: 'FeatureCollection', features: all.map((x) => ({ type: 'Feature', geometry: { type: 'Point', coordinates: [x.lng, x.lat] }, properties: { color: '#7a3fb0' } })) });
       ctx.cam.fit([[S.from.lng, S.from.lat], [S.to.lng, S.to.lat], ...all.map((x) => [x.lng, x.lat])]);
-    } catch (e) { if (my === S.seq) el().innerHTML = `<p class="note warn">${esc(ctx.t('transit_none'))}</p><p>${esc(serviceError(ctx, e, 'Overpass'))}</p>`; }
+    } catch (e) {
+      if (my !== S.seq) return;
+      el().innerHTML = '<div id="transitAlt"></div>';
+      renderState(document.getElementById('transitAlt'), { icon: 'transit', title: ctx.t('st_transit_t'), body: `${ctx.t('transit_none')} ${serviceError(ctx, e, 'Overpass')}`,
+        actions: [{ id: 'two', label: ctx.t('st_try_two'), icon: 'scooter' }, { id: 'drive', label: ctx.t('st_try_drive'), icon: 'car' }] },
+      { two: () => { S.mode = 'two'; compute(); }, drive: () => { S.mode = 'drive'; compute(); } });
+    }
   }
 
   const clearMap = () => { ctx.style.setRoutes(null); ctx.style.setLegs(null); ctx.style.setTolls(null); S.seq++; S.tollSeq++; };

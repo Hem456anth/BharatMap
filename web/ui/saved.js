@@ -6,6 +6,7 @@ import { toGPX, toKML, listToDoc, safeFileName, GEO_MIME } from '../shared/geofo
 import { exportTextFile } from '../lib/file-io.js';
 import { formatDistance } from '../nav/maneuver.js';
 import { haversineKm } from '../shared/geo.js';
+import { renderState } from './states.js';
 import { icon } from './icons.js';
 import { esc } from './search.js';
 
@@ -112,7 +113,10 @@ export function initSaved(ctx) {
     const note = (p) => (p.note ? `<span class="item-note">${esc(p.note)}</span>` : '');
     $('listItems').innerHTML = l.items.length ? l.items.map((p, i) => (editing
       ? `<li class="row-split" data-idx="${i}"><span class="row-txt">${icon('pin', { size: 20 })}<b>${esc(p.name || ctx.t('dropped_pin'))}</b>${note(p)}</span><span class="item-ctl"><button class="icon-btn sm" data-up="${i}" ${i === 0 ? 'disabled' : ''} aria-label="${esc(ctx.t('item_up'))}: ${esc(p.name)}">${icon('up', { size: 18 })}</button><button class="icon-btn sm" data-down="${i}" ${i === last ? 'disabled' : ''} aria-label="${esc(ctx.t('item_down'))}: ${esc(p.name)}">${icon('down', { size: 18 })}</button><button class="icon-btn sm" data-edit="${esc(p.id)}" aria-label="${esc(ctx.t('item_edit'))}: ${esc(p.name)}">${icon('edit', { size: 18 })}</button><button class="icon-btn sm" data-del="${esc(p.id)}" aria-label="${esc(ctx.t('unsave'))}: ${esc(p.name)}">${icon('close', { size: 18 })}</button></span></li>`
-      : `<li class="row-split"><button class="row-btn" data-open="${esc(p.id)}">${icon('pin', { size: 20 })}<span class="row-txt"><b>${esc(p.name || ctx.t('dropped_pin'))}</b><small>${esc([eta(p), p.address].filter(Boolean).join(' · '))}</small>${note(p)}</span></button><button class="icon-btn sm" data-del="${esc(p.id)}" aria-label="${esc(ctx.t('unsave'))}: ${esc(p.name)}">${icon('close', { size: 18 })}</button></li>`)).join('') : `<li class="muted">${esc(ctx.t('empty_list'))}</li>`;
+      : `<li class="row-split"><button class="row-btn" data-open="${esc(p.id)}">${icon('pin', { size: 20 })}<span class="row-txt"><b>${esc(p.name || ctx.t('dropped_pin'))}</b><small>${esc([eta(p), p.address].filter(Boolean).join(' · '))}</small>${note(p)}</span></button><button class="icon-btn sm" data-del="${esc(p.id)}" aria-label="${esc(ctx.t('unsave'))}: ${esc(p.name)}">${icon('close', { size: 18 })}</button></li>`)).join('') : '<li class="state-li" id="listEmpty"></li>';
+    // v0.7.18 (A4): an empty list says how to fill it and offers the action.
+    if (!l.items.length) renderState($('listEmpty'), { icon: 'star', title: ctx.t('st_list_empty_t'), body: ctx.t('st_list_empty_b'), actions: [{ id: 'find', label: ctx.t('st_find_places'), icon: 'search' }, { id: 'import', label: ctx.t('import_file'), icon: 'upload' }] },
+      { find: () => { ctx.views.show('home', { detent: 'half' }); document.getElementById('q').focus(); }, import: () => document.getElementById('importGeo')?.click() });
   }
   $('listItems').addEventListener('click', (e) => {
     const l = S.lists.find((x) => x.id === openListId); if (!l) return;

@@ -67,8 +67,22 @@ function applyLang() {
 
 // ---------------- Map ----------------
 const center = () => state.me || CITIES[state.city].center;
+// v0.7.18 (A5): if the device cannot draw WebGL, say so on screen (never a blank page) and offer Retry.
+const hasWebGL = (() => { try { const c = document.createElement('canvas'); return !!(c.getContext('webgl2') || c.getContext('webgl')); } catch { return false; } })();
+window.__BM_WEBGL__ = hasWebGL;
+function showNoWebGL() {
+  const el = $('#mapFail'); if (!el) return;
+  $('#mapFailTitle').textContent = tr(state.lang, 'mf_webgl');
+  $('#mapFailBody').textContent = `${tr(state.lang, 'mf_body_webgl')}`;
+  $('#mapFailRetry').textContent = tr(state.lang, 'mf_retry');
+  $('#mapFailRetry').onclick = () => location.reload();
+  $('#mapFailLowBw').hidden = true; $('#mapFailOffline').hidden = true;
+  $('#mapFailClose').onclick = () => { el.hidden = true; };
+  el.dataset.reason = 'webgl'; el.hidden = false;
+}
 // Start with an empty style; the shell's style manager picks online/offline + light/dark once the mode is known.
-const map = new maplibregl.Map({
+let map;
+try { map = new maplibregl.Map({
   container: 'map',
   style: { version: 8, sources: {}, layers: [] },
   center: [CITIES[state.city].center.lng, CITIES[state.city].center.lat], zoom: 13, attributionControl: { compact: true },
@@ -77,7 +91,8 @@ const map = new maplibregl.Map({
   // one-finger zoom (double-tap-and-drag, MapLibre's tap-drag-zoom handler) are on; pan keeps inertia, tuned here.
   touchPitch: true, touchZoomRotate: true, doubleClickZoom: true, keyboard: true,
   dragPan: { linearity: 0.3, easing: (t) => 1 - (1 - t) ** 3, deceleration: 2500, maxSpeed: 1400 },
-});
+}); } catch (e) { showNoWebGL(); throw e; }
+if (!hasWebGL) showNoWebGL();
 map.addControl(new maplibregl.ScaleControl({ unit: 'metric' }), 'top-left');
 let dropMarker = null, riderMarker = null;
 let shell = null;

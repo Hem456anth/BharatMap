@@ -33,6 +33,7 @@ import { initOndc } from './ui/ondc.js';
 import { initTraffic } from './ui/traffic.js';
 import { initTracks } from './ui/tracks.js';
 import { initOsmEdit } from './ui/osm-edit.js';
+import { initMapHealth } from './ui/map-health.js';
 export function createShell({ map, maplibregl, state, api, apiBase, toast, onShop }) {
   const listeners = new Map();
   const ctx = {
@@ -112,6 +113,7 @@ export function createShell({ map, maplibregl, state, api, apiBase, toast, onSho
   ctx.traffic = initTraffic(ctx);
   ctx.tracks = initTracks(ctx);
   ctx.osmEdit = initOsmEdit(ctx);
+  ctx.mapHealth = initMapHealth(ctx, { webgl: window.__BM_WEBGL__ !== false });
   ctx.voiceSearch = initVoiceSearch(ctx, { onText: (text) => { document.getElementById('q').value = text; ctx.search.submit(text); } });
   // Navigation map style preference (auto by sunrise/sunset, or forced day/night).
   document.querySelectorAll('[name=navstyle]').forEach((r) => {

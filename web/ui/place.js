@@ -3,8 +3,8 @@
 // Dropped pins are reverse-geocoded with Nominatim (only the tapped coordinate is sent).
 import { canSuggestEdit } from '../shared/osm-edit.js';
 import { reverseGeocode } from '../services/geocode.js';
-import { openingStatus } from '../lib/opening-hours.js';
-import { formatDistance } from '../nav/maneuver.js';
+import { formatDistance, findLandmark } from '../nav/maneuver.js';
+import { hoursState, paymentMethods, goodToKnow, localScriptName, placeBlocks, hueOf } from '../lib/ux.js';
 import { encodeDigipin, haversineKm } from '../shared/geo.js';
 import { BUSINESSES } from '../shared/seed.js';
 import { POI_CATEGORIES } from '../services/overpass.js';
@@ -51,10 +51,10 @@ export function initPlace(ctx) {
 
   function hoursHtml(raw) {
     if (!raw) return '';
-    const st = openingStatus(raw);
+    const st = hoursState(raw);
     let line;
-    if (st.status === 'open') line = `<b class="ok">${esc(ctx.t('open_now'))}</b>${st.until ? ` · ${esc(ctx.tf('closes_at', { t: st.until }))}` : ` · ${esc(ctx.t('open_24'))}`}`;
-    else if (st.status === 'closed') line = `<b class="bad">${esc(ctx.t('closed'))}</b>${st.opensAt ? ` · ${esc(ctx.tf(st.opensDay === 'tomorrow' ? 'opens_tomorrow' : 'opens_at', { t: st.opensAt }))}` : ''}`;
+    if (st.status === 'open') line = `<b class="hs-${st.state}">${esc(st.state === 'closing_soon' ? ctx.t('hs_closing_soon') : ctx.t('open_now'))}</b>${st.until ? ` · ${esc(ctx.tf('closes_at', { t: st.until }))}` : ` · ${esc(ctx.t('open_24'))}`}`;
+    else if (st.status === 'closed') line = `<b class="hs-${st.state}">${esc(st.state === 'opening_soon' ? ctx.t('hs_opening_soon') : ctx.t('closed'))}</b>${st.opensAt ? ` · ${esc(ctx.tf(st.opensDay === 'tomorrow' ? 'opens_tomorrow' : 'opens_at', { t: st.opensAt }))}` : ''}`;
     else line = `<span class="muted">${esc(ctx.t('hours_raw'))}</span>`;
     return `<li class="detail">${icon('clock', { size: 20 })}<div><div>${line}</div><small class="mono">${esc(raw)}</small></div></li>`;
   }
@@ -79,41 +79,84 @@ export function initPlace(ctx) {
     return `<li class="detail" id="pcParking">${icon('parking', { size: 20 })}<div><div><b>${esc(ctx.t('parking_details'))}</b></div><dl class="kv">${rows.map(([k, v]) => `<dt>${esc(k)}</dt><dd>${esc(v)}</dd>`).join('')}</dl><small class="muted">OpenStreetMap</small></div></li>`;
   }
 
+  // v0.7.18 (A2): fixed block order (UX_SPEC §9.4); a block renders only when it has data. Lean cards (address only)
+  // collapse to header + actions + details and invite the user to complete the place (OSM note).
+  function ribbonHtml(tags, distTxt) {
+    const cols = [];
+    if (tags.opening_hours) {
+      const hs = hoursState(tags.opening_hours);
+      const sub = hs.state === 'closing_soon' ? ctx.tf('hs_closes_in', { n: hs.minutesLeft }) : hs.state === 'opening_soon' ? ctx.tf('hs_opens_in', { n: hs.minutesToOpen })
+        : hs.state === 'open' ? (hs.until ? ctx.tf('closes_at', { t: hs.until }) : ctx.t('open_24')) : hs.state === 'closed' && hs.opensAt ? ctx.tf(hs.opensDay === 'tomorrow' ? 'opens_tomorrow' : 'opens_at', { t: hs.opensAt }) : '';
+      cols.push(`<div class="rib" id="pcHoursState" data-state="${hs.state}"><span class="lbl">${esc(ctx.t('rib_hours'))}</span><span class="rib-v hs-${hs.state}">${esc(ctx.t(`hs_${hs.state}`))}${sub ? `<small>${esc(sub)}</small>` : ''}</span></div>`);
+    }
+    const pay = paymentMethods(tags);
+    if (pay.length) cols.push(`<div class="rib"><span class="lbl">${esc(ctx.t('rib_pay'))}</span><span class="rib-v pay-ic">${pay.map((m) => `<span>${esc(ctx.t(`pay_${m}`))}</span>`).join('')}</span></div>`);
+    if (cols.length) cols.push(`<div class="rib"><span class="lbl">${esc(ctx.t('rib_dist'))}</span><span class="rib-v num">${esc(distTxt)}</span></div>`);
+    return cols.length ? `<div class="ribbon" id="pcRibbon" role="group" aria-label="${esc(ctx.t('details_title'))}">${cols.join('')}</div>` : '';
+  }
+  function gtkHtml(tags) {
+    const facts = goodToKnow(tags);
+    if (!facts.length) return '';
+    const label = (f) => {
+      if (f.key === 'wheelchair') return ctx.t(f.value === 'limited' ? 'wc_limited' : 'wc_yes');
+      if (f.key === 'diet:vegetarian' && f.value === 'only') return ctx.t('gtk_veg_only');
+      const base = ctx.t(`gtk_${f.key}`);
+      return f.value === 'limited' ? `${base} (${ctx.t('gtk_limited')})` : f.value === 'only' ? `${base} (${ctx.t('gtk_only')})` : base;
+    };
+    return `<section class="blk" id="pcGtk"><h4>${esc(ctx.t('gtk_title'))}</h4><div class="gtk">${facts.map((f) => `<span>${icon(f.icon, { size: 16 })}${esc(label(f))}</span>`).join('')}</div></section>`;
+  }
+
   function render(p) {
     const cat = categoryOf(p);
     const tags = p.tags || {};
     const from = ctx.myLoc ? { ...ctx.myLoc, real: true } : p._from || ctx.origin();
-    const dist = ctx.tf(from.real ? 'away' : 'from_centre', { d: formatDistance(haversineKm(from, p) * 1000) });
+    const distM = haversineKm(from, p) * 1000;
+    const dist = ctx.tf(from.real ? 'away' : 'from_centre', { d: formatDistance(distM) });
     const seller = matchSeller(p);
     const phone = tags.phone || tags['contact:phone'] || '';
+    const tel = phone ? phone.split(';')[0].replace(/[^\d+]/g, '') : '';
     const web = tags.website || tags['contact:website'] || '';
     const safeWeb = /^https?:\/\//i.test(web) ? web : web ? `https://${web}` : '';
-    const wc = tags.wheelchair;
     const saved = ctx.saved.isSaved(p.id);
     const digipin = encodeDigipin(p.lat, p.lng);
-    $('placeTitle').textContent = p.name || ctx.t('dropped_pin');
+    const { lean } = placeBlocks({ ...p, kind: p.kind === 'seller' || seller ? 'seller' : p.kind });
+    const shownName = p.name || ctx.t('dropped_pin');
+    const native = p.name ? localScriptName(p, shownName) : '';
+    const about = tags[`description:${ctx.lang()}`] || tags.description || tags['description:en'] || '';
+    const pin = tags['addr:postcode'] || (/\b(\d{6})\b/.exec(p.address || '') || [])[1] || '';
+    const lm = findLandmark([p.lng, p.lat], { maxM: 400 });
+    const landmark = lm && lm.name !== p.name ? lm : null;
+    $('placeTitle').textContent = shownName;
+    const catTag = cat ? `<span class="tag cat-${cat}"><span class="glyph hue-${hueOf(cat)}" aria-hidden="true">${icon(POI_CATEGORIES.find((c) => c.id === cat)?.icon || 'pin', { size: 14 })}</span>${esc(ctx.t(`cat_${cat}`))}</span>` : p.kind === 'seller' || seller ? `<span class="tag"><span class="glyph hue-shop" aria-hidden="true">${icon('bag', { size: 14 })}</span>${esc(ctx.t('demo_seller'))}</span>` : '';
     $('placeCard').innerHTML = `
-      <p class="place-sub">${cat ? `<span class="tag cat-${cat}">${icon(POI_CATEGORIES.find((c) => c.id === cat)?.icon || 'pin', { size: 16 })}${esc(ctx.t(`cat_${cat}`))}</span>` : p.kind === 'seller' || seller ? `<span class="tag">${icon('bag', { size: 16 })}${esc(ctx.t('demo_seller'))}</span>` : ''}<span>${esc(dist)}</span></p>
+      <div class="pc-head">${native ? `<p class="pc-native" id="pcNative">${esc(native)}</p>` : ''}<p class="place-sub">${catTag}${catTag ? '<span aria-hidden="true">·</span>' : ''}<span class="num">${esc(dist)}</span></p></div>
       <div class="actions">
         <button class="act primary" id="pcDir">${icon('directions')}<span>${esc(ctx.t('directions'))}</span></button>
         <button class="act" id="pcSave" aria-pressed="${saved}">${icon(saved ? 'starfill' : 'star')}<span>${esc(ctx.t('save'))}</span></button>
         <button class="act" id="pcShare">${icon('share')}<span>${esc(ctx.t('share'))}</span></button>
-        ${phone ? `<a class="act" id="pcCall" href="tel:${esc(phone.split(';')[0].replace(/[^\d+]/g, ''))}">${icon('phone')}<span>${esc(ctx.t('call'))}</span></a>` : seller ? '' : ''}
+        ${tel ? `<a class="act" id="pcCall" href="tel:${esc(tel)}">${icon('phone')}<span>${esc(ctx.t('call'))}</span></a>` : ''}
+        ${!tel && safeWeb && !seller ? `<a class="act" id="pcWeb" href="${esc(safeWeb)}" target="_blank" rel="noopener noreferrer">${icon('globe')}<span>${esc(ctx.t('website'))}</span></a>` : ''}
         ${seller ? `<button class="act shop" id="pcShop">${icon('bag')}<span>${esc(ctx.t('shop_here'))}</span></button>` : ''}
       </div>
+      ${ribbonHtml(tags, formatDistance(distM))}
+      ${about ? `<section class="blk" id="pcAbout"><h4>${esc(ctx.t('about_title'))}</h4><div class="gcard about"><p>${esc(about)}</p></div></section>` : ''}
+      ${gtkHtml(tags)}
       <div id="pcServices" class="pc-services"></div>
-      <ul class="details">
+      <section id="pcAlso" class="pc-also" hidden aria-labelledby="pcAlsoH"></section>
+      ${lean && p.kind !== 'pin' ? `<div class="help-complete" id="pcHelp"><span class="glyph hue-search" aria-hidden="true">${icon('edit', { size: 16 })}</span><div><b>${esc(ctx.t('help_complete_t'))}</b><p>${esc(ctx.t('help_complete_b'))}</p><button type="button" class="btn tonal sm" id="pcHelpBtn">${esc(ctx.t('help_complete_btn'))}</button></div></div>` : ''}
+      <h4 class="gcard-h" id="pcDetailsH">${esc(ctx.t('details_title'))}</h4>
+      <ul class="details gcard" aria-labelledby="pcDetailsH">
         ${cat === 'ev' ? evHtml(p) : ''}${cat === 'parking' ? parkingHtml(p) : ''}
         ${hoursHtml(tags.opening_hours)}
-        <li class="detail">${icon('pin', { size: 20 })}<div><div id="pcAddr">${p.address ? esc(p.address) : `<span class="muted">${esc(ctx.t('looking_up'))}</span>`}</div><small>${esc(ctx.t('address'))}</small></div><button class="icon-btn sm" data-copy="addr" aria-label="${esc(ctx.t('address'))}: copy">${icon('copy', { size: 18 })}</button></li>
-        ${phone ? `<li class="detail">${icon('phone', { size: 20 })}<div><div><a href="tel:${esc(phone.split(';')[0].replace(/[^\d+]/g, ''))}">${esc(phone)}</a></div><small>${esc(ctx.t('phone'))}</small></div></li>` : ''}
+        <li class="detail">${icon('pin', { size: 20 })}<div><div id="pcAddr">${p.address ? esc(p.address) : `<span class="muted">${esc(ctx.t('looking_up'))}</span>`}</div><small>${esc(ctx.t('address'))}${landmark ? ` · ${esc(ctx.tf('near_landmark', { name: landmark.name }))}` : ''}</small></div><button class="icon-btn sm" data-copy="addr" aria-label="${esc(ctx.t('address'))}: copy">${icon('copy', { size: 18 })}</button></li>
+        ${phone ? `<li class="detail">${icon('phone', { size: 20 })}<div><div><a href="tel:${esc(tel)}">${esc(phone)}</a></div><small>${esc(ctx.t('phone'))}</small></div></li>` : ''}
         ${safeWeb ? `<li class="detail">${icon('globe', { size: 20 })}<div><div><a href="${esc(safeWeb)}" target="_blank" rel="noopener noreferrer">${esc(web.replace(/^https?:\/\//, '').replace(/\/$/, ''))}</a></div><small>${esc(ctx.t('website'))}</small></div></li>` : ''}
-        ${wc ? `<li class="detail">${icon('wheelchair', { size: 20 })}<div><div>${esc(ctx.t(wc === 'yes' ? 'wc_yes' : wc === 'limited' ? 'wc_limited' : 'wc_no'))}</div><small>${esc(ctx.t('wheelchair'))}</small></div></li>` : ''}
-        <li class="detail">${icon('locate', { size: 20 })}<div><div class="mono">${esc(digipin || '')}</div><small>${esc(ctx.t('digipin'))} · ${p.lat.toFixed(5)}, ${p.lng.toFixed(5)}</small></div><button class="icon-btn sm" data-copy="digipin" aria-label="${esc(ctx.t('digipin'))}: copy">${icon('copy', { size: 18 })}</button></li>
+        ${pin ? `<li class="detail">${icon('pincode', { size: 20 })}<div><div class="num">${esc(pin)}</div><small>${esc(ctx.t('pincode'))}</small></div></li>` : ''}
+        <li class="detail">${icon('digipin', { size: 20 })}<div><div class="mono">${esc(digipin || '')}</div><small>${esc(ctx.t('digipin'))} · ${p.lat.toFixed(5)}, ${p.lng.toFixed(5)}</small></div><button class="icon-btn sm" data-copy="digipin" aria-label="${esc(ctx.t('digipin'))}: copy">${icon('copy', { size: 18 })}</button></li>
       </ul>
-      <div class="row wrap"><button class="link" id="pcHome">${esc(ctx.t('set_as_home'))}</button><button class="link" id="pcWork">${esc(ctx.t('set_as_work'))}</button>${ctx.directions.state?.to ? `<button class="link" id="pcStop">${icon('plus', { size: 16 })} ${esc(ctx.t('add_stop'))}</button>` : ''}<button class="link" id="pcReport">${icon('flag', { size: 16 })} ${esc(ctx.t('report_title'))}</button>${canSuggestEdit(p) ? `<button class="link" id="pcEdit">${icon('edit', { size: 16 })} ${esc(ctx.t('edit_suggest'))}</button>` : ''}</div>
-      <section id="pcAlso" class="pc-also" hidden aria-labelledby="pcAlsoH"></section>
+      <div class="row wrap pc-foot"><button class="link" id="pcHome">${esc(ctx.t('set_as_home'))}</button><button class="link" id="pcWork">${esc(ctx.t('set_as_work'))}</button>${ctx.directions.state?.to ? `<button class="link" id="pcStop">${icon('plus', { size: 16 })} ${esc(ctx.t('add_stop'))}</button>` : ''}<button class="link" id="pcReport">${icon('flag', { size: 16 })} ${esc(ctx.t('report_title'))}</button>${canSuggestEdit(p) ? `<button class="link" id="pcEdit">${icon('edit', { size: 16 })} ${esc(ctx.t('edit_suggest'))}</button>` : ''}</div>
       <p class="small muted">${p.source === 'seller' || (seller && p.kind === 'seller') ? esc(ctx.t('demo_seller')) : p.source === 'ocm' ? 'Open Charge Map (CC BY 4.0)' : esc(ctx.t('osm_credit'))}</p>`;
+    if ($('pcHelpBtn')) $('pcHelpBtn').onclick = () => (canSuggestEdit(current) ? ctx.osmEdit.open(current) : ctx.report.open({ lat: p.lat, lng: p.lng, name: p.name }));
     $('pcDir').onclick = () => ctx.directions.open(p);
     $('pcSave').onclick = () => ctx.saved.openSaveDialog(p, () => render(current));
     $('pcShare').onclick = () => share(p);

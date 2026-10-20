@@ -11,6 +11,8 @@ import { parseQuery } from '../shared/search.js';
 import { BUSINESSES } from '../shared/seed.js';
 import { indexFor, searchIndex } from '../lib/offline-index.js';
 import { offlineSearch, displayName } from '../lib/offline-search.js';
+import { CHIP_ORDER, CAT_GROUPS, hueOf, hueForKind, highlightMatch, scriptBadge, distanceM, shortDistance, suggestionType } from '../lib/ux.js';
+import { renderState } from './states.js';
 
 // Vocabulary of the (demo) catalogue: decides when to offer "Search products in Shop".
 const PRODUCT_VOCAB = new Set(BUSINESSES.flatMap((b) => b.products.flatMap((p) => [p.category, ...p.tags.flatMap((t) => t.split(' ')), ...p.name.toLowerCase().split(/[^a-z0-9]+/)])).filter((w) => w && w.length >= 2 && !/^\d+$/.test(w)));
@@ -36,24 +38,53 @@ export function initSearch(ctx) {
 
   // ---------- category chips ----------
   const catLabel = (id) => ctx.t(`cat_${id}`);
+  // v0.7.18 (A7): India-first chip grid with category hue circles; the last tile opens "All categories".
+  const ordered = () => [...POI_CATEGORIES].sort((a, b) => (CHIP_ORDER.indexOf(a.id) + 99) % 99 - (CHIP_ORDER.indexOf(b.id) + 99) % 99);
+  const catTile = (c, cls = 'chip cat ctile') => `<button class="${cls}" role="listitem" data-cat="${c.id}" aria-label="${esc(ctx.t('nearby'))}: ${esc(catLabel(c.id))}"><span class="glyph hue-${hueOf(c.id)}" aria-hidden="true">${icon(c.icon, { size: 18 })}</span><span>${esc(catLabel(c.id))}</span></button>`;
   function renderCats() {
-    $('cats').innerHTML = POI_CATEGORIES.map((c) => `<button class="chip cat" role="listitem" data-cat="${c.id}" aria-label="${esc(ctx.t('nearby'))}: ${esc(catLabel(c.id))}">${icon(c.icon, { size: 18 })}<span>${esc(catLabel(c.id))}</span></button>`).join('');
+    $('cats').innerHTML = ordered().map((c) => catTile(c)).join('')
+      + `<button class="ctile cat-all" role="listitem" id="allCatsBtn"><span class="glyph" aria-hidden="true">${icon('grid', { size: 18 })}</span><span>${esc(ctx.t('all_categories'))}</span></button>`;
+    const byId = Object.fromEntries(POI_CATEGORIES.map((c) => [c.id, c]));
+    $('allCats').innerHTML = CAT_GROUPS.map(([g, ids]) => `<h4>${esc(ctx.t(g))}</h4><div class="cat-grid2" role="list">${ids.filter((id) => byId[id]).map((id) => catTile(byId[id], 'ctile cat')).join('')}</div>`).join('');
   }
-  $('cats').addEventListener('click', (e) => { const b = e.target.closest('[data-cat]'); if (b) openCategory(b.dataset.cat); });
+  $('cats').addEventListener('click', (e) => {
+    if (e.target.closest('#allCatsBtn')) { ctx.views.show('allcats', { detent: 'full' }); return; }
+    const b = e.target.closest('[data-cat]'); if (b) openCategory(b.dataset.cat);
+  });
+  $('allCats').addEventListener('click', (e) => { const b = e.target.closest('[data-cat]'); if (b) openCategory(b.dataset.cat); });
 
   // ---------- suggestions ----------
   function catMatches(text) {
     const s = text.toLowerCase();
     return POI_CATEGORIES.filter((c) => Object.values(STRINGS).some((L) => (L[`cat_${c.id}`] || '').toLowerCase().includes(s)) || c.id.includes(s));
   }
+  // v0.7.18 (A6): glyph circle by row type/category, only the matched part bolded, a script badge when the hit came
+  // through another script (e.g. "simhachalam" → సింహాచలం), distance from the map centre on the right.
+  const mapCentre = () => { const m = map.getCenter(); return { lat: m.lat, lng: m.lng }; };
+  function rowHue(it) {
+    const type = suggestionType(it);
+    if (type === 'cat') return hueOf(it.cat);
+    if (type === 'recent') return it.recent?.cat ? hueOf(it.recent.cat) : 'recent';
+    if (type === 'shop') return 'shopq';
+    if (type === 'digipin' || type === 'pincode') return type;
+    if (type === 'area' || type === 'report' || type === 'empty') return 'search';
+    return it.place?.kind === 'seller' ? 'shop' : hueForKind(it.place?.kind || it.place?.category, it.place?.osm_key);
+  }
+  const rowIcon = (it) => { const type = suggestionType(it); return type === 'digipin' ? 'digipin' : type === 'pincode' ? 'pincode' : it.icon || 'pin'; };
+  function rowHtml(it, i, text) {
+    const badge = it.native ? scriptBadge(it.label, it.native, text) : null;
+    const dist = it.place && it.kind === 'place' ? distanceM(mapCentre(), it.place) : null;
+    const cls = it.kind === 'empty' ? ' class="sug-empty"' : it.kind === 'area' || it.kind === 'report' ? ' class="sug-act"' : '';
+    return `<li role="option" id="sug-${i}" data-i="${i}" aria-selected="${i === active}"${cls}><span class="glyph hue-${rowHue(it)}" aria-hidden="true">${icon(rowIcon(it), { size: 18 })}</span><span class="sug-txt"><span class="sug-t">${it.kind === 'place' || it.kind === 'recent' ? highlightMatch(it.label, text) : esc(it.label)}${badge ? `<span class="script-badge" lang="${badge.lang}" title="${esc(ctx.tf('sug_in_script', { script: badge.name }))}">${highlightMatch(badge.text, text)}</span>` : ''}</span>${it.sub ? `<small>${esc(it.sub)}</small>` : ''}</span>${dist != null ? `<span class="sug-dist" aria-label="${esc(shortDistance(dist))} ${esc(ctx.t('sug_from_centre'))}">${esc(shortDistance(dist))}</span>` : ''}</li>`;
+  }
   function renderSuggest() {
     q.setAttribute('aria-expanded', String(!!items.length));
     sug.hidden = !items.length;
-    sug.innerHTML = items.map((it, i) => `<li role="option" id="sug-${i}" data-i="${i}" aria-selected="${i === active}">${icon(it.icon || 'pin', { size: 20 })}<span class="sug-txt"><b>${esc(it.label)}</b>${it.sub ? `<small>${esc(it.sub)}</small>` : ''}</span></li>`).join('');
+    const text = q.value.trim();
+    sug.innerHTML = items.map((it, i) => rowHtml(it, i, text)).join('');
     if (active >= 0) q.setAttribute('aria-activedescendant', `sug-${active}`); else q.removeAttribute('aria-activedescendant');
   }
   const kindLabel = (k) => String(k || '').replace(/_/g, ' ');
-  const distLabel = (m) => (m == null ? '' : formatDistance(m));
   const photonDebounced = debounceAsync((text, c) => photonSearch(text, { lat: c.lat, lng: c.lng, lang: ctx.lang() }), 350);
   // Offline lookup: v2 index (all regions) first, else the v0.5 index of the region around the origin.
   async function offlineLookup(text, c, limit) {
@@ -82,7 +113,7 @@ export function initSearch(ctx) {
       renderSuggest(); return;
     }
     const c = ctx.origin();
-    const local = localResolve(text, { city: ctx.state.city, origin: c, saved: ctx.saved?.data }).map((p) => ({ kind: 'place', icon: p.kind === 'seller' ? 'bag' : p.kind === 'saved' ? 'starfill' : 'pin', label: p.name, sub: [p.kind === 'seller' ? ctx.t('demo_seller') : p.kind === 'saved' ? ctx.t('offline_saved_places') : '', p.address, distLabel(p.distance_m)].filter(Boolean).join(' · '), place: p }));
+    const local = localResolve(text, { city: ctx.state.city, origin: c, saved: ctx.saved?.data }).map((p) => ({ kind: 'place', icon: p.kind === 'seller' ? 'bag' : p.kind === 'saved' ? 'starfill' : 'pin', label: p.name, sub: [p.kind === 'seller' ? ctx.t('demo_seller') : p.kind === 'saved' ? ctx.t('offline_saved_places') : '', p.address].filter(Boolean).join(' · '), place: p }));
     const cats = catMatches(text).slice(0, 3).map((cat) => ({ kind: 'cat', icon: cat.icon, label: catLabel(cat.id), sub: ctx.t('nearby'), cat: cat.id }));
     const recents = ctx.saved.recents().filter((r) => r.label.toLowerCase().includes(text.toLowerCase())).slice(0, 2).map((r) => ({ kind: 'recent', icon: 'clock', label: r.label, sub: '', recent: r }));
     const shop = isProductQuery(text) ? [{ kind: 'shop', icon: 'bag', label: ctx.tf('search_products', { q: text }), q: text }] : [];
@@ -95,7 +126,7 @@ export function initSearch(ctx) {
       if (res && mySeq === sugSeq && q.value.trim() === text) {
         const seen = new Set(items.filter((x) => x.place).map((x) => x.place.name.toLowerCase()));
         const off = res.filter((p) => !seen.has(p.name.toLowerCase()))
-          .map((p) => ({ kind: 'place', icon: 'pin', label: p.name, sub: [ctx.t('offline_index'), nativeLabel(p), p.kind === 'postcode' ? ctx.t('pincode') : p.kind === 'digipin' ? 'DIGIPIN' : kindLabel(p.kind), distLabel(p.distance_m)].filter(Boolean).join(' · '), place: p }));
+          .map((p) => ({ kind: 'place', icon: 'pin', label: p.name, native: nativeLabel(p), sub: [ctx.t('offline_index'), p.kind === 'postcode' ? ctx.t('pincode') : p.kind === 'digipin' ? 'DIGIPIN' : kindLabel(p.kind)].filter(Boolean).join(' · '), place: p }));
         if (off.length) { items = [...items.filter((x) => x.kind !== 'shop'), ...off, ...items.filter((x) => x.kind === 'shop')]; renderSuggest(); }
       }
     } catch { /* index optional */ }
@@ -104,10 +135,15 @@ export function initSearch(ctx) {
         const res = await photonDebounced(text, c);
         if (res?.superseded || mySeq !== sugSeq || q.value.trim() !== text || document.activeElement !== q) return;
         const seen = new Set(items.filter((x) => x.place).map((x) => x.place.name.toLowerCase()));
-        const extra = res.filter((p) => !seen.has(p.name.toLowerCase())).slice(0, 5).map((p) => ({ kind: 'place', icon: 'pin', label: p.name, sub: [p.address, distLabel(p.distance_m)].filter(Boolean).join(' · '), place: p }));
+        const extra = res.filter((p) => !seen.has(p.name.toLowerCase())).slice(0, 5).map((p) => ({ kind: 'place', icon: 'pin', label: p.name, sub: p.address || kindLabel(p.kind), place: p }));
         items = [...items.filter((x) => x.kind !== 'shop'), ...extra, ...items.filter((x) => x.kind === 'shop')];
         renderSuggest();
       } catch { /* type-ahead is best effort; submit still geocodes */ }
+    }
+    // v0.7.18 (A4): no match → say so and offer actions instead of an empty dropdown.
+    if (mySeq === sugSeq && q.value.trim() === text && text.length >= 3 && !items.length) {
+      items = [{ kind: 'empty', icon: 'search', label: ctx.tf('st_no_match_t', { q: text }) }, { kind: 'area', icon: 'search', label: ctx.tf('sug_area', { q: text }), q: text }, { kind: 'report', icon: 'flag', label: ctx.t('st_report_missing') }];
+      renderSuggest();
     }
   }
   let sugT;
@@ -131,6 +167,9 @@ export function initSearch(ctx) {
     if (it.kind === 'cat') { q.value = it.label; openCategory(it.cat); }
     else if (it.kind === 'place') { q.value = it.label; ctx.saved.addRecent({ label: it.label, place: it.place }); ctx.place.open(it.place); }
     else if (it.kind === 'shop') { ctx.openShop?.({ q: it.q }); }
+    else if (it.kind === 'area') { areaSearch(it.q); }
+    else if (it.kind === 'report') { reportMissing(); }
+    else if (it.kind === 'empty') { return; }
     else if (it.kind === 'recent') {
       q.value = it.recent.label;
       if (it.recent.place) ctx.place.open(it.recent.place);
@@ -160,12 +199,41 @@ export function initSearch(ctx) {
     }
     if (!r.items.length) {
       $('resMeta').textContent = r.error ? serviceError(ctx, { message: r.error }, 'Nominatim') : ctx.tf('no_match', { q: text });
-      if (isProductQuery(text)) $('poiList').innerHTML = `<li><button class="row-btn" data-shopq="${esc(text)}">${icon('bag')}<span>${esc(ctx.tf('search_products', { q: text }))}</span></button></li>`;
+      noMatchState(text, r.error);
       return;
     }
     ctx.saved.addRecent({ label: text, place: r.items.length === 1 ? r.items[0] : null });
     if (r.items.length === 1) return ctx.place.open(r.items[0]);
     showList(r.items, { title: text, meta: ctx.tf('places_n', { n: r.items.length }) });
+  }
+  // v0.7.18 (A4): every empty/failed result offers a next step. Results stay inside India (the geocoders are bounded
+  // to India); we never silently jump to another country.
+  function noMatchState(text, error) {
+    clearMarkers(); $('resMeta').textContent = '';
+    const li = document.createElement('li'); li.className = 'state-li';
+    $('poiList').replaceChildren(li);
+    const actions = error
+      ? [{ id: 'retry', label: ctx.t('st_retry'), icon: 'swap' }, { id: 'offline', label: ctx.t('st_offline_search'), icon: 'download' }]
+      : [{ id: 'area', label: ctx.t('st_search_area'), icon: 'search' }, { id: 'report', label: ctx.t('st_report_missing'), icon: 'flag' }];
+    if (isProductQuery(text)) actions.push({ id: 'shop', label: ctx.tf('search_products', { q: text }), icon: 'bag' });
+    renderState(li, { icon: 'search', title: error ? ctx.t('st_error_t') : ctx.tf('st_no_match_t', { q: text }), body: error ? '' : ctx.t('st_no_match_b'), actions }, {
+      retry: () => submit(text), area: () => areaSearch(text), report: reportMissing, shop: () => ctx.openShop?.({ q: text }),
+      offline: async () => { const off = (await offlineLookup(text, mapCentre(), 20).catch(() => null)) || []; if (off.length) showList(off, { title: text, meta: ctx.tf('places_n', { n: off.length }) }); else noMatchState(text, null); },
+    });
+  }
+  function reportMissing() { const c = mapCentre(); ctx.report?.open({ lat: c.lat, lng: c.lng, name: '' }); }
+  /** Free-text search biased to the visible map (Photon near the map centre online; the on-device index offline). */
+  async function areaSearch(text) {
+    closeSuggest(); q.blur();
+    const c = mapCentre();
+    ctx.views.show('results', { push: ctx.views.current !== 'results', detent: 'half' });
+    $('resTitle').textContent = text; $('resMeta').textContent = ctx.t('loading'); $('poiList').innerHTML = '<li class="skeleton"></li><li class="skeleton"></li>';
+    let list = [];
+    if (navigator.onLine !== false) { try { list = await photonSearch(text, { lat: c.lat, lng: c.lng, lang: ctx.lang() }); } catch { list = []; } }
+    if (!list.length) list = (await offlineLookup(text, c, 20).catch(() => null)) || [];
+    list = list.map((p) => ({ ...p, distance_m: distanceM(c, p), _from: { ...c, real: false } })).sort((a, b) => (a.distance_m ?? 0) - (b.distance_m ?? 0));
+    if (!list.length) { $('resMeta').textContent = ctx.tf('no_match', { q: text }); noMatchState(text, null); return; }
+    showList(list, { title: text, meta: `${ctx.tf('places_n', { n: list.length })} · ${ctx.t('map_centre')}` });
   }
   $('searchForm').addEventListener('submit', (e) => { e.preventDefault(); if (active >= 0) pick(items[active]); else submit(q.value); });
 
@@ -187,13 +255,25 @@ export function initSearch(ctx) {
       const res = await fetchPois(catId, from, { s: b.getSouth(), w: b.getWest(), n: b.getNorth(), e: b.getEast() }, { maxKm: ctx.bw?.policy.overpassMaxKm ?? 8, limit: ctx.bw?.policy.poiLimit ?? 60 });
       if (ctx.views.current !== 'results' || lastCat !== catId) return;
       const list = res.items.slice(0, 60).map((p) => ({ ...p, icon: cat.icon, _from: from }));
-      if (!list.length) { $('resMeta').textContent = ctx.tf('res_none', { cat: catLabel(catId).toLowerCase() }); $('poiList').innerHTML = ''; clearMarkers(); return; }
+      if (!list.length) {
+        $('resMeta').textContent = ''; clearMarkers();
+        const li = document.createElement('li'); li.className = 'state-li'; $('poiList').replaceChildren(li);
+        renderState(li, { icon: cat.icon, title: ctx.tf('st_cat_none_t', { cat: catLabel(catId).toLowerCase() }), body: ctx.t('st_cat_none_b'),
+          actions: [{ id: 'zoom', label: ctx.t('st_zoom_out'), icon: 'zoomout' }, { id: 'report', label: ctx.t('st_report_missing'), icon: 'flag' }] }, {
+          zoom: () => { map.jumpTo({ zoom: Math.max(3, map.getZoom() - 2) }); const m = map.getCenter(); openCategory(catId, { center: { lat: m.lat, lng: m.lng } }); },
+          report: reportMissing,
+        });
+        return;
+      }
       showList(list, { title: catLabel(catId), meta: `${ctx.tf('places_n', { n: list.length })} · ${from.real ? ctx.t('your_location') : ctx.t('map_centre')}` });
     } catch (e) {
       if (ctx.views.current !== 'results') return;
-      $('resMeta').innerHTML = `${esc(serviceError(ctx, e, 'Overpass (OpenStreetMap)'))} <button class="link" id="resRetry">${esc(ctx.t('retry'))}</button>`;
-      $('poiList').innerHTML = '';
-      $('resRetry').onclick = () => openCategory(catId, { center: c });
+      $('resMeta').textContent = '';
+      const li = document.createElement('li'); li.className = 'state-li'; $('poiList').replaceChildren(li);
+      renderState(li, { icon: 'alert', title: ctx.t('st_error_t'), body: serviceError(ctx, e, 'Overpass (OpenStreetMap)'),
+        actions: [{ id: 'retry', label: ctx.t('st_retry'), icon: 'swap' }, ...(ctx.style?.offline ? [] : [{ id: 'lowbw', label: ctx.t('mf_lowbw'), icon: 'download' }])] }, {
+        retry: () => openCategory(catId, { center: c }), lowbw: () => { ctx.bw?.set('on'); openCategory(catId, { center: c }); },
+      });
     }
   }
 
@@ -211,7 +291,7 @@ export function initSearch(ctx) {
     shown = list;
     ctx.views.show('results', { push: ctx.views.current !== 'results', detent: 'half', focus: false });
     $('resTitle').textContent = title; $('resMeta').textContent = meta || '';
-    $('poiList').innerHTML = list.map((p, i) => `<li><button class="row-btn" data-poi="${i}">${`<span class="row-ic cat-${esc(p.category || 'pin')}">${icon(p.icon || (p.kind === 'seller' ? 'bag' : 'pin'), { size: 20 })}</span>`}<span class="row-txt"><b>${esc(nameOf(p))}</b><small>${esc(placeSub(p))}</small></span></button></li>`).join('');
+    $('poiList').innerHTML = list.map((p, i) => `<li><button class="row-btn" data-poi="${i}">${`<span class="row-ic glyph hue-${p.category ? hueOf(p.category) : p.kind === 'seller' ? 'shop' : hueForKind(p.kind, p.osm_key)} cat-${esc(p.category || 'pin')}">${icon(p.icon || (p.kind === 'seller' ? 'bag' : 'pin'), { size: 20 })}</span>`}<span class="row-txt"><b>${esc(nameOf(p))}</b><small>${esc(placeSub(p))}</small></span></button></li>`).join('');
     plotMarkers(list);
   }
   $('poiList').addEventListener('click', (e) => {
@@ -244,5 +324,5 @@ export function initSearch(ctx) {
   ctx.on('view', ({ name }) => { if (name === 'home') { clearMarkers(); lastCat = null; $('searchAreaBtn').hidden = true; q.value = ''; clearBtn.hidden = true; } if (name !== 'results') $('searchAreaBtn').hidden = true; });
   ctx.on('lang', renderCats);
   renderCats();
-  return { openCategory, submit, clearMarkers, catLabel };
+  return { openCategory, submit, clearMarkers, catLabel, areaSearch };
 }

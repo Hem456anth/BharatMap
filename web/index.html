@@ -48,6 +48,13 @@
   </div>
   <button id="searchAreaBtn" class="search-area" hidden data-i18n="search_area">Search this area</button>
   <div id="modeBadge" class="badge" hidden></div>
+  <!-- v0.7.18 (A5): shown when the map cannot draw (WebGL) or tiles/style fail; always offers an action -->
+  <div id="mapFail" class="map-fail" role="alert" hidden>
+    <span data-icon="alert" aria-hidden="true"></span>
+    <div class="mf-txt"><b id="mapFailTitle">Map didn’t load</b><p id="mapFailBody">Search, saved places and directions still work.</p>
+      <div class="row"><button type="button" class="btn tonal" id="mapFailRetry" data-i18n="mf_retry">Retry</button><button type="button" class="btn ghost" id="mapFailLowBw" data-i18n="mf_lowbw">Low-bandwidth mode</button><button type="button" class="btn ghost" id="mapFailOffline" data-i18n="mf_offline">Use offline map</button></div></div>
+    <button type="button" class="icon-btn sm" id="mapFailClose" data-i18n-aria="mf_dismiss" aria-label="Dismiss" data-icon="close"></button>
+  </div>
   <button id="cartBtn" class="cartfab" hidden aria-label="Open cart"><span data-icon="bag"></span> <span id="cartCount">0</span> · <span id="cartTotal"></span></button>
 
   <!-- Draggable bottom sheet (peek / half / full) -->
@@ -58,7 +65,8 @@
 
       <!-- HOME -->
       <div class="view" data-view="home">
-        <div class="chiprow" id="cats" role="list" aria-label="Find nearby"></div>
+        <h3 class="home-h" id="catsH" data-i18n="find_nearby">Find nearby</h3>
+        <div class="cat-grid" id="cats" role="list" aria-labelledby="catsH"></div>
         <div class="commute" id="commute" hidden></div>
         <div class="section">
           <div class="section-h"><h3 data-i18n="saved">Saved places</h3><button class="link" id="importGeo" type="button" data-i18n="import_file">Import GPX / KML</button></div>
@@ -76,6 +84,12 @@
           <button class="tile" id="openSettings"><span class="tile-ic" data-icon="gear"></span><span><b data-i18n="settings">Settings</b><small data-i18n="privacy">Privacy</small></span><span data-icon="chev"></span></button>
         </div>
         <p class="attrib small muted" id="attribText">Map data © OpenStreetMap contributors</p>
+      </div>
+
+      <!-- ALL CATEGORIES (v0.7.18, A7) -->
+      <div class="view" data-view="allcats" hidden>
+        <header class="view-h"><button class="icon-btn" data-back data-i18n-aria="back" aria-label="Back" data-icon="back"></button><h3 data-i18n="allcats_title" tabindex="-1">All categories</h3><button class="icon-btn" data-home data-i18n-aria="close" aria-label="Close" data-icon="close"></button></header>
+        <div id="allCats" class="allcats"></div>
       </div>
 
       <!-- CATEGORY / SEARCH RESULTS -->

@@ -1235,6 +1235,157 @@ for (const vp of [{ name: 'desktop', width: 1366, height: 820 }, { name: 'mobile
   await ctx.close();
 }
 
+// ======================= v0.7.18 UI/UX pass (A1–A7, A15) =======================
+// Shots: docs/screenshots/v0718/e2e-*.png (before/after comparison shots come from scripts/shots-v0718.mjs).
+const shot718 = (page, name) => page.screenshot({ path: `${OUT}/v0718/e2e-${name}.png` });
+fs.mkdirSync(`${OUT}/v0718`, { recursive: true });
+const RICH718 = { id: 'demo:rich718', name: 'Sea View Tiffins', lat: 17.7142, lng: 83.3239, address: 'Beach Road, Visakhapatnam 530017', kind: 'poi', category: 'restaurant',
+  tags: { amenity: 'restaurant', opening_hours: '24/7', phone: '+91 891 000 0000', 'payment:upi': 'yes', 'payment:cash': 'yes', 'diet:vegetarian': 'only', wheelchair: 'limited', 'name:te': 'సీ వ్యూ టిఫిన్స్', description: 'SYNTHETIC test place.' } };
+for (const vp of [{ name: 'desktop', width: 1366, height: 820 }, { name: 'mobile', width: 390, height: 844, isMobile: true }]) {
+  const V = vp.name;
+  const { ctx, page, errors } = await newPage(vp, { blockSW: true });
+  // nonsense query: geocoders answer "nothing" (the default fixtures return Kailasagiri for any text)
+  const empty = (r) => r.fulfill({ status: 200, contentType: 'application/json', headers: { 'Access-Control-Allow-Origin': '*' }, body: /photon/.test(r.request().url()) ? '{"type":"FeatureCollection","features":[]}' : '[]' });
+  await ctx.route(/^https:\/\/(photon\.komoot\.io|nominatim\.openstreetmap\.org\/search)/, (r) => (/xqzvbk/i.test(r.request().url()) ? empty(r) : r.fallback()));
+
+  await step(`v0718 ${V}: A1 tokens + layout — warm panel, ${V === 'desktop' ? 'docked 420 px full-height panel' : 'bottom sheet'}, A7 India chip grid (13 + All categories) with hue circles`, async () => {
+    await boot(page);
+    const lay = await page.evaluate(() => { const r = document.getElementById('sheet').getBoundingClientRect(); const cs = getComputedStyle(document.getElementById('sheet')); return { left: r.left, width: r.width, top: r.top, height: r.height, bg: cs.backgroundColor, vh: innerHeight }; });
+    assert(lay.bg === 'rgb(250, 248, 244)', `warm panel ${lay.bg}`);
+    if (V === 'desktop') assert(lay.left === 0 && Math.round(lay.width) === 420 && lay.top === 0 && Math.round(lay.height) === lay.vh, `docked ${JSON.stringify(lay)}`);
+    assert(await page.$$eval('#cats [data-cat]', (b) => b.length) === 13, '13 category tiles');
+    assert(await page.isVisible('#allCatsBtn'), 'All categories tile');
+    const order = await page.$$eval('#cats [data-cat]', (b) => b.slice(0, 3).map((x) => x.dataset.cat));
+    assert(order.join() === 'fuel,ev,atm', `India-first order ${order}`);
+    const hue = await page.$eval('#cats [data-cat=fuel] .glyph', (g) => getComputedStyle(g).backgroundColor);
+    assert(hue === 'rgb(194, 65, 12)', `fuel hue ${hue}`);
+    await shot718(page, `${V}-01-home`);
+    await page.click('#allCatsBtn'); await waitView(page, 'allcats');
+    assert(await page.$$eval('#allCats [data-cat]', (b) => b.length) === 13, 'all categories listed once');
+    await page.click('#allCats [data-cat=fuel]'); await waitView(page, 'results');
+    await page.waitForFunction(() => document.querySelectorAll('#poiList [data-poi]').length >= 5, null, { timeout: 15000 });
+    assert(await page.$('#poiList .row-ic.glyph.hue-fuel'), 'result rows carry the category hue');
+    await home(page);
+  });
+
+  await step(`v0718 ${V}: A6 autocomplete — only the match bolded, distance from map centre, Telugu script badge, keyboard highlight bar`, async () => {
+    await page.evaluate(() => import('/lib/offline-search.js').then((m) => m.loadSearchIndex()));
+    await page.fill('#q', ''); await page.click('#q'); await page.type('#q', 'simhachalam', { delay: 15 });
+    await page.waitForFunction(() => [...document.querySelectorAll('#suggest li')].some((li) => li.querySelector('.script-badge[lang=te]')), null, { timeout: 10000 });
+    const row = await page.evaluate(() => { const li = [...document.querySelectorAll('#suggest li')].find((x) => x.querySelector('.script-badge')); return { t: li.querySelector('.sug-t').innerHTML, d: li.querySelector('.sug-dist')?.textContent, badge: li.querySelector('.script-badge').textContent }; });
+    assert(/<b>Simhachalam<\/b>/.test(row.t), `bold match ${row.t}`);
+    assert(/సింహాచలం/.test(row.badge), `badge ${row.badge}`);
+    assert(/^\d[\d,.]* (km|m)$/.test(row.d || ''), `distance ${row.d}`);
+    await page.fill('#q', ''); await page.type('#q', 'Kailasa', { delay: 15 });
+    await page.waitForFunction(() => [...document.querySelectorAll('#suggest .sug-t')].some((x) => /Kailasagiri/.test(x.textContent)), null, { timeout: 10000 });
+    const t = await page.evaluate(() => [...document.querySelectorAll('#suggest .sug-t')].find((x) => /Kailasagiri/.test(x.textContent)).innerHTML);
+    assert(/^<b>Kailasa<\/b>giri/.test(t), `only "Kailasa" bold: ${t}`);
+    await page.keyboard.press('ArrowDown');
+    const bar = await page.$eval('#suggest li[aria-selected=true]', (li) => getComputedStyle(li, '::before').width);
+    assert(bar === '4px', `selected row bar ${bar}`);
+    await shot718(page, `${V}-02-autocomplete`);
+    await page.keyboard.press('Escape');
+  });
+
+  await step(`v0718 ${V}: A4 no match — suggestion rows and the results state both offer actions (map-area search, report missing place)`, async () => {
+    await page.fill('#q', ''); await page.click('#q'); await page.type('#q', 'xqzvbk', { delay: 15 });
+    await page.waitForFunction(() => /No places match/.test(document.getElementById('suggest').textContent), null, { timeout: 10000 });
+    assert(await page.$('#suggest li.sug-act'), 'action rows');
+    await page.keyboard.press('Escape');
+    await page.evaluate(() => window.__bm.ctx.search.submit('xqzvbk'));
+    await page.waitForSelector('#poiList .state [data-state-act=area]', { timeout: 15000 });
+    assert(await page.$('#poiList .state [data-state-act=report]'), 'report action');
+    await shot718(page, `${V}-03-no-match`);
+    await page.click('#poiList [data-state-act=report]'); await page.waitForSelector('#reportDlg[open]');
+    await page.keyboard.press('Escape');
+    await home(page);
+  });
+
+  await step(`v0718 ${V}: A2 place card — fixed block order, label/value ribbon with hours state, good-to-know, details; lean card asks for help`, async () => {
+    await page.evaluate((r) => window.__bm.ctx.place.open(r), RICH718);
+    await page.waitForSelector('#pcRibbon');
+    const order = await page.evaluate(() => [...document.getElementById('placeCard').children].map((e) => e.id || e.className.split(' ')[0]).filter(Boolean));
+    const want = ['pc-head', 'actions', 'pcRibbon', 'pcAbout', 'pcGtk', 'pcServices', 'pcAlso', 'pcDetailsH'];
+    let last = -1; for (const w of want) { const i = order.indexOf(w); assert(i > last, `block order ${order.join(',')}`); last = i; }
+    assert((await page.getAttribute('#pcHoursState', 'data-state')) === 'open', 'hours state');
+    assert(/UPI/.test(await page.textContent('#pcRibbon')) && /Pure vegetarian/.test(await page.textContent('#pcGtk')), 'ribbon + good to know');
+    assert(/సీ వ్యూ టిఫిన్స్/.test(await page.textContent('#pcNative')), 'local-script name line');
+    assert(!(await page.$('#pcHelp')), 'rich card is not lean');
+    const dirBg = await page.$eval('#pcDir', (b) => getComputedStyle(b).backgroundColor);
+    const saveBg = await page.$eval('#pcSave', (b) => getComputedStyle(b).backgroundColor);
+    assert(dirBg === 'rgb(15, 110, 86)' && saveBg !== dirBg, `only Directions is filled (${dirBg} / ${saveBg})`);
+    await page.waitForTimeout(800); await shot718(page, `${V}-04-place-rich`);
+    await page.evaluate(() => window.__bm.ctx.place.open({ id: 'osm:node/9000000777', name: 'Lean Place', lat: 17.72, lng: 83.31, kind: 'poi', osm_type: 'node', osm_id: 9000000777, address: 'Visakhapatnam', tags: {} }));
+    await page.waitForSelector('#pcHelp');
+    assert(!(await page.$('#pcRibbon')) && !(await page.$('#pcGtk')) && !(await page.$('#pcAbout')), 'empty blocks dropped');
+    assert(await page.$('#pcAddr') && await page.$('[data-copy=digipin]'), 'details kept');
+    await shot718(page, `${V}-05-place-lean`);
+  });
+
+  await step(`v0718 ${V}: A3 directions — header totals (time, distance, arrival) + Start; selected card filled; switching updates totals`, async () => {
+    await page.evaluate(() => window.__bm.ctx.directions.open({ lat: 17.7142, lng: 83.3239, name: 'RK Beach' }, { mode: 'drive', from: { lat: 17.7289, lng: 83.305, name: 'Dwaraka Nagar' } }));
+    await page.waitForSelector('#dirSummary #dirStart', { timeout: 20000 });
+    assert(/min/.test(await page.textContent('#dsTime')) && /km · Arrive \d\d:\d\d/.test(await page.textContent('#dsMeta')), `totals ${await page.textContent('#dirSummary')}`);
+    const sel = await page.$eval('.route-opt[aria-checked=true]', (b) => getComputedStyle(b).backgroundColor);
+    assert(sel === 'rgb(47, 58, 143)', `selected filled neel ${sel}`);
+    const n = await page.$$eval('[data-route]', (b) => b.length);
+    if (n > 1) {
+      const before = await page.textContent('#dsMeta');
+      await page.click('[data-route="1"]');
+      await page.waitForFunction(() => document.querySelector('[data-route="1"]').getAttribute('aria-checked') === 'true');
+      const r1 = await page.textContent('[data-route="1"] .r-meta');
+      const km = /· ([\d.]+ k?m)/.exec(r1)?.[1];
+      assert(km && (await page.textContent('#dsMeta')).includes(km), `totals follow selection ${before} → ${await page.textContent('#dsMeta')} (${r1})`);
+      await page.click('[data-route="0"]');
+    }
+    assert(/Steps \(\d+\) · /.test(await page.textContent('#dirSteps summary')), 'steps header carries totals');
+    await page.waitForTimeout(800); await shot718(page, `${V}-06-directions`);
+  });
+
+  await step(`v0718 ${V}: A4 unavailable mode — transit with no timetable offers 2-wheeler / drive, which switch mode`, async () => {
+    await page.click('[data-mode=transit]');
+    await page.waitForSelector('#transitAlt [data-state-act=two]', { timeout: 20000 });
+    assert(/timetables aren/.test(await page.textContent('#transitAlt')), 'reason kept');
+    await shot718(page, `${V}-07-transit-unavailable`);
+    await page.click('#transitAlt [data-state-act=two]');
+    await page.waitForFunction(() => window.__bm.ctx.directions.state.mode === 'two' && document.getElementById('dirStart'), null, { timeout: 20000 });
+    await home(page);
+  });
+
+  await step(`v0718 ${V}: A15 focus-visible ring on chip tiles and route cards; hover overlay only on pointer devices`, async () => {
+    await page.evaluate(() => document.querySelector('#cats [data-cat=ev]').focus({ focusVisible: true }));
+    const ring = await page.$eval('#cats [data-cat=ev]', (b) => { const cs = getComputedStyle(b); return `${cs.outlineStyle} ${cs.outlineWidth}`; });
+    assert(ring === 'solid 2px', `focus ring ${ring}`);
+    const hoverRule = await page.evaluate(() => matchMedia('(hover: hover)').matches);
+    if (V === 'mobile') assert(!hoverRule, 'touch emulation: no hover styles');
+    const real = errors.filter((e) => !/ERR_INTERNET_DISCONNECTED|ERR_FAILED|Failed to load resource/.test(e));
+    assert(!real.length, `console errors: ${real.slice(0, 2).join(' | ')}`);
+  });
+  await ctx.close();
+
+  await step(`v0718 ${V}: A5 map failure — online tiles and the bundled offline map both fail → banner with Retry (never a silent blank map)`, async () => {
+    const { ctx: c2, page: p2 } = await newPage(vp, { blockSW: true, fail: { tiles: true } });
+    await c2.route(/\/offline\/.*\.(pmtiles|json)$/, (r) => r.abort('internetdisconnected'));
+    await p2.goto(BASE, { waitUntil: 'domcontentloaded' });
+    await p2.waitForFunction(() => window.__bm?.ctx && !document.getElementById('mapFail').hidden, null, { timeout: 45000 });
+    assert(/Map (didn’t load|is taking too long)/.test(await p2.textContent('#mapFailTitle')), 'banner title');
+    assert(await p2.isVisible('#mapFailRetry'), 'retry');
+    assert(await p2.isVisible('#q') && await p2.isVisible('#cats [data-cat=fuel]'), 'search still usable');
+    await shot718(p2, `${V}-08-map-failure`);
+    await p2.click('#mapFailClose');
+    assert(await p2.isHidden('#mapFail'), 'dismissible');
+    await c2.close();
+  });
+  if (V === 'mobile') await step('v0718 mobile: A5 no WebGL → banner with Retry instead of a blank page', async () => {
+    const { ctx: c3, page: p3 } = await newPage(vp, { blockSW: true, init: `(() => { const g = HTMLCanvasElement.prototype.getContext; HTMLCanvasElement.prototype.getContext = function (t, ...a) { return /webgl/.test(t) ? null : g.call(this, t, ...a); }; })();` });
+    await p3.goto(BASE, { waitUntil: 'domcontentloaded' });
+    await p3.waitForFunction(() => !document.getElementById('mapFail').hidden && document.getElementById('mapFail').dataset.reason === 'webgl', null, { timeout: 20000 });
+    assert(/couldn’t draw the map/.test(await p3.textContent('#mapFailTitle')), 'webgl title');
+    await shot718(p3, 'mobile-09-no-webgl');
+    await c3.close();
+  });
+}
+
 await browser.close();
 console.log(results.join('\n'));
 fs.writeFileSync('docs/e2e-results.txt', `${results.join('\n')}\n`);

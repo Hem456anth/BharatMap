@@ -1,3 +1,21 @@
+# Audit — UI/UX pass 0.7.18 (20 Oct 2026)
+
+Details per item: `docs/re/UI_UX_V0718.md`. Clean-room: no third-party screenshots, icons, fonts or copy in the repo;
+"Deccan dusk" identity kept; CoMaps stays the architectural blueprint.
+
+| Area | Feature | Status | Evidence |
+|---|---|---|---|
+| A1 | Design tokens (type 24/22/20/17/15/11, spacing, radii, motion, warm panel, dark cards darker than the panel), accent only for selection/primary/links/focus, 420 px docked panel ≥ 1280 px | ✅ map surfaces · 🟡 Shop/admin/settings not migrated | `web/styles.css` (v0.7.18 block), unit + E2E (layout measured) |
+| A2 | Place-card block order, blocks dropped without data, label/value ribbon, Open / Closing soon / Closed / Opening soon, Good to know, lean-card help prompt | ✅ · ⬜ photos, ratings (no data source) | `web/ui/place.js`, `hoursState()` / `placeBlocks()`; unit + E2E |
+| A3 | Route option cards (selected filled), header with total time / distance / arrival + Start, totals on steps | ✅ · ⬜ toll ₹ / elevation badges | `web/ui/directions.js`, `routeDescriptor()`; unit + E2E |
+| A4 | Empty / unavailable states always with an action (search, category, errors, route fallback, transit, empty list) | ✅ | `web/ui/states.js`, `emptyState()` refuses action-less states; unit + E2E |
+| A5 | Map-failure banner (WebGL / style timeout / tiles + no offline) with Retry, low-bandwidth, offline map | ✅ · 🟡 no raster fallback without WebGL | `web/ui/map-health.js`, `mapHealth()`; unit + E2E (tiles + offline blocked; WebGL disabled) |
+| A6 | Autocomplete: match-only bold, map-centre distance, script badge, DIGIPIN/pincode glyphs, highlight bar | ✅ | `web/ui/search.js`; unit + E2E |
+| A7 | 16 category hue tokens (≥ 3:1), India-first chip grid + All categories page | ✅ | unit (contrast) + E2E |
+| A15 | Hover (pointer only) / press / focus-visible / selected states | ✅ | CSS; unit + E2E (focus ring, no hover on touch) |
+| i18n | 88 keys en/hi/te (`shared/i18n-v0718.js`) | 🟡 | hi/te need native review; 8 languages fall back to English |
+| Size | APK slimming | ⏸ awaiting the owner | unchanged |
+
 # Audit — CoMaps-blueprint sprint (20 Oct 2026)
 
 CoMaps is now the primary architecture reference (`docs/re/COMAPS_TEARDOWN.md`, roadmap in `docs/re/OPPORTUNITIES.md`).
