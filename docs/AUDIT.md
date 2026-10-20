@@ -9,7 +9,8 @@
 | Safety | `safeLinkout` accepts intent URLs only for a known package + its declared scheme/host + https fallback; admin provider links reject `intent:`; no `upi://` anywhere (source scan test) | ✅ | `tests/deeplinks.test.js` |
 
 ### Tests (deep links)
-- `tests/deeplinks.test.js` (9): inventory vs `APPS` (package, version, cert), intent URL format/round-trip/refusals, `safeIntent`, every link on a declared + autoVerify path with an https fallback and no query, package match across catalogue/panels/intent URLs, ride prefill only for Uber, platform choice, payments none, no `upi://` scan. `npm test`: **175 / 175**.
+- `tests/deeplinks.test.js` (9): inventory vs `APPS` (package, version, cert), intent URL format/round-trip/refusals, `safeIntent`, every link on a declared + autoVerify path with an https fallback and no query, package match across catalogue/panels/intent URLs, ride prefill only for Uber, platform choice, payments none, no `upi://` scan. `npm test`: **175 / 175**; CI [run 15](https://github.com/Hem456anth/BharatMap/actions/runs/39370432747) green (E2E 112 / 112).
+- Release: [v0.7.15](https://github.com/Hem456anth/BharatMap/releases/tag/v0.7.15), `bharat-map-0.7.15.apk` signed offline with the release key, debuggable=false.
 
 # Audit — Bharat Map v0.7 (20 Oct 2026) — place-card service panels, provider catalogue, payments
 

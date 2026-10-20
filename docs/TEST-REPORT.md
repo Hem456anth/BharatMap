@@ -1,3 +1,34 @@
+# Bharat Map 0.7.15 — verified app deep links — Test report
+
+Run date: 20 Oct 2026 (IST). Raw outputs: `docs/test-output.txt` (npm test, local), `docs/e2e-results.txt` (CI run 15 E2E).
+
+## Summary
+| Suite | Result |
+|---|---|
+| Unit + API (`npm test`) | **175 / 175 pass** locally and in CI (166 + 9 new in `tests/deeplinks.test.js`); `npm audit` 0 vulnerabilities; secret scan ✅ |
+| Browser E2E | **112 / 112 pass, 0 FAIL** in one full run on GitHub's Chromium; locally the `v07 desktop` and `v07 mobile` chunks (10 steps) pass. Updated steps: `v07 * restaurant` (Swiggy **App Link**, package named, URL `https://www.swiggy.com/`, no Unverified warning) and `v07 * ride` (Uber **Documented** + "Prefilled"; Rapido **Declared · Unverified**, warning shown, off-Android opens `https://www.rapido.bike/`) |
+| CI | [run 15](https://github.com/Hem456anth/BharatMap/actions/runs/39370432747) (`5cb9301`): all three jobs green on the first attempt (Android build compiles the new `ExternalAppPlugin`) |
+
+## Release v0.7.15
+| Check | Result |
+|---|---|
+| Unsigned artifact | `bharat-map-0.7.15-release-unsigned.apk` 100,364,938 bytes (CI has no signing secrets) |
+| Signing | Signed offline (`apksigner` 35, release key alias `bharatmap`): **Verifies**, v1 ✅ v2 ✅ v3 ✅, one signer `CN=Bharat Map`, cert SHA-256 `d04d20f9fd727d7ca6d966e771e2ed5760b20fefe9c139d36f0e3e86b7997c6c` (same key as 0.5.13/0.7.14 → installs over them); `zipalign -c -P 16 4` OK |
+| Manifest | `package com.indiamapos.app versionCode='15' versionName='0.7.15'`, minSdk 23, target 35; no `android:debuggable` → **debuggable=false**; `ExternalAppPlugin` present in `classes.dex`; `shared/services/deeplinks.js` in the web bundle |
+| Attached | [attach run 2](https://github.com/Hem456anth/BharatMap/actions/runs/39371105179) (`attach-apk.yml`: SHA-256 matched, apksigner/zipalign/aapt re-checked on GitHub) |
+| Release | [v0.7.15](https://github.com/Hem456anth/BharatMap/releases/tag/v0.7.15): **`bharat-map-0.7.15.apk` 100,518,861 bytes** (95.9 MiB), SHA-256 `de1c27f261f201a06eab3e29962422857deb0481f7e9f84ed398e15c1f0b5da7` (re-downloaded and matched) + `bharat-map-0.7.15-debug.apk` 102,860,835 bytes |
+
+### New unit tests (9) — `tests/deeplinks.test.js`
+Inventory vs `APPS` (package, version, signer cert for all 15 APKs; SDK ids redacted); intent URL format, round-trip and
+refusals (payment schemes, unknown package, missing/non-https fallback); `safeIntent`/`safeLinkout` (package must match the
+declaring app, declared host only, no extra intent fields); every deep link on a declared + `autoVerify` path with an https
+fallback and no query string (Android glob matcher; Agoda `/en-in/` proven undeclared); package match across catalogue,
+built panels and intent URLs; only Uber prefills pickup/drop; intent URLs only on Android; PhonePe / Google Pay / EasyPark
+build nothing; no `upi://` in source (comments stripped), panels, catalogue or the deep-link table.
+
+### Known gaps
+No real-device run with the provider apps installed (App Link verification and the intent hand-off are untested on a phone).
+
 # Bharat Map v0.7 — Test report
 
 Run date: 20 Oct 2026 (IST), aarch64 sandbox, Chromium 129 headless (SwiftShader). Raw outputs: `docs/test-output.txt`
