@@ -1,3 +1,38 @@
+# Bharat Map 0.7.16 — app hand-offs for every remaining provider — Test report
+
+Run date: 20 Oct 2026 (IST). Raw outputs: `docs/test-output.txt` (npm test, local), `docs/e2e-results.txt` (CI run 16 E2E).
+
+## Summary
+| Suite | Result |
+|---|---|
+| Unit + API (`npm test`) | **184 / 184 pass** locally and in CI (175 + 9 new in `tests/deeplinks-web.test.js`); `npm audit` 0 vulnerabilities; secret scan ✅ |
+| Browser E2E | **114 / 114 pass, 0 FAIL** in one full run on GitHub's Chromium (112 + 2 new: `v07 desktop/mobile: web-verified hand-offs` — magicpin App Link from assetlinks.json, eSanjeevani Web only, 112 India Store link whose off-Android destination is `https://112.gov.in/`); locally the `v07 desktop` and `v07 mobile` chunks pass |
+| CI | [run 16](https://github.com/Hem456anth/BharatMap/actions/runs/39374949457) (`113fbe2`): all three jobs green on the first attempt (no fix rounds) |
+
+## Release v0.7.16
+| Check | Result |
+|---|---|
+| Unsigned artifact | `bharat-map-0.7.16-release-unsigned.apk` 100,373,398 bytes (CI has no signing secrets) |
+| Signing | Signed offline (`zipalign -P 16 4`, `apksigner` 35, release key alias `bharatmap`): **Verifies**, v1 ✅ v2 ✅ v3 ✅, one signer `CN=Bharat Map`, cert SHA-256 `d04d20f9fd727d7ca6d966e771e2ed5760b20fefe9c139d36f0e3e86b7997c6c` (same key as 0.5.13/0.7.14/0.7.15 → installs over them); `zipalign -c -P 16 4` OK |
+| Manifest | `package com.indiamapos.app versionCode='16' versionName='0.7.16'`, target/compile 35; no `android:debuggable` → **debuggable=false**; `deeplinks.js` + `deeplinks-web.js` in the web bundle; the Play-intent allow-list compiled into `ExternalAppPlugin` |
+| Attached | [attach run 3](https://github.com/Hem456anth/BharatMap/actions/runs/39375672766) (`attach-apk.yml`: SHA-256 matched, apksigner/zipalign/aapt re-checked on GitHub) |
+| Release | [v0.7.16](https://github.com/Hem456anth/BharatMap/releases/tag/v0.7.16): **`bharat-map-0.7.16.apk` 100,527,145 bytes** (95.9 MiB), SHA-256 `bd4e50300a01c9133be5643f929046582a47c8a3a9389a72a1f9d7237f0af7d6` (re-downloaded and matched) + `bharat-map-0.7.16-debug.apk` 102,870,212 bytes |
+
+### New unit tests (9) — `tests/deeplinks-web.test.js`
+Every catalogue provider has exactly one label and web entries never shadow an APK entry; every non-web provider has a
+package (format, app, Play developer) and an https fallback; every App Link is checked against the recorded
+`assetlinks-web.json` for that exact host (package + `handle_all_urls` + a well-formed SHA-256) and is the catalogue site
+with no query; every Store link is exactly `intent://details?id=<pkg>#Intent;scheme=market;package=com.android.vending;S.browser_fallback_url=<play.google.com>;end`
+and opens the official website off Android; `safeIntent` refuses Play intents for other packages, other fallbacks, extra
+fields or non-`details` pages; no query parameter anywhere in the web table or built panels (Ola's documented parameters
+only with a configured token); panel wiring (Practo App Link, eSanjeevani / Jio-bp Web-only, IndianOil and NHAI web page +
+app, Delhi Metro and TSavaari Store, Ola / Namma Yatri / Yatri Sathi App Links); en/hi/te labels and the native allow-list;
+classification counts (18 App Link, 41 Store, 8 Web-only, 8 None).
+
+### Known gaps
+No real-device run with the provider apps installed. App Link paths for the web-verified providers are not confirmed
+against the apps' manifests (no APKs); Store links open the Play page, not an in-app screen.
+
 # Bharat Map 0.7.15 — verified app deep links — Test report
 
 Run date: 20 Oct 2026 (IST). Raw outputs: `docs/test-output.txt` (npm test, local), `docs/e2e-results.txt` (CI run 15 E2E).
