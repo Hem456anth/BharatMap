@@ -982,6 +982,7 @@ for (const vp of [{ name: 'desktop', width: 1366, height: 820 }, { name: 'mobile
 // ---------------- v0.7: place-card service panels, link-out interstitial, order → separate payment screen ----------------
 const shot7 = (page, name) => page.screenshot({ path: `${OUT}/v07-${name}.png` });
 const PARADISE = { id: 'osm:node/9000000001', name: 'Paradise Biryani', lat: 17.4416, lng: 78.4873, tags: { amenity: 'restaurant', cuisine: 'biryani', website: 'https://www.paradisebiryani.com', opening_hours: 'Mo-Su 11:00-23:00' } };
+const KIMS = { id: 'osm:node/9000000003', name: 'KIMS Hospital', lat: 17.4235, lng: 78.4795, tags: { amenity: 'hospital', emergency: 'yes' } };
 const AMEERPET = { id: 'osm:node/9000000002', name: 'Ameerpet', lat: 17.4357214, lng: 78.4447933, tags: { railway: 'station', station: 'subway', name: 'Ameerpet', network: 'Hyderabad Metro' } };
 const V7_INIT = `globalThis.__BM_NOW__ = '2026-10-21T10:00:00+05:30'; window.__BM_LINKOUT_TEST__ = [];`;
 for (const vp of [{ name: 'desktop', width: 1366, height: 820 }, { name: 'mobile', width: 390, height: 844, isMobile: true }]) {
@@ -1005,6 +1006,29 @@ for (const vp of [{ name: 'desktop', width: 1366, height: 820 }, { name: 'mobile
     const urls = await page.evaluate(() => window.__BM_LINKOUT_TEST__);
     assert(urls.length === 1 && urls[0] === 'https://www.swiggy.com/', urls.join());
     assert(await page.isVisible('[data-sva=p-magicpin]') || await page.$('[data-sva=p-magicpin]'), 'magicpin from the provider catalogue');
+  });
+  await step(`v07 ${V}: web-verified hand-offs — magicpin App Link (assetlinks.json), 112 India Store link opens the official site off Android, eSanjeevani Web only`, async () => {
+    await page.evaluate(() => { window.__BM_LINKOUT_TEST__.length = 0; });
+    await page.click('[data-sva=p-magicpin]');
+    await page.waitForSelector('#linkoutDlg[open]');
+    assert((await page.getAttribute('#loBody [data-dl]', 'data-dl')) === 'applink' && (await page.getAttribute('#loBody [data-dl]', 'data-dl-src')) === 'assetlinks', 'magicpin App Link from assetlinks.json');
+    assert(/com\.magicpin\.local/.test(await page.textContent('#loBody')) && await page.$('#loBody [data-dl-assetlinks]'), 'package + assetlinks note');
+    await page.click('#loCancel');
+    await page.evaluate((p) => window.__bm.ctx.place.open(p), KIMS);
+    await panelReady('health');
+    await page.click('[data-sva=p-esanjeevani]');
+    await page.waitForSelector('#linkoutDlg[open]');
+    assert((await page.getAttribute('#loBody [data-dl]', 'data-dl')) === 'web' && await page.$('#loBody [data-dl-web]'), 'eSanjeevani Web only');
+    await page.click('#loCancel');
+    await page.click('[data-sva=p-112-india]');
+    await page.waitForSelector('#linkoutDlg[open]');
+    const body = await page.textContent('#loBody');
+    assert((await page.getAttribute('#loBody [data-dl]', 'data-dl')) === 'store' && /in\.cdac\.ners\.psa\.mobile\.android\.national/.test(body) && /112\.gov\.in/.test(body), body);
+    assert(/112\.gov\.in/.test(await page.textContent('#loBody [data-dl-store-dest]')), 'off Android: the official website');
+    await shot7(page, `${V}-01b-store-linkout`);
+    await page.click('#loGo');
+    const urls = await page.evaluate(() => window.__BM_LINKOUT_TEST__);
+    assert(urls.length === 1 && urls[0] === 'https://112.gov.in/', urls.join());
   });
   await step(`v07 ${V}: metro station — Scheduled departures from the bundled HMRL GTFS, WhatsApp ticket link-out, live arrivals Unavailable`, async () => {
     await page.evaluate((p) => window.__bm.ctx.place.open(p), AMEERPET);

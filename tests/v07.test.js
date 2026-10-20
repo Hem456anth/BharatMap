@@ -115,7 +115,9 @@ test('Uber universal link: client_id from config, pickup/dropoff lat/lng + nickn
   const b = uberLink({ dropoff: { lat: 17.3616, lng: 78.4747, name: 'Charminar' } });
   assert.match(b.url, /pickup=my_location/); assert.ok(!/client_id/.test(b.url));
   assert.throws(() => uberLink({}), /dropoff_required/);
-  assert.equal(olaLink({ dropoff: { lat: 17.36, lng: 78.47 } }).verified, false);
+  const o = olaLink({ dropoff: { lat: 17.36, lng: 78.47 } });
+  assert.equal(o.url, 'https://book.olacabs.com/'); assert.equal(o.deeplink.type, 'applink'); assert.equal(o.deeplink.prefill.length, 0, 'no pickup/drop without the Ola token');
+  assert.equal(olaLink({ dropoff: { lat: 17.36, lng: 78.47 }, pickup: HYD, xappToken: 'T' }).deeplink.type, 'documented');
   assert.match(olaLink({ dropoff: { lat: 17.36, lng: 78.47 }, pickup: HYD, xappToken: 'T' }).url, /^https:\/\/book\.olacabs\.com\/\?/);
   assert.equal(safeLinkout('javascript:alert(1)'), false); assert.equal(safeLinkout('upi://pay?pa=x@y'), false); assert.equal(safeLinkout('https://www.swiggy.com/'), true);
   assert.equal(swiggyLink().url, 'https://www.swiggy.com/'); assert.equal(swiggyLink().deeplink.type, 'applink'); // no guessed search parameter

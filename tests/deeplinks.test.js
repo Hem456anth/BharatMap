@@ -5,7 +5,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
-import { APPS, DEEPLINKS, intentUrl, parseIntentUrl, safeIntent, appLink, openUrlFor, DL_LABEL } from '../shared/services/deeplinks.js';
+import { APPS, DEEPLINKS, intentUrl, parseIntentUrl, safeIntent, appLink, openUrlFor, DL_LABEL, PLAY_PKG } from '../shared/services/deeplinks.js';
 import { safeLinkout, rapidoLink, uberLink, swiggyLink, zomatoLink, bookMyShowLink, districtMovies, GROCERY_APPS } from '../shared/services/linkouts.js';
 import { PROVIDERS, BY_ID, linkable } from '../shared/services/catalog.js';
 import { buildServicePanel, buildRidePanel } from '../shared/services/build.js';
@@ -76,8 +76,8 @@ test('safeIntent / safeLinkout: only intent URLs for a known package with its ow
   assert.equal(safeLinkout('intent:#Intent;package=com.rapido.passenger;end'), false);
 });
 
-test('every deep link: package in the analysed APKs, https fallback, App Links on declared+autoVerify hosts and paths, no query parameters', () => {
-  for (const [id, d] of Object.entries(DEEPLINKS)) {
+test('every APK-derived deep link: package in the analysed APKs, https fallback, App Links on declared+autoVerify hosts and paths, no query parameters', () => {
+  for (const [id, d] of Object.entries(DEEPLINKS).filter(([, x]) => x.source === 'apk')) {
     assert.ok(APPS[d.pkg] && byPkg[d.pkg], `${id}: package ${d.pkg} not analysed`);
     if (d.type === 'none') { assert.equal(appLink(id), null, `${id}: none builds nothing`); assert.ok(d.reason); continue; }
     const l = appLink(id);
@@ -124,7 +124,10 @@ test('package match: catalogue providers, panel actions and intent URLs all name
       const prov = a.provider;
       assert.ok(DEEPLINKS[prov], `${a.id}: provider ${prov}`);
       assert.equal(a.deeplink.package, DEEPLINKS[prov].pkg, `${a.id} package`);
-      if (a.url.startsWith('intent:')) assert.equal(parseIntentUrl(a.url).pkg, DEEPLINKS[prov].pkg);
+      if (a.url.startsWith('intent:')) {
+        const ip = parseIntentUrl(a.url);
+        if (DEEPLINKS[prov].type === 'store') { assert.equal(ip.pkg, PLAY_PKG); assert.equal(ip.host, `details?id=${DEEPLINKS[prov].pkg}`); } else assert.equal(ip.pkg, DEEPLINKS[prov].pkg);
+      }
       assert.ok(safeLinkout(a.url), a.url);
       seen.add(prov);
     }
@@ -152,7 +155,7 @@ test('platform choice: intent URLs only on Android, the https fallback everywher
     assert.equal(openUrlFor(l, { android: true }), l.url); assert.equal(openUrlFor(l, { android: false }), l.url);
     assert.equal(l.deeplink.type, 'applink'); assert.equal(new URL(l.url).search, '');
   }
-  assert.deepEqual(Object.keys(DL_LABEL).sort(), ['applink', 'declared', 'documented']);
+  assert.deepEqual(Object.keys(DL_LABEL).sort(), ['applink', 'declared', 'documented', 'store', 'web']);
 });
 
 test('payments: no deep links to PhonePe / Google Pay; EasyPark is not-in-India and never linked', () => {

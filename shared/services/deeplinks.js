@@ -13,7 +13,15 @@
 //               URL with package= and S.browser_fallback_url=<official https>, so it opens the app's home screen or
 //               the official website. Labelled Unverified in the interstitial.
 //   none        no deep link is built (payments apps: UPI is only used inside a gateway checkout; not-in-India apps).
+// Providers WITHOUT a user APK are in ./deeplinks-web.js (assetlinks.json App Links, Play Store links whose package is
+// confirmed on the official site / Play listing, and Web-only). They are merged into DEEPLINKS below with
+// source !== 'apk'; two extra types come from there:
+//   store       market://details?id=<pkg> (documented by Android) as an intent URL with a play.google.com fallback;
+//               the official website off Android.
+//   web         official website only (no verifiable app hand-off; reason recorded).
 // Never: upi:// (or any payment scheme), guessed parameters, item/price/fare URLs.
+import { WEB_DEEPLINKS, WEB_APPS, PLAY_PKG, PLAY_DOC, playUrl } from './deeplinks-web.js';
+export { WEB_APPS, PLAY_PKG, PLAY_DOC, playUrl };
 
 /** Manifest facts of the APKs analysed (package → version, signer cert SHA-256). Checked against the JSON by tests. */
 export const APPS = {
@@ -39,7 +47,7 @@ const ASSET_CHECK = 'assetlinks.json lists the package + APK signer cert (checke
  * Deep link per catalogue provider id. `manifest` names the declaring filter so docs/tests can trace it:
  *   { host, path|pathPrefix|pathPattern, autoVerify } for App Links, { scheme, host } for declared custom schemes.
  */
-export const DEEPLINKS = {
+const APK_DEEPLINKS = {
   uber: { pkg: 'com.ubercab', type: 'documented', url: 'https://m.uber.com/ul/', fallback: 'https://m.uber.com/', prefill: ['pickup lat/lng + nickname', 'drop lat/lng + nickname + address'],
     doc: 'https://developer.uber.com/docs/riders/ride-requests/tutorials/deep-links/introduction', manifest: { host: 'm.uber.com', pathPrefix: '/ul/', autoVerify: true }, evidence: `Uber developer docs; ${ASSET_CHECK} (m.uber.com)` },
   swiggy: { pkg: 'in.swiggy.android', type: 'applink', url: 'https://www.swiggy.com/', prefill: [], manifest: { host: 'www.swiggy.com', pathPattern: '/', autoVerify: true }, evidence: `${ASSET_CHECK} (www.swiggy.com)` },
@@ -61,6 +69,14 @@ export const DEEPLINKS = {
   'google-pay': { pkg: 'com.google.android.apps.nbu.paisa.user', type: 'none', reason: 'UPI-only app (UPI, gpay and tez schemes); appears as a UPI app inside the gateway checkout. No deep link is built' },
   easypark: { pkg: 'net.easypark.android', type: 'none', notInIndia: true, reason: 'Not an India service (not on the requested list); analysed only, never linked' },
 };
+/** Every catalogue provider's hand-off: APK-derived entries (source 'apk') + web-verified entries (deeplinks-web.js). */
+export const DEEPLINKS = {
+  ...Object.fromEntries(Object.entries(APK_DEEPLINKS).map(([k, v]) => [k, { ...v, source: 'apk' }])),
+  ...WEB_DEEPLINKS,
+};
+for (const k of Object.keys(WEB_DEEPLINKS)) if (APK_DEEPLINKS[k]) throw new Error(`duplicate deep link ${k}`);
+/** App metadata for any package Bharat may hand off to (APK-analysed or web-confirmed). */
+export const appMeta = (pkg) => APPS[pkg] || WEB_APPS[pkg] || null;
 
 const FORBIDDEN_SCHEMES = /^(upi|upiglobal|ppe|phonepe|paytmmp|tez|gpay|bbps|bharatconnect|upimeta|javascript|data|file|content|intent)$/i;
 const enc = (s) => encodeURIComponent(s);
@@ -73,6 +89,12 @@ export function intentUrl({ scheme, host = '', path = '', pkg, fallback }) {
   if (!pkg || !APPS[pkg]) throw new Error('unknown_package');
   if (!isHttps(fallback)) throw new Error('fallback_required');
   return `intent://${host}${path}#Intent;scheme=${scheme};package=${pkg};S.browser_fallback_url=${enc(fallback)};end`;
+}
+
+/** Google Play intent: intent://details?id=PKG#Intent;scheme=market;package=com.android.vending;S.browser_fallback_url=<play.google.com>;end */
+export function storeIntentUrl(pkg) {
+  if (!/^[A-Za-z][A-Za-z0-9_]*(\.[A-Za-z0-9_]+)+$/.test(pkg || '') || !WEB_APPS[pkg]) throw new Error('unknown_package');
+  return `intent://details?id=${pkg}#Intent;scheme=market;package=${PLAY_PKG};S.browser_fallback_url=${enc(playUrl(pkg))};end`;
 }
 
 /** Parse an intent URL built above → { scheme, host, path, pkg, fallback } or null. */
@@ -90,36 +112,48 @@ export function parseIntentUrl(u) {
 /** An intent URL is safe when it targets a known package with one of ITS declared schemes, has an https fallback, and nothing else. */
 export function safeIntent(u) {
   const p = parseIntentUrl(u);
+  if (p && !p.extra.length && p.scheme === 'market' && p.pkg === PLAY_PKG) {
+    const m = /^details\?id=([A-Za-z0-9._]+)$/.exec(p.host);
+    return !!m && !p.path && p.fallback === playUrl(m[1]) && Object.values(DEEPLINKS).some((d) => d.type === 'store' && d.pkg === m[1]);
+  }
   if (!p || p.extra.length || !APPS[p.pkg] || !p.scheme || FORBIDDEN_SCHEMES.test(p.scheme) || !isHttps(p.fallback)) return false;
   return Object.values(DEEPLINKS).some((d) => d.type === 'declared' && d.pkg === p.pkg && d.scheme === p.scheme && (d.host || '') === p.host);
 }
 
 /**
  * Link object for a provider's app hand-off ({ provider, host, url, kind, verified, note, deeplink }) or null.
- *   url       what Bharat opens: the https App Link / documented link, or the intent URL for declared entry points
- *   deeplink  { type, package, app, fallbackUrl, prefill, evidence, doc? } — the interstitial shows type + fallback
- * `url` override is only accepted for the documented type (e.g. Uber with pickup/drop).
+ *   url       what Bharat opens: the https App Link / documented link, or the intent URL for declared / store entries
+ *   deeplink  { type, source, package, app, fallbackUrl, webUrl?, prefill, evidence, doc? } — the interstitial shows
+ *             type + fallback
+ * `url` override is only accepted for the documented type (e.g. Uber with pickup/drop). Web-only and none → null.
  */
 export function appLink(providerId, { kind = 'linkout', url: override = null } = {}) {
   const d = DEEPLINKS[providerId];
-  if (!d || d.type === 'none') return null;
-  const meta = APPS[d.pkg];
-  const base = { type: d.type, package: d.pkg, app: meta.app, prefill: d.prefill || [], evidence: d.evidence, ...(d.doc ? { doc: d.doc } : {}) };
+  if (!d || d.type === 'none' || d.type === 'web') return null;
+  const meta = appMeta(d.pkg);
+  if (!meta) throw new Error('unknown_package');
+  const base = { type: d.type, source: d.source, package: d.pkg, app: meta.app, prefill: d.prefill || [], evidence: d.evidence, ...(d.doc ? { doc: d.doc } : {}), ...(d.source === 'assetlinks' ? { pathConfirmed: false } : {}) };
   if (d.type === 'declared') {
     const url = intentUrl({ scheme: d.scheme, host: d.host || '', pkg: d.pkg, fallback: d.fallback });
     return { provider: providerId, host: hostOf(d.fallback), url, kind, verified: false, note: `Opens the ${meta.app} app (entry point declared in its manifest, parameters unknown); without the app: ${hostOf(d.fallback)}`, deeplink: { ...base, fallbackUrl: d.fallback } };
   }
+  if (d.type === 'store') {
+    if (!isHttps(d.web)) throw new Error('web_required');
+    const url = storeIntentUrl(d.pkg);
+    return { provider: providerId, host: 'play.google.com', url, kind, verified: true, note: `Opens ${meta.app} (${d.pkg}) in Google Play on Android (package confirmed: ${d.source === 'official-site' ? 'official website' : 'Play listing'}); without Play: play.google.com; on other devices: ${hostOf(d.web)}`, deeplink: { ...base, doc: PLAY_DOC, fallbackUrl: playUrl(d.pkg), webUrl: d.web } };
+  }
   const url = d.type === 'documented' && override ? override : d.url;
   if (!isHttps(url) || hostOf(url) !== hostOf(d.url)) throw new Error('applink_host_mismatch');
-  return { provider: providerId, host: hostOf(url), url, kind, verified: true, note: d.type === 'documented' ? `Documented ${meta.app} link: opens the app if installed, otherwise ${hostOf(d.fallback || url)}` : `App Link: opens the ${meta.app} app if installed, otherwise this page on ${hostOf(url)}`, deeplink: { ...base, fallbackUrl: d.fallback || url } };
+  const web = d.source === 'assetlinks';
+  return { provider: providerId, host: hostOf(url), url, kind, verified: true, note: d.type === 'documented' ? `Documented ${meta.app} link: opens the app if installed, otherwise ${hostOf(d.fallback || url)}` : `App Link${web ? ' (domain verified by its assetlinks.json)' : ''}: opens the ${meta.app} app if installed, otherwise this page on ${hostOf(url)}`, deeplink: { ...base, fallbackUrl: d.fallback || url } };
 }
 
 /** Which URL to actually open on this platform: intent URLs only where Android can resolve them; elsewhere the https fallback. */
 export function openUrlFor(link, { android = false } = {}) {
   if (!link?.url) return null;
-  if (link.url.startsWith('intent://')) return android ? link.url : (link.deeplink?.fallbackUrl || parseIntentUrl(link.url)?.fallback || null);
+  if (link.url.startsWith('intent://')) return android ? link.url : (link.deeplink?.webUrl || link.deeplink?.fallbackUrl || parseIntentUrl(link.url)?.fallback || null);
   return link.url;
 }
 
-/** Interstitial label: Documented | App Link | Declared (Unverified) | null for plain web link-outs. */
-export const DL_LABEL = { documented: 'lo_dl_documented', applink: 'lo_dl_applink', declared: 'lo_dl_declared' };
+/** Interstitial label: Documented | App Link | Declared (Unverified) | Store | Web-only. */
+export const DL_LABEL = { documented: 'lo_dl_documented', applink: 'lo_dl_applink', declared: 'lo_dl_declared', store: 'lo_dl_store', web: 'lo_dl_web' };

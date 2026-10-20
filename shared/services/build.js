@@ -17,15 +17,23 @@ import {
   hmrlWhatsApp, tsavaariSearch, hmrlOfficial, irctc, indiaPostTracking, telLink, osmLinks, EMERGENCY,
 } from './linkouts.js';
 import { BY_ID, PROVIDERS, linkable, metroFor, busFor } from './catalog.js';
-import { appLink } from './deeplinks.js';
+import { appLink, DEEPLINKS } from './deeplinks.js';
 
-/** Link-out action for a catalogue provider: its app deep link when one is verified (deeplinks.js), else the official URL. Null when not linkable. */
+/**
+ * Link-out action for a catalogue provider: its app hand-off when one is verified (deeplinks.js: APK App Link / documented /
+ * declared, assetlinks.json App Link, or a Play Store link with a confirmed package), else the official URL labelled
+ * Web-only. Null when not linkable. extra.web forces the official page (e.g. a price page); extra.app adds a separate
+ * "Open <app>" action (id suffix -app) for providers whose main action is a web page.
+ */
 function provAction(id, extra = {}) {
   const p = BY_ID[id];
   if (!linkable(p)) return null;
-  const al = extra.url ? null : appLink(id);
+  const d = DEEPLINKS[id];
+  const al = extra.url || extra.web ? null : appLink(id);
+  if (extra.app && !al) return null;
   const url = extra.url || al?.url || p.url;
-  return { id: `p-${id}`, kind: 'linkout', k: extra.k || 'sv_open_provider', text: p.name, url, host: al?.host || hostOf(url), verified: al ? al.verified : !!p.verified, provider: id, class: p.class, note: extra.note || p.reason || '', label: 'linkout', needsNet: true, ...(al ? { deeplink: al.deeplink } : {}), ...(extra.group ? { group: extra.group } : {}) };
+  const dl = al ? { deeplink: al.deeplink } : d && (d.type === 'web' || extra.web) && !extra.url ? { deeplink: { type: 'web', reason: d.type === 'web' ? d.reason : 'Official web page' } } : {};
+  return { id: `p-${id}${extra.app ? '-app' : ''}`, kind: 'linkout', k: extra.k || 'sv_open_provider', text: extra.app ? al.deeplink.app : p.name, url, host: al?.deeplink.webUrl ? hostOf(al.deeplink.webUrl) : al?.host || hostOf(url), verified: al ? al.verified : !!p.verified, provider: id, class: p.class, note: extra.note || p.reason || '', label: 'linkout', needsNet: true, ...dl, ...(extra.group ? { group: extra.group } : {}) };
 }
 const hostOf = (u) => { try { return new URL(u).host; } catch { return ''; } };
 /** An "Unavailable" row for a provider that cannot be used (reason shown, no link). */
@@ -213,7 +221,7 @@ export function buildServicePanel(place, ctx = {}) {
       rows.push(price); P.compact.push(hoursRow(ctx, tags), price);
       sec('about', 'sv_about', rows);
       const b = `${tags.brand || ''} ${tags.operator || ''} ${place.name || ''}`;
-      if (/indian ?oil|iocl/i.test(b)) pushAll(P, [provAction('indianoil', { k: 'sv_iocl_prices' })]);
+      if (/indian ?oil|iocl/i.test(b)) pushAll(P, [provAction('indianoil', { k: 'sv_iocl_prices', web: true }), provAction('indianoil', { app: true })]);
       if (/\bhp\b|hindustan petroleum|hpcl/i.test(b)) pushAll(P, [provAction('hpcl')]);
       if (/jio.?bp|reliance/i.test(b)) pushAll(P, [provAction('jio-bp')]);
     } else {
@@ -251,7 +259,7 @@ export function buildServicePanel(place, ctx = {}) {
     rows.push(free); P.compact.push(free);
     if (toll) rows.push({ id: 'tollfee', k: 'sv_toll_fee', vk: 'sv_toll_fee_unknown', ...pv(null, 'unavailable', { source: 'NHAI TIS (fees not available as open data)' }) });
     sec('about', toll ? 'sv_toll_title' : 'sv_parking_title', rows);
-    if (toll) pushAll(P, [provAction('nhai', { k: 'sv_nhai_tis' }), provAction('highway-delite')]);
+    if (toll) pushAll(P, [provAction('nhai', { k: 'sv_nhai_tis', web: true }), provAction('nhai', { app: true }), provAction('highway-delite')]);
     else { P.actions.push({ id: 'remember', kind: 'remember', k: 'sv_remember_parking', needsNet: false }); pushAll(P, [provAction('parkplus'), provAction('parkmate')]); }
   } else if (type === 'health') {
     const hk = healthKind(tags); P.kind = hk;

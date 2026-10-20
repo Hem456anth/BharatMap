@@ -13,7 +13,8 @@
 // status (adapter contract): live | partner-pending | link-out | unavailable — derived from class.
 // url: the official site/app page (verified=true when confirmed from an official source; see `evidence`).
 // ticketing (transit): 'ondc' | 'official-app' | 'whatsapp' | 'website' | null — shown ONLY when official e-ticketing exists.
-// deeplink (from shared/services/deeplinks.js, user-supplied APK manifests + assetlinks.json): documented | applink | declared | none | null.
+// deeplink (shared/services/deeplinks.js): documented | applink | declared | store | web | none. APK-derived entries have
+//   deeplinkSource 'apk'; the rest come from deeplinks-web.js ('assetlinks' App Links, 'official-site' / 'play-listing' Store links).
 // No entry here claims API support we do not have.
 import { DEEPLINKS } from './deeplinks.js';
 
@@ -22,7 +23,7 @@ const E_WEB = 'web check 20 Oct 2026 (docs/INTEGRATIONS.md §18)';
 const E_KNOWN = 'official domain from general knowledge, not re-fetched in this pass';
 // Hosts whose official URL was opened or seen in an official/primary source (INTEGRATIONS.md sources or the 20 Oct 2026 check).
 export const VERIFIED_HOSTS = new Set(['www.swiggy.com', 'www.zomato.com', 'ondc.org', 'in.bookmyshow.com', 'www.district.in', 'www.pvrcinemas.com', 'www.cinepolisindia.com',
-  'blinkit.com', 'www.jiomart.com', 'www.dmart.in', 'm.uber.com', 'book.olacabs.com', 'www.bharattaxiapp.com', 'yatrisathi.in', 'ltmetro.com', 'chennaimetrorail.org', 'www.delhimetrorail.com',
+  'blinkit.com', 'www.zepto.com', 'www.jiomart.com', 'www.dmart.in', 'm.uber.com', 'book.olacabs.com', 'www.bharattaxiapp.com', 'yatrisathi.in', 'ltmetro.com', 'chennaimetrorail.org', 'www.delhimetrorail.com',
   'mmrcl.com', 'www.gujaratmetrorail.com', 'lucknow.upmetrorail.com', 'upmetrorail.com', 'www.nmrcnoida.com', 'mtp.indianrailways.gov.in', 'www.tgsrtc.telangana.gov.in', 'www.apsrtconline.in',
   'ksrtc.in', 'www.keralartc.com', 'www.tnstc.in', 'www.irctc.co.in', 'www.booking.com', 'parkplus.io', 'parkmate.in', 'tis.nhai.gov.in', 'www.highwaydelite.com', 'iocl.com', 'openchargemap.org',
   'www.chargezone.co.in', 'www.statiq.in', 'www.tatapower.com', '112.gov.in', 'www.indiapost.gov.in', 'razorpay.com', 'www.rapido.bike',
@@ -32,7 +33,7 @@ const hostOf = (u) => { try { return new URL(u).host; } catch { return ''; } };
 const P = (id, name, domain, cls, url, extra = {}) => {
   const ok = !!url && VERIFIED_HOSTS.has(hostOf(url));
   const dl = DEEPLINKS[id];
-  return { id, name, domain, class: cls, url, ...extra, deeplink: dl ? dl.type : null, ...(dl && dl.type !== 'none' ? { appPackage: dl.pkg } : {}), verified: ok, evidence: url ? (ok ? (extra.evidence && extra.evidence !== 'not verified' ? extra.evidence : E_INT) : E_KNOWN) : (extra.evidence || E_INT) };
+  return { id, name, domain, class: cls, url, ...extra, deeplink: dl ? dl.type : null, ...(dl ? { deeplinkSource: dl.source } : {}), ...(dl && dl.pkg && !['none', 'web'].includes(dl.type) ? { appPackage: dl.pkg } : {}), verified: ok, evidence: url ? (ok ? (extra.evidence && extra.evidence !== 'not verified' ? extra.evidence : E_INT) : E_KNOWN) : (extra.evidence || E_INT) };
 };
 
 export const PROVIDERS = [
@@ -53,7 +54,7 @@ export const PROVIDERS = [
   P('paytm-insider', 'Paytm Insider', 'movies', 'unavailable', null, { reason: 'Acquired by Zomato (Aug 2024) and consolidated into District; use District', mergedInto: 'district' }),
   // ---------------- Grocery ----------------
   P('blinkit', 'Blinkit', 'grocery', 'linkout', 'https://blinkit.com/', { reason: 'No official API; home page link-out' }),
-  P('zepto', 'Zepto', 'grocery', 'partner-pending', 'https://www.zeptonow.com/', { reason: 'Official consumer MCP exists; third-party app use not cleared — link-out until Zepto confirms', linkout: true }),
+  P('zepto', 'Zepto', 'grocery', 'partner-pending', 'https://www.zepto.com/', { reason: 'Official consumer MCP exists; third-party app use not cleared — App Link to the Zepto home (www.zepto.com assetlinks.json lists com.zeptoconsumerapp) until Zepto confirms', linkout: true, evidence: E_WEB }),
   P('instamart', 'Swiggy Instamart', 'grocery', 'partner-pending', 'https://www.swiggy.com/instamart', { reason: 'Swiggy Builders Club (invite-only); link-out', linkout: true }),
   P('flipkart-minutes', 'Flipkart Minutes', 'grocery', 'linkout', 'https://www.flipkart.com/', { reason: 'No API; Minutes is chosen inside Flipkart' }),
   P('bigbasket', 'BigBasket', 'grocery', 'linkout', 'https://www.bigbasket.com/', { reason: 'No API found; link-out' }),
@@ -63,7 +64,7 @@ export const PROVIDERS = [
   P('demo-shop', 'Bharat Shop (demo sellers)', 'grocery', 'demo', null, { reason: 'Fictional sellers, prices and stock; full order → payment → tracking flow' }),
   // ---------------- Rides ----------------
   P('uber', 'Uber', 'ride', 'deeplink', 'https://m.uber.com/', { reason: 'Documented universal link with pickup/drop (client_id from server config); Ride Request API is partner-only; no fares in Bharat' }),
-  P('ola', 'Ola', 'ride', 'partner-pending', 'https://book.olacabs.com/', { reason: 'Documented deep link needs an Ola affiliate token (OLA_XAPP_TOKEN); without it opens Ola without pickup/drop', linkout: true }),
+  P('ola', 'Ola', 'ride', 'partner-pending', 'https://book.olacabs.com/', { reason: 'App Link to book.olacabs.com (assetlinks.json lists com.olacabs.customer); the documented pickup/drop deep link needs an Ola affiliate token (OLA_XAPP_TOKEN) — without it no pickup/drop', linkout: true }),
   P('rapido', 'Rapido', 'ride', 'linkout', 'https://www.rapido.bike/', { reason: 'No documented deep link or ride API: opens the app home via the manifest-declared rapido://open entry point (Unverified, no pickup/drop), www.rapido.bike without the app', verified: true }),
   P('namma-yatri', 'Namma Yatri', 'ride', 'linkout', 'https://nammayatri.in/', { reason: 'Rides via ONDC mobility once Bharat is an onboarded buyer app; no documented consumer deep link' }),
   P('bharat-taxi', 'Bharat Taxi', 'ride', 'linkout', 'https://www.bharattaxiapp.com/', { reason: 'Cooperative ride app (Sahakar Taxi Cooperative, launched Feb 2026; Delhi-NCR, Gujarat, Maharashtra, Rajasthan); live on ONDC mobility — no consumer deep link', evidence: E_WEB, regions: ['delhi', 'mumbai', 'pune'] }),

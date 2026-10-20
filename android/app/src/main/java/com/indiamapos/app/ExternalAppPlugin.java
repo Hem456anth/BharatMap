@@ -17,15 +17,18 @@ import java.util.Set;
  * Opens a link-out after the in-app interstitial (web/ui/linkout.js).
  *  - https:  ACTION_VIEW + CATEGORY_BROWSABLE, so a verified Android App Link opens the provider's app when installed
  *            and the browser otherwise.
- *  - intent: an intent URL built by shared/services/deeplinks.js (package + declared scheme + https browser_fallback_url).
+ *  - intent: an intent URL built by shared/services/deeplinks.js (package + declared scheme + https browser_fallback_url),
+ *            or a Google Play Store intent (market://details?id=PKG, package com.android.vending, play.google.com fallback).
  *            Parsed with URI_INTENT_SCHEME and hardened like Chrome does (no component, no selector, BROWSABLE only,
  *            package must be in the allow-list); if the app is not installed the https fallback opens instead.
  * Payment schemes (upi:, ppe:, phonepe:, tez:, gpay: …) are refused outright.
  */
 @CapacitorPlugin(name = "ExternalApp")
 public class ExternalAppPlugin extends Plugin {
-    // Must match APPS in shared/services/deeplinks.js for packages with a declared (custom-scheme) entry point.
-    private static final Set<String> INTENT_PACKAGES = new HashSet<>(Arrays.asList("com.rapido.passenger"));
+    // Must match APPS in shared/services/deeplinks.js for packages with a declared (custom-scheme) entry point,
+    // plus the Play Store for store links (scheme market, host details only).
+    private static final String PLAY = "com.android.vending";
+    private static final Set<String> INTENT_PACKAGES = new HashSet<>(Arrays.asList("com.rapido.passenger", PLAY));
     private static final Set<String> FORBIDDEN = new HashSet<>(Arrays.asList(
         "upi", "upiglobal", "ppe", "phonepe", "paytmmp", "tez", "gpay", "bbps", "bharatconnect", "upimeta", "javascript", "data", "file", "content"));
 
@@ -42,6 +45,11 @@ public class ExternalAppPlugin extends Plugin {
                 String fallback = intent.getStringExtra("browser_fallback_url");
                 if (pkg == null || !INTENT_PACKAGES.contains(pkg) || scheme == null || FORBIDDEN.contains(scheme.toLowerCase())
                         || fallback == null || !fallback.startsWith("https://")) {
+                    call.reject("blocked_intent");
+                    return;
+                }
+                if (PLAY.equals(pkg) && (!"market".equals(scheme) || !"details".equals(data.getHost())
+                        || data.getQueryParameter("id") == null || !fallback.startsWith("https://play.google.com/store/apps/details?id="))) {
                     call.reject("blocked_intent");
                     return;
                 }

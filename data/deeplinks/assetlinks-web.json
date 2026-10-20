@@ -1,0 +1,1766 @@
+{
+ "scope": "Public /.well-known/assetlinks.json only (no login, no APK download, no decompiling). One GET per host.",
+ "fetched": "2026-10-20",
+ "userAgent": "Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/129.0 Mobile Safari/537.36",
+ "providers": {
+  "magicpin": [
+   "magicpin.in",
+   "www.magicpin.in"
+  ],
+  "eazydiner": [
+   "www.eazydiner.com",
+   "eazydiner.com"
+  ],
+  "ondc": [
+   "ondc.org",
+   "www.ondc.org"
+  ],
+  "pvr-inox": [
+   "www.pvrcinemas.com",
+   "pvrcinemas.com",
+   "www.inoxmovies.com"
+  ],
+  "cinepolis": [
+   "www.cinepolisindia.com",
+   "cinepolisindia.com"
+  ],
+  "zepto": [
+   "www.zepto.com",
+   "zepto.com",
+   "www.zeptonow.com",
+   "zeptonow.com"
+  ],
+  "flipkart-minutes": [
+   "www.flipkart.com",
+   "flipkart.com",
+   "dl.flipkart.com"
+  ],
+  "bigbasket": [
+   "www.bigbasket.com",
+   "bigbasket.com"
+  ],
+  "jiomart": [
+   "www.jiomart.com",
+   "jiomart.com"
+  ],
+  "dmart-ready": [
+   "www.dmart.in",
+   "dmart.in"
+  ],
+  "ola": [
+   "book.olacabs.com",
+   "www.olacabs.com",
+   "olacabs.com"
+  ],
+  "namma-yatri": [
+   "nammayatri.in",
+   "www.nammayatri.in"
+  ],
+  "bharat-taxi": [
+   "www.bharattaxiapp.com",
+   "bharattaxiapp.com"
+  ],
+  "yatri-sathi": [
+   "yatrisathi.in",
+   "www.yatrisathi.in"
+  ],
+  "metro-hyderabad": [
+   "ltmetro.com",
+   "www.ltmetro.com"
+  ],
+  "metro-chennai": [
+   "chennaimetrorail.org",
+   "www.chennaimetrorail.org"
+  ],
+  "metro-delhi": [
+   "www.delhimetrorail.com",
+   "delhimetrorail.com"
+  ],
+  "metro-bengaluru": [
+   "english.bmrc.co.in",
+   "www.bmrc.co.in",
+   "bmrc.co.in"
+  ],
+  "metro-mumbai": [
+   "mmrcl.com",
+   "www.mmrcl.com"
+  ],
+  "metro-kochi": [
+   "kochimetro.org",
+   "www.kochimetro.org"
+  ],
+  "metro-pune": [
+   "www.punemetrorail.org",
+   "punemetrorail.org"
+  ],
+  "metro-nagpur": [
+   "www.metrorailnagpur.com",
+   "metrorailnagpur.com"
+  ],
+  "metro-ahmedabad": [
+   "www.gujaratmetrorail.com",
+   "gujaratmetrorail.com"
+  ],
+  "metro-jaipur": [
+   "transport.rajasthan.gov.in"
+  ],
+  "metro-lucknow": [
+   "lucknow.upmetrorail.com",
+   "upmetrorail.com"
+  ],
+  "metro-kanpur": [
+   "upmetrorail.com",
+   "kanpur.upmetrorail.com"
+  ],
+  "metro-noida": [
+   "www.nmrcnoida.com",
+   "nmrcnoida.com"
+  ],
+  "metro-kolkata": [
+   "mtp.indianrailways.gov.in"
+  ],
+  "tgsrtc": [
+   "www.tgsrtc.telangana.gov.in",
+   "www.tgsrtcbus.in",
+   "tgsrtcbus.in"
+  ],
+  "apsrtc": [
+   "www.apsrtconline.in",
+   "apsrtconline.in"
+  ],
+  "ksrtc": [
+   "ksrtc.in",
+   "www.ksrtc.in"
+  ],
+  "ksrtc-kerala": [
+   "www.keralartc.com",
+   "keralartc.com",
+   "onlineksrtcswift.com"
+  ],
+  "bmtc": [
+   "mybmtc.karnataka.gov.in"
+  ],
+  "tnstc": [
+   "www.tnstc.in",
+   "tnstc.in"
+  ],
+  "mtc-chennai": [
+   "mtcbus.tn.gov.in"
+  ],
+  "dtc": [
+   "dtc.delhi.gov.in"
+  ],
+  "best": [
+   "www.bestundertaking.com",
+   "bestundertaking.com"
+  ],
+  "pmpml": [
+   "pmpml.org",
+   "www.pmpml.org"
+  ],
+  "chalo": [
+   "chalo.com",
+   "www.chalo.com"
+  ],
+  "tummoc": [
+   "tummoc.com",
+   "www.tummoc.com"
+  ],
+  "irctc": [
+   "www.irctc.co.in",
+   "irctc.co.in"
+  ],
+  "booking-com": [
+   "www.booking.com",
+   "booking.com"
+  ],
+  "goibibo": [
+   "www.goibibo.com",
+   "goibibo.com"
+  ],
+  "cleartrip": [
+   "www.cleartrip.com",
+   "cleartrip.com"
+  ],
+  "easemytrip": [
+   "www.easemytrip.com",
+   "easemytrip.com"
+  ],
+  "incredible-india": [
+   "www.incredibleindia.gov.in"
+  ],
+  "parkmate": [
+   "parkmate.in",
+   "www.parkmate.in"
+  ],
+  "nhai": [
+   "tis.nhai.gov.in",
+   "rajmargyatra.nhai.gov.in",
+   "nhai.gov.in"
+  ],
+  "highway-delite": [
+   "www.highwaydelite.com",
+   "highwaydelite.com"
+  ],
+  "indianoil": [
+   "iocl.com",
+   "www.iocl.com"
+  ],
+  "hpcl": [
+   "www.hindustanpetroleum.com",
+   "hindustanpetroleum.com"
+  ],
+  "jio-bp": [
+   "www.jiobp.com",
+   "jiobp.com"
+  ],
+  "ocm": [
+   "openchargemap.org"
+  ],
+  "chargezone": [
+   "www.chargezone.co.in",
+   "chargezone.co.in"
+  ],
+  "statiq": [
+   "www.statiq.in",
+   "statiq.in"
+  ],
+  "tata-ez": [
+   "www.tatapower.com",
+   "tatapower.com"
+  ],
+  "netmeds": [
+   "www.netmeds.com",
+   "netmeds.com"
+  ],
+  "practo": [
+   "www.practo.com",
+   "practo.com"
+  ],
+  "esanjeevani": [
+   "esanjeevani.mohfw.gov.in"
+  ],
+  "112-india": [
+   "112.gov.in",
+   "www.112.gov.in"
+  ],
+  "india-post": [
+   "www.indiapost.gov.in"
+  ],
+  "shiprocket": [
+   "www.shiprocket.in",
+   "shiprocket.in"
+  ],
+  "delhivery": [
+   "www.delhivery.com",
+   "delhivery.com"
+  ]
+ },
+ "hosts": [
+  {
+   "host": "112.gov.in",
+   "url": "https://112.gov.in/.well-known/assetlinks.json",
+   "http": 0,
+   "error": "URLError",
+   "result": "unreachable"
+  },
+  {
+   "host": "apsrtconline.in",
+   "url": "https://apsrtconline.in/.well-known/assetlinks.json",
+   "http": 200,
+   "finalUrl": "https://www.apsrtconline.in:443/.well-known/assetlinks.json",
+   "result": "assetlinks",
+   "android": [
+    {
+     "package": "com.apsrtc.online",
+     "handle_all_urls": true,
+     "sha256": [
+      "01:49:D5:07:6E:06:4A:BC:AB:2F:EB:D1:AC:35:05:1C:02:29:AC:3E:DD:BC:FE:CF:D8:D4:47:6C:E9:59:78:9D"
+     ]
+    }
+   ]
+  },
+  {
+   "host": "bestundertaking.com",
+   "url": "https://bestundertaking.com/.well-known/assetlinks.json",
+   "http": 404,
+   "finalUrl": "https://bestundertaking.com/.well-known/assetlinks.json",
+   "result": "no-assetlinks"
+  },
+  {
+   "host": "bharattaxiapp.com",
+   "url": "https://bharattaxiapp.com/.well-known/assetlinks.json",
+   "http": 200,
+   "finalUrl": "https://bharattaxiapp.com/.well-known/assetlinks.json",
+   "result": "assetlinks",
+   "android": [
+    {
+     "package": "in.mobility.bharatTaxi",
+     "handle_all_urls": true,
+     "sha256": [
+      "C4:A6:ED:28:C1:4E:04:BE:CC:88:C9:F7:83:30:98:38:CE:2D:AC:12:5C:81:97:9A:37:03:52:B8:1C:BC:B1:D3"
+     ]
+    },
+    {
+     "package": "in.mobility.bharattaxidriver",
+     "handle_all_urls": true,
+     "sha256": [
+      "41:AA:89:A4:FD:90:D6:5D:D3:A8:8D:AB:05:DB:9E:A6:E1:36:BD:D9:A8:69:B2:29:9E:D8:91:93:25:51:F7:6E"
+     ]
+    }
+   ]
+  },
+  {
+   "host": "bigbasket.com",
+   "url": "https://bigbasket.com/.well-known/assetlinks.json",
+   "http": 200,
+   "finalUrl": "https://www.bigbasket.com:443/.well-known/assetlinks.json",
+   "result": "assetlinks",
+   "android": [
+    {
+     "package": "com.bigbasket.mobileapp",
+     "handle_all_urls": true,
+     "sha256": [
+      "11:DE:AC:58:29:2C:7A:D7:E1:20:7F:88:88:94:C3:BB:F5:2A:B6:31:A6:D6:E3:44:BB:E4:D3:38:7E:3C:5D:97"
+     ]
+    }
+   ]
+  },
+  {
+   "host": "bmrc.co.in",
+   "url": "https://bmrc.co.in/.well-known/assetlinks.json",
+   "http": 0,
+   "error": "URLError",
+   "result": "unreachable"
+  },
+  {
+   "host": "book.olacabs.com",
+   "url": "https://book.olacabs.com/.well-known/assetlinks.json",
+   "http": 200,
+   "finalUrl": "https://book.olacabs.com/.well-known/assetlinks.json",
+   "result": "assetlinks",
+   "android": [
+    {
+     "package": "com.olacabs.customer",
+     "handle_all_urls": true,
+     "sha256": [
+      "79:E1:0F:4D:B6:F2:4A:77:71:E1:FD:E5:FF:51:20:0E:66:99:87:D9:6B:98:93:CD:24:5F:11:A7:4A:F9:37:29"
+     ]
+    },
+    {
+     "package": "com.olacabs.customer.dev",
+     "handle_all_urls": true,
+     "sha256": [
+      "8C:89:3F:7B:92:E4:D7:91:33:C8:21:C0:7F:C7:65:D2:C4:B0:02:4C:E1:0E:94:C1:CA:55:5C:4B:82:0C:2C:ED"
+     ]
+    }
+   ]
+  },
+  {
+   "host": "booking.com",
+   "url": "https://booking.com/.well-known/assetlinks.json",
+   "http": 200,
+   "finalUrl": "https://booking.com/.well-known/assetlinks.json",
+   "result": "assetlinks",
+   "android": [
+    {
+     "package": "com.booking",
+     "handle_all_urls": true,
+     "sha256": [
+      "6A:C8:C8:A9:E6:F3:6E:14:E5:2A:0A:05:15:A3:6B:70:66:E7:20:A1:B0:C8:A1:B0:59:E0:78:17:50:A8:71:99"
+     ]
+    },
+    {
+     "package": "com.booking.dev",
+     "handle_all_urls": true,
+     "sha256": [
+      "32:68:D3:EB:93:38:79:08:63:D5:24:9F:35:F5:1B:F3:FA:D0:E9:59:6C:FB:43:39:98:79:D2:A5:4A:E2:77:A8"
+     ]
+    }
+   ]
+  },
+  {
+   "host": "chalo.com",
+   "url": "https://chalo.com/.well-known/assetlinks.json",
+   "http": 404,
+   "finalUrl": "https://chalo.com/.well-known/assetlinks.json",
+   "result": "no-assetlinks"
+  },
+  {
+   "host": "chargezone.co.in",
+   "url": "https://chargezone.co.in/.well-known/assetlinks.json",
+   "http": 404,
+   "finalUrl": "https://chargezone.co.in/.well-known/assetlinks.json",
+   "result": "no-assetlinks"
+  },
+  {
+   "host": "chennaimetrorail.org",
+   "url": "https://chennaimetrorail.org/.well-known/assetlinks.json",
+   "http": 404,
+   "finalUrl": "https://chennaimetrorail.org/.well-known/assetlinks.json",
+   "result": "no-assetlinks"
+  },
+  {
+   "host": "cinepolisindia.com",
+   "url": "https://cinepolisindia.com/.well-known/assetlinks.json",
+   "http": 404,
+   "finalUrl": "https://cinepolisindia.com/.well-known/assetlinks.json",
+   "result": "no-assetlinks"
+  },
+  {
+   "host": "cleartrip.com",
+   "url": "https://cleartrip.com/.well-known/assetlinks.json",
+   "http": 403,
+   "finalUrl": "https://www.cleartrip.com:443/.well-known/assetlinks.json",
+   "result": "http-403"
+  },
+  {
+   "host": "delhimetrorail.com",
+   "url": "https://delhimetrorail.com/.well-known/assetlinks.json",
+   "http": 200,
+   "finalUrl": "https://delhimetrorail.com/.well-known/assetlinks.json",
+   "result": "no-assetlinks"
+  },
+  {
+   "host": "delhivery.com",
+   "url": "https://delhivery.com/.well-known/assetlinks.json",
+   "http": 200,
+   "finalUrl": "https://www.delhivery.com:443/.well-known/assetlinks.json",
+   "result": "assetlinks",
+   "android": [
+    {
+     "package": "com.delhiveryConsigneeApp",
+     "handle_all_urls": true,
+     "sha256": [
+      "FA:C6:17:45:DC:09:03:78:6F:B9:ED:E6:2A:96:2B:39:9F:73:48:F0:BB:6F:89:9B:83:32:66:75:91:03:3B:9C",
+      "83:7D:0E:78:8B:6A:54:2D:66:32:EC:65:DC:5F:DB:A4:D2:65:22:82:41:C2:32:ED:2D:5A:29:E0:80:14:24:CE",
+      "B9:99:EA:1C:1C:E6:6C:00:41:01:D7:90:09:90:0C:CB:99:5E:B7:51:AA:D8:E9:C4:45:2F:93:E3:EF:85:67:79"
+     ]
+    }
+   ]
+  },
+  {
+   "host": "dl.flipkart.com",
+   "url": "https://dl.flipkart.com/.well-known/assetlinks.json",
+   "http": 200,
+   "finalUrl": "https://dl.flipkart.com/.well-known/assetlinks.json",
+   "result": "assetlinks",
+   "android": [
+    {
+     "package": "com.flipkart.android",
+     "handle_all_urls": true,
+     "sha256": [
+      "5D:FB:A3:D8:D6:CB:06:F3:9A:2E:12:DB:6B:AC:64:CE:DF:AC:E4:68:11:EC:D0:93:71:7A:A0:51:AC:65:CE:31"
+     ]
+    },
+    {
+     "package": "com.flipkart.android",
+     "handle_all_urls": false,
+     "sha256": [
+      "5D:FB:A3:D8:D6:CB:06:F3:9A:2E:12:DB:6B:AC:64:CE:DF:AC:E4:68:11:EC:D0:93:71:7A:A0:51:AC:65:CE:31"
+     ]
+    }
+   ]
+  },
+  {
+   "host": "dmart.in",
+   "url": "https://dmart.in/.well-known/assetlinks.json",
+   "http": 200,
+   "finalUrl": "https://www.dmart.in/.well-known/assetlinks.json",
+   "result": "assetlinks",
+   "android": [
+    {
+     "package": "in.dmart.stg",
+     "handle_all_urls": true,
+     "sha256": [
+      "1F:24:4C:2C:A9:74:64:54:50:5C:FE:CF:7A:0C:58:08:E9:AC:65:0B:6C:A7:6A:29:D4:35:AF:74:91:24:57:46"
+     ]
+    },
+    {
+     "package": "in.dmart.uat",
+     "handle_all_urls": true,
+     "sha256": [
+      "1F:24:4C:2C:A9:74:64:54:50:5C:FE:CF:7A:0C:58:08:E9:AC:65:0B:6C:A7:6A:29:D4:35:AF:74:91:24:57:46"
+     ]
+    },
+    {
+     "package": "in.dmart",
+     "handle_all_urls": true,
+     "sha256": [
+      "1F:24:4C:2C:A9:74:64:54:50:5C:FE:CF:7A:0C:58:08:E9:AC:65:0B:6C:A7:6A:29:D4:35:AF:74:91:24:57:46"
+     ]
+    }
+   ]
+  },
+  {
+   "host": "dtc.delhi.gov.in",
+   "url": "https://dtc.delhi.gov.in/.well-known/assetlinks.json",
+   "http": 0,
+   "error": "URLError",
+   "result": "unreachable"
+  },
+  {
+   "host": "easemytrip.com",
+   "url": "https://easemytrip.com/.well-known/assetlinks.json",
+   "http": 200,
+   "finalUrl": "https://www.easemytrip.com/.well-known/assetlinks.json",
+   "result": "assetlinks",
+   "android": [
+    {
+     "package": "com.easemytrip.android",
+     "handle_all_urls": true,
+     "sha256": [
+      "A5:F0:CB:00:5A:51:47:FA:7C:F4:05:46:C8:4D:AE:7D:B3:86:E3:A8:15:1F:A3:41:D4:76:95:96:CE:F0:7E:B2"
+     ]
+    },
+    {
+     "package": "com.easemytrip.android",
+     "handle_all_urls": false,
+     "sha256": [
+      "A5:F0:CB:00:5A:51:47:FA:7C:F4:05:46:C8:4D:AE:7D:B3:86:E3:A8:15:1F:A3:41:D4:76:95:96:CE:F0:7E:B2"
+     ]
+    }
+   ]
+  },
+  {
+   "host": "eazydiner.com",
+   "url": "https://eazydiner.com/.well-known/assetlinks.json",
+   "http": 200,
+   "finalUrl": "https://www.eazydiner.com:443/.well-known/assetlinks.json",
+   "result": "assetlinks",
+   "android": [
+    {
+     "package": "com.easydiner",
+     "handle_all_urls": true,
+     "sha256": [
+      "AE:FD:06:A9:2E:81:FB:19:D7:B8:F8:C1:51:21:07:BD:7E:C2:62:1F:BF:4C:48:8D:67:99:4D:75:33:90:D1:0E"
+     ]
+    }
+   ]
+  },
+  {
+   "host": "english.bmrc.co.in",
+   "url": "https://english.bmrc.co.in/.well-known/assetlinks.json",
+   "http": 404,
+   "finalUrl": "https://english.bmrc.co.in/.well-known/assetlinks.json",
+   "result": "no-assetlinks"
+  },
+  {
+   "host": "esanjeevani.mohfw.gov.in",
+   "url": "https://esanjeevani.mohfw.gov.in/.well-known/assetlinks.json",
+   "http": 403,
+   "finalUrl": "https://esanjeevani.mohfw.gov.in/.well-known/assetlinks.json",
+   "result": "http-403"
+  },
+  {
+   "host": "flipkart.com",
+   "url": "https://flipkart.com/.well-known/assetlinks.json",
+   "http": 200,
+   "finalUrl": "https://www.flipkart.com/.well-known/assetlinks.json",
+   "result": "assetlinks",
+   "android": [
+    {
+     "package": "com.flipkart.android",
+     "handle_all_urls": true,
+     "sha256": [
+      "5D:FB:A3:D8:D6:CB:06:F3:9A:2E:12:DB:6B:AC:64:CE:DF:AC:E4:68:11:EC:D0:93:71:7A:A0:51:AC:65:CE:31"
+     ]
+    },
+    {
+     "package": "com.flipkart.android",
+     "handle_all_urls": false,
+     "sha256": [
+      "5D:FB:A3:D8:D6:CB:06:F3:9A:2E:12:DB:6B:AC:64:CE:DF:AC:E4:68:11:EC:D0:93:71:7A:A0:51:AC:65:CE:31"
+     ]
+    }
+   ]
+  },
+  {
+   "host": "goibibo.com",
+   "url": "https://goibibo.com/.well-known/assetlinks.json",
+   "http": 200,
+   "finalUrl": "https://www.goibibo.com:443/.well-known/assetlinks.json",
+   "result": "assetlinks",
+   "android": [
+    {
+     "package": "com.goibibo",
+     "handle_all_urls": true,
+     "sha256": [
+      "88:C2:9C:81:CD:C0:DF:CA:26:57:51:A4:55:CA:71:95:23:44:6B:10:3B:D5:7F:69:7E:14:A9:FA:67:87:FC:43"
+     ]
+    },
+    {
+     "package": "com.goibibo.debug",
+     "handle_all_urls": true,
+     "sha256": [
+      "70:EE:48:F1:44:04:BF:10:A2:86:37:EF:3B:43:1A:AA:6C:4C:5C:CB:C5:97:65:8D:97:0E:37:DA:FC:89:26:11"
+     ]
+    }
+   ]
+  },
+  {
+   "host": "gujaratmetrorail.com",
+   "url": "https://gujaratmetrorail.com/.well-known/assetlinks.json",
+   "http": 404,
+   "finalUrl": "https://gujaratmetrorail.com/.well-known/assetlinks.json",
+   "result": "no-assetlinks"
+  },
+  {
+   "host": "highwaydelite.com",
+   "url": "https://highwaydelite.com/.well-known/assetlinks.json",
+   "http": 200,
+   "finalUrl": "https://www.highwaydelite.com/.well-known/assetlinks.json",
+   "result": "no-assetlinks"
+  },
+  {
+   "host": "hindustanpetroleum.com",
+   "url": "https://hindustanpetroleum.com/.well-known/assetlinks.json",
+   "http": 200,
+   "finalUrl": "https://www.hindustanpetroleum.com/",
+   "result": "no-assetlinks"
+  },
+  {
+   "host": "iocl.com",
+   "url": "https://iocl.com/.well-known/assetlinks.json",
+   "http": 404,
+   "finalUrl": "https://iocl.com/.well-known/assetlinks.json",
+   "result": "no-assetlinks"
+  },
+  {
+   "host": "irctc.co.in",
+   "url": "https://irctc.co.in/.well-known/assetlinks.json",
+   "http": 403,
+   "finalUrl": "https://www.irctc.co.in/nget/",
+   "result": "http-403"
+  },
+  {
+   "host": "jiobp.com",
+   "url": "https://jiobp.com/.well-known/assetlinks.json",
+   "http": 404,
+   "finalUrl": "https://www.jiobp.com/.well-known/assetlinks.json",
+   "result": "no-assetlinks"
+  },
+  {
+   "host": "jiomart.com",
+   "url": "https://jiomart.com/.well-known/assetlinks.json",
+   "http": 200,
+   "finalUrl": "https://www.jiomart.com/",
+   "result": "no-assetlinks"
+  },
+  {
+   "host": "kanpur.upmetrorail.com",
+   "url": "https://kanpur.upmetrorail.com/.well-known/assetlinks.json",
+   "http": 200,
+   "finalUrl": "https://kanpur.upmetrorail.com/.well-known/assetlinks.json",
+   "result": "no-assetlinks"
+  },
+  {
+   "host": "keralartc.com",
+   "url": "https://keralartc.com/.well-known/assetlinks.json",
+   "http": 0,
+   "error": "URLError",
+   "result": "unreachable"
+  },
+  {
+   "host": "kochimetro.org",
+   "url": "https://kochimetro.org/.well-known/assetlinks.json",
+   "http": 404,
+   "finalUrl": "https://kochimetro.org/.well-known/assetlinks.json",
+   "result": "no-assetlinks"
+  },
+  {
+   "host": "ksrtc.in",
+   "url": "https://ksrtc.in/.well-known/assetlinks.json",
+   "http": 200,
+   "finalUrl": "https://ksrtc.in/",
+   "result": "no-assetlinks"
+  },
+  {
+   "host": "ltmetro.com",
+   "url": "https://ltmetro.com/.well-known/assetlinks.json",
+   "http": 0,
+   "error": "URLError",
+   "result": "unreachable"
+  },
+  {
+   "host": "lucknow.upmetrorail.com",
+   "url": "https://lucknow.upmetrorail.com/.well-known/assetlinks.json",
+   "http": 200,
+   "finalUrl": "https://lucknow.upmetrorail.com/.well-known/assetlinks.json",
+   "result": "no-assetlinks"
+  },
+  {
+   "host": "magicpin.in",
+   "url": "https://magicpin.in/.well-known/assetlinks.json",
+   "http": 200,
+   "finalUrl": "https://magicpin.in/.well-known/assetlinks.json",
+   "result": "assetlinks",
+   "android": [
+    {
+     "package": "com.magicpin.local",
+     "handle_all_urls": true,
+     "sha256": [
+      "SHA256: C5:25:E5:75:F6:7A:27:C4:4E:D8:54:C5:AC:52:E7:3B:4F:CE:0C:80:3D:CB:F6:AB:25:7C:23:EC:19:06:F2:1E",
+      "C5:25:E5:75:F6:7A:27:C4:4E:D8:54:C5:AC:52:E7:3B:4F:CE:0C:80:3D:CB:F6:AB:25:7C:23:EC:19:06:F2:1E"
+     ],
+     "malformed": [
+      "SHA256: C5:25:E5:75:F6:7A:27:C4:4E:D8:54:C5:AC:52:E7:3B:4F:CE:0C:80:3D:CB:F6:AB:25:7C:23:EC:19:06:F2:1E"
+     ]
+    }
+   ]
+  },
+  {
+   "host": "metrorailnagpur.com",
+   "url": "https://metrorailnagpur.com/.well-known/assetlinks.json",
+   "http": 200,
+   "finalUrl": "https://metrorailnagpur.com/.well-known/assetlinks.json",
+   "result": "no-assetlinks"
+  },
+  {
+   "host": "mmrcl.com",
+   "url": "https://mmrcl.com/.well-known/assetlinks.json",
+   "http": 200,
+   "finalUrl": "https://mmrcl.com/.well-known/assetlinks.json",
+   "result": "no-assetlinks"
+  },
+  {
+   "host": "mtcbus.tn.gov.in",
+   "url": "https://mtcbus.tn.gov.in/.well-known/assetlinks.json",
+   "http": 0,
+   "error": "URLError",
+   "result": "unreachable"
+  },
+  {
+   "host": "mtp.indianrailways.gov.in",
+   "url": "https://mtp.indianrailways.gov.in/.well-known/assetlinks.json",
+   "http": 0,
+   "error": "URLError",
+   "result": "unreachable"
+  },
+  {
+   "host": "mybmtc.karnataka.gov.in",
+   "url": "https://mybmtc.karnataka.gov.in/.well-known/assetlinks.json",
+   "http": 0,
+   "error": "URLError",
+   "result": "unreachable"
+  },
+  {
+   "host": "nammayatri.in",
+   "url": "https://nammayatri.in/.well-known/assetlinks.json",
+   "http": 200,
+   "finalUrl": "https://nammayatri.in/.well-known/assetlinks.json",
+   "result": "assetlinks",
+   "android": [
+    {
+     "package": "in.juspay.nammayatripartner",
+     "handle_all_urls": true,
+     "sha256": [
+      "60:A9:16:23:19:EA:AC:E8:88:72:5A:26:51:2F:B3:37:19:5A:B4:E1:E9:98:06:AC:64:4D:03:6D:D8:E1:E8:C9"
+     ]
+    },
+    {
+     "package": "in.juspay.nammayatri",
+     "handle_all_urls": true,
+     "sha256": [
+      "4B:74:EB:A7:A5:1A:A3:50:31:EA:69:50:A8:1E:99:A7:47:57:F2:58:5C:E1:A6:84:80:A6:B0:FD:A9:57:2F:4D"
+     ]
+    },
+    {
+     "package": "in.juspay.nammayatripartner.debug",
+     "handle_all_urls": true,
+     "sha256": [
+      "B5:A7:E7:70:1B:6F:62:E8:B2:91:74:4C:93:E9:32:F3:0D:0A:B6:A2:93:A0:FA:CF:41:F3:CF:55:60:65:08:E5"
+     ]
+    },
+    {
+     "package": "in.juspay.nammayatri.debug",
+     "handle_all_urls": true,
+     "sha256": [
+      "B6:09:5F:A8:0F:BF:2F:DC:68:C3:21:95:40:F4:79:89:84:52:0F:E8:52:2D:FF:47:34:1E:9A:9D:7C:7F:1C:CC"
+     ]
+    }
+   ]
+  },
+  {
+   "host": "netmeds.com",
+   "url": "https://netmeds.com/.well-known/assetlinks.json",
+   "http": 200,
+   "finalUrl": "https://www.netmeds.com/.well-known/assetlinks.json",
+   "result": "assetlinks",
+   "android": [
+    {
+     "package": "com.NetmedsMarketplace.Netmeds",
+     "handle_all_urls": true,
+     "sha256": [
+      "61:D4:71:1D:54:B0:C6:E6:07:7D:94:93:FD:3F:E9:A5:B7:B1:78:2E:92:9D:F2:0E:DF:FF:5E:CE:33:07:9A:5F"
+     ]
+    }
+   ]
+  },
+  {
+   "host": "nhai.gov.in",
+   "url": "https://nhai.gov.in/.well-known/assetlinks.json",
+   "http": 404,
+   "finalUrl": "https://nhai.gov.in/.well-known/assetlinks.json",
+   "result": "no-assetlinks"
+  },
+  {
+   "host": "nmrcnoida.com",
+   "url": "https://nmrcnoida.com/.well-known/assetlinks.json",
+   "http": 200,
+   "finalUrl": "https://nmrcnoida.com/.well-known/assetlinks.json",
+   "result": "no-assetlinks"
+  },
+  {
+   "host": "olacabs.com",
+   "url": "https://olacabs.com/.well-known/assetlinks.json",
+   "http": 403,
+   "finalUrl": "https://olacabs.com/.well-known/assetlinks.json",
+   "result": "http-403"
+  },
+  {
+   "host": "ondc.org",
+   "url": "https://ondc.org/.well-known/assetlinks.json",
+   "http": 404,
+   "finalUrl": "https://ondc.org/.well-known/assetlinks.json",
+   "result": "no-assetlinks"
+  },
+  {
+   "host": "onlineksrtcswift.com",
+   "url": "https://onlineksrtcswift.com/.well-known/assetlinks.json",
+   "http": 404,
+   "finalUrl": "https://onlineksrtcswift.com/.well-known/assetlinks.json",
+   "result": "no-assetlinks"
+  },
+  {
+   "host": "openchargemap.org",
+   "url": "https://openchargemap.org/.well-known/assetlinks.json",
+   "http": 200,
+   "finalUrl": "https://openchargemap.org/loginprovider/beginlogin",
+   "result": "no-assetlinks"
+  },
+  {
+   "host": "parkmate.in",
+   "url": "https://parkmate.in/.well-known/assetlinks.json",
+   "http": 404,
+   "finalUrl": "https://parkmate.in/.well-known/assetlinks.json",
+   "result": "no-assetlinks"
+  },
+  {
+   "host": "pmpml.org",
+   "url": "https://pmpml.org/.well-known/assetlinks.json",
+   "http": 0,
+   "error": "URLError",
+   "result": "unreachable"
+  },
+  {
+   "host": "practo.com",
+   "url": "https://practo.com/.well-known/assetlinks.json",
+   "http": 200,
+   "finalUrl": "https://www.practo.com/.well-known/assetlinks.json",
+   "result": "assetlinks",
+   "android": [
+    {
+     "package": "com.practo.fabric",
+     "handle_all_urls": true,
+     "sha256": [
+      "DE:57:81:8A:6D:97:A7:5F:32:5C:1D:C3:D4:C8:9F:13:83:70:B4:D8:25:52:1B:EF:FF:F2:56:93:9B:1E:3B:AD"
+     ]
+    },
+    {
+     "package": "com.practo.fabric",
+     "handle_all_urls": true,
+     "sha256": [
+      "E9:B7:43:6E:7F:0E:A6:62:1A:80:B8:F1:1E:FC:0D:95:74:9F:6F:4D:96:98:45:0D:35:AF:AF:BE:FB:00:F7:AE"
+     ]
+    },
+    {
+     "package": "com.practo.droid",
+     "handle_all_urls": true,
+     "sha256": [
+      "DE:57:81:8A:6D:97:A7:5F:32:5C:1D:C3:D4:C8:9F:13:83:70:B4:D8:25:52:1B:EF:FF:F2:56:93:9B:1E:3B:AD"
+     ]
+    },
+    {
+     "package": "com.practo.droid",
+     "handle_all_urls": true,
+     "sha256": [
+      "E9:B7:43:6E:7F:0E:A6:62:1A:80:B8:F1:1E:FC:0D:95:74:9F:6F:4D:96:98:45:0D:35:AF:AF:BE:FB:00:F7:AE"
+     ]
+    }
+   ]
+  },
+  {
+   "host": "punemetrorail.org",
+   "url": "https://punemetrorail.org/.well-known/assetlinks.json",
+   "http": 200,
+   "finalUrl": "https://punemetrorail.org/.well-known/assetlinks.json",
+   "result": "no-assetlinks"
+  },
+  {
+   "host": "pvrcinemas.com",
+   "url": "https://pvrcinemas.com/.well-known/assetlinks.json",
+   "http": 403,
+   "finalUrl": "https://pvrcinemas.com/.well-known/assetlinks.json",
+   "result": "http-403"
+  },
+  {
+   "host": "rajmargyatra.nhai.gov.in",
+   "url": "https://rajmargyatra.nhai.gov.in/.well-known/assetlinks.json",
+   "http": 200,
+   "finalUrl": "https://rajmargyatra.nhai.gov.in/.well-known/assetlinks.json",
+   "result": "no-assetlinks"
+  },
+  {
+   "host": "shiprocket.in",
+   "url": "https://shiprocket.in/.well-known/assetlinks.json",
+   "http": 404,
+   "finalUrl": "https://www.shiprocket.in:443/.well-known/assetlinks.json",
+   "result": "no-assetlinks"
+  },
+  {
+   "host": "statiq.in",
+   "url": "https://statiq.in/.well-known/assetlinks.json",
+   "http": 404,
+   "finalUrl": "https://www.statiq.in/.well-known/assetlinks.json",
+   "result": "no-assetlinks"
+  },
+  {
+   "host": "tatapower.com",
+   "url": "https://tatapower.com/.well-known/assetlinks.json",
+   "http": 200,
+   "finalUrl": "https://www.tatapower.com/error-pages/404",
+   "result": "no-assetlinks"
+  },
+  {
+   "host": "tgsrtcbus.in",
+   "url": "https://tgsrtcbus.in/.well-known/assetlinks.json",
+   "http": 404,
+   "finalUrl": "http://www.tgsrtcbus.in/.well-known/assetlinks.json",
+   "result": "no-assetlinks"
+  },
+  {
+   "host": "tis.nhai.gov.in",
+   "url": "https://tis.nhai.gov.in/.well-known/assetlinks.json",
+   "http": 0,
+   "error": "URLError",
+   "result": "unreachable"
+  },
+  {
+   "host": "tnstc.in",
+   "url": "https://tnstc.in/.well-known/assetlinks.json",
+   "http": 404,
+   "finalUrl": "https://tnstc.in/.well-known/assetlinks.json",
+   "result": "no-assetlinks"
+  },
+  {
+   "host": "transport.rajasthan.gov.in",
+   "url": "https://transport.rajasthan.gov.in/.well-known/assetlinks.json",
+   "http": 404,
+   "finalUrl": "https://transport.rajasthan.gov.in/index.html.well-known/assetlinks.json",
+   "result": "no-assetlinks"
+  },
+  {
+   "host": "tummoc.com",
+   "url": "https://tummoc.com/.well-known/assetlinks.json",
+   "http": 200,
+   "finalUrl": "https://tummoc.com/.well-known/assetlinks.json",
+   "result": "no-assetlinks"
+  },
+  {
+   "host": "upmetrorail.com",
+   "url": "https://upmetrorail.com/.well-known/assetlinks.json",
+   "http": 200,
+   "finalUrl": "https://upmetrorail.com/.well-known/assetlinks.json",
+   "result": "no-assetlinks"
+  },
+  {
+   "host": "www.112.gov.in",
+   "url": "https://www.112.gov.in/.well-known/assetlinks.json",
+   "http": 0,
+   "error": "URLError",
+   "result": "unreachable"
+  },
+  {
+   "host": "www.apsrtconline.in",
+   "url": "https://www.apsrtconline.in/.well-known/assetlinks.json",
+   "http": 200,
+   "finalUrl": "https://www.apsrtconline.in/.well-known/assetlinks.json",
+   "result": "assetlinks",
+   "android": [
+    {
+     "package": "com.apsrtc.online",
+     "handle_all_urls": true,
+     "sha256": [
+      "01:49:D5:07:6E:06:4A:BC:AB:2F:EB:D1:AC:35:05:1C:02:29:AC:3E:DD:BC:FE:CF:D8:D4:47:6C:E9:59:78:9D"
+     ]
+    }
+   ]
+  },
+  {
+   "host": "www.bestundertaking.com",
+   "url": "https://www.bestundertaking.com/.well-known/assetlinks.json",
+   "http": 404,
+   "finalUrl": "https://www.bestundertaking.com/.well-known/assetlinks.json",
+   "result": "no-assetlinks"
+  },
+  {
+   "host": "www.bharattaxiapp.com",
+   "url": "https://www.bharattaxiapp.com/.well-known/assetlinks.json",
+   "http": 200,
+   "finalUrl": "https://www.bharattaxiapp.com/.well-known/assetlinks.json",
+   "result": "assetlinks",
+   "android": [
+    {
+     "package": "in.mobility.bharatTaxi",
+     "handle_all_urls": true,
+     "sha256": [
+      "C4:A6:ED:28:C1:4E:04:BE:CC:88:C9:F7:83:30:98:38:CE:2D:AC:12:5C:81:97:9A:37:03:52:B8:1C:BC:B1:D3"
+     ]
+    },
+    {
+     "package": "in.mobility.bharattaxidriver",
+     "handle_all_urls": true,
+     "sha256": [
+      "41:AA:89:A4:FD:90:D6:5D:D3:A8:8D:AB:05:DB:9E:A6:E1:36:BD:D9:A8:69:B2:29:9E:D8:91:93:25:51:F7:6E"
+     ]
+    }
+   ]
+  },
+  {
+   "host": "www.bigbasket.com",
+   "url": "https://www.bigbasket.com/.well-known/assetlinks.json",
+   "http": 200,
+   "finalUrl": "https://www.bigbasket.com/.well-known/assetlinks.json",
+   "result": "assetlinks",
+   "android": [
+    {
+     "package": "com.bigbasket.mobileapp",
+     "handle_all_urls": true,
+     "sha256": [
+      "11:DE:AC:58:29:2C:7A:D7:E1:20:7F:88:88:94:C3:BB:F5:2A:B6:31:A6:D6:E3:44:BB:E4:D3:38:7E:3C:5D:97"
+     ]
+    }
+   ]
+  },
+  {
+   "host": "www.bmrc.co.in",
+   "url": "https://www.bmrc.co.in/.well-known/assetlinks.json",
+   "http": 404,
+   "finalUrl": "https://www.bmrc.co.in/.well-known/assetlinks.json",
+   "result": "no-assetlinks"
+  },
+  {
+   "host": "www.booking.com",
+   "url": "https://www.booking.com/.well-known/assetlinks.json",
+   "http": 200,
+   "finalUrl": "https://www.booking.com/.well-known/assetlinks.json",
+   "result": "assetlinks",
+   "android": [
+    {
+     "package": "com.booking",
+     "handle_all_urls": true,
+     "sha256": [
+      "6A:C8:C8:A9:E6:F3:6E:14:E5:2A:0A:05:15:A3:6B:70:66:E7:20:A1:B0:C8:A1:B0:59:E0:78:17:50:A8:71:99"
+     ]
+    },
+    {
+     "package": "com.booking.dev",
+     "handle_all_urls": true,
+     "sha256": [
+      "32:68:D3:EB:93:38:79:08:63:D5:24:9F:35:F5:1B:F3:FA:D0:E9:59:6C:FB:43:39:98:79:D2:A5:4A:E2:77:A8"
+     ]
+    }
+   ]
+  },
+  {
+   "host": "www.chalo.com",
+   "url": "https://www.chalo.com/.well-known/assetlinks.json",
+   "http": 404,
+   "finalUrl": "https://chalo.com/.well-known/assetlinks.json",
+   "result": "no-assetlinks"
+  },
+  {
+   "host": "www.chargezone.co.in",
+   "url": "https://www.chargezone.co.in/.well-known/assetlinks.json",
+   "http": 404,
+   "finalUrl": "https://www.chargezone.co.in/.well-known/assetlinks.json",
+   "result": "no-assetlinks"
+  },
+  {
+   "host": "www.chennaimetrorail.org",
+   "url": "https://www.chennaimetrorail.org/.well-known/assetlinks.json",
+   "http": 404,
+   "finalUrl": "https://www.chennaimetrorail.org/.well-known/assetlinks.json",
+   "result": "no-assetlinks"
+  },
+  {
+   "host": "www.cinepolisindia.com",
+   "url": "https://www.cinepolisindia.com/.well-known/assetlinks.json",
+   "http": 0,
+   "error": "URLError",
+   "result": "unreachable"
+  },
+  {
+   "host": "www.cleartrip.com",
+   "url": "https://www.cleartrip.com/.well-known/assetlinks.json",
+   "http": 403,
+   "finalUrl": "https://www.cleartrip.com/.well-known/assetlinks.json",
+   "result": "http-403"
+  },
+  {
+   "host": "www.delhimetrorail.com",
+   "url": "https://www.delhimetrorail.com/.well-known/assetlinks.json",
+   "http": 200,
+   "finalUrl": "https://delhimetrorail.com/.well-known/assetlinks.json",
+   "result": "no-assetlinks"
+  },
+  {
+   "host": "www.delhivery.com",
+   "url": "https://www.delhivery.com/.well-known/assetlinks.json",
+   "http": 200,
+   "finalUrl": "https://www.delhivery.com/.well-known/assetlinks.json",
+   "result": "assetlinks",
+   "android": [
+    {
+     "package": "com.delhiveryConsigneeApp",
+     "handle_all_urls": true,
+     "sha256": [
+      "FA:C6:17:45:DC:09:03:78:6F:B9:ED:E6:2A:96:2B:39:9F:73:48:F0:BB:6F:89:9B:83:32:66:75:91:03:3B:9C",
+      "83:7D:0E:78:8B:6A:54:2D:66:32:EC:65:DC:5F:DB:A4:D2:65:22:82:41:C2:32:ED:2D:5A:29:E0:80:14:24:CE",
+      "B9:99:EA:1C:1C:E6:6C:00:41:01:D7:90:09:90:0C:CB:99:5E:B7:51:AA:D8:E9:C4:45:2F:93:E3:EF:85:67:79"
+     ]
+    }
+   ]
+  },
+  {
+   "host": "www.dmart.in",
+   "url": "https://www.dmart.in/.well-known/assetlinks.json",
+   "http": 200,
+   "finalUrl": "https://www.dmart.in/.well-known/assetlinks.json",
+   "result": "assetlinks",
+   "android": [
+    {
+     "package": "in.dmart.stg",
+     "handle_all_urls": true,
+     "sha256": [
+      "1F:24:4C:2C:A9:74:64:54:50:5C:FE:CF:7A:0C:58:08:E9:AC:65:0B:6C:A7:6A:29:D4:35:AF:74:91:24:57:46"
+     ]
+    },
+    {
+     "package": "in.dmart.uat",
+     "handle_all_urls": true,
+     "sha256": [
+      "1F:24:4C:2C:A9:74:64:54:50:5C:FE:CF:7A:0C:58:08:E9:AC:65:0B:6C:A7:6A:29:D4:35:AF:74:91:24:57:46"
+     ]
+    },
+    {
+     "package": "in.dmart",
+     "handle_all_urls": true,
+     "sha256": [
+      "1F:24:4C:2C:A9:74:64:54:50:5C:FE:CF:7A:0C:58:08:E9:AC:65:0B:6C:A7:6A:29:D4:35:AF:74:91:24:57:46"
+     ]
+    }
+   ]
+  },
+  {
+   "host": "www.easemytrip.com",
+   "url": "https://www.easemytrip.com/.well-known/assetlinks.json",
+   "http": 200,
+   "finalUrl": "https://www.easemytrip.com/.well-known/assetlinks.json",
+   "result": "assetlinks",
+   "android": [
+    {
+     "package": "com.easemytrip.android",
+     "handle_all_urls": true,
+     "sha256": [
+      "A5:F0:CB:00:5A:51:47:FA:7C:F4:05:46:C8:4D:AE:7D:B3:86:E3:A8:15:1F:A3:41:D4:76:95:96:CE:F0:7E:B2"
+     ]
+    },
+    {
+     "package": "com.easemytrip.android",
+     "handle_all_urls": false,
+     "sha256": [
+      "A5:F0:CB:00:5A:51:47:FA:7C:F4:05:46:C8:4D:AE:7D:B3:86:E3:A8:15:1F:A3:41:D4:76:95:96:CE:F0:7E:B2"
+     ]
+    }
+   ]
+  },
+  {
+   "host": "www.eazydiner.com",
+   "url": "https://www.eazydiner.com/.well-known/assetlinks.json",
+   "http": 200,
+   "finalUrl": "https://www.eazydiner.com/.well-known/assetlinks.json",
+   "result": "assetlinks",
+   "android": [
+    {
+     "package": "com.easydiner",
+     "handle_all_urls": true,
+     "sha256": [
+      "AE:FD:06:A9:2E:81:FB:19:D7:B8:F8:C1:51:21:07:BD:7E:C2:62:1F:BF:4C:48:8D:67:99:4D:75:33:90:D1:0E"
+     ]
+    }
+   ]
+  },
+  {
+   "host": "www.flipkart.com",
+   "url": "https://www.flipkart.com/.well-known/assetlinks.json",
+   "http": 200,
+   "finalUrl": "https://www.flipkart.com/.well-known/assetlinks.json",
+   "result": "assetlinks",
+   "android": [
+    {
+     "package": "com.flipkart.android",
+     "handle_all_urls": true,
+     "sha256": [
+      "5D:FB:A3:D8:D6:CB:06:F3:9A:2E:12:DB:6B:AC:64:CE:DF:AC:E4:68:11:EC:D0:93:71:7A:A0:51:AC:65:CE:31"
+     ]
+    },
+    {
+     "package": "com.flipkart.android",
+     "handle_all_urls": false,
+     "sha256": [
+      "5D:FB:A3:D8:D6:CB:06:F3:9A:2E:12:DB:6B:AC:64:CE:DF:AC:E4:68:11:EC:D0:93:71:7A:A0:51:AC:65:CE:31"
+     ]
+    }
+   ]
+  },
+  {
+   "host": "www.goibibo.com",
+   "url": "https://www.goibibo.com/.well-known/assetlinks.json",
+   "http": 200,
+   "finalUrl": "https://www.goibibo.com/.well-known/assetlinks.json",
+   "result": "assetlinks",
+   "android": [
+    {
+     "package": "com.goibibo",
+     "handle_all_urls": true,
+     "sha256": [
+      "88:C2:9C:81:CD:C0:DF:CA:26:57:51:A4:55:CA:71:95:23:44:6B:10:3B:D5:7F:69:7E:14:A9:FA:67:87:FC:43"
+     ]
+    },
+    {
+     "package": "com.goibibo.debug",
+     "handle_all_urls": true,
+     "sha256": [
+      "70:EE:48:F1:44:04:BF:10:A2:86:37:EF:3B:43:1A:AA:6C:4C:5C:CB:C5:97:65:8D:97:0E:37:DA:FC:89:26:11"
+     ]
+    }
+   ]
+  },
+  {
+   "host": "www.gujaratmetrorail.com",
+   "url": "https://www.gujaratmetrorail.com/.well-known/assetlinks.json",
+   "http": 500,
+   "finalUrl": "https://www.gujaratmetrorail.com/.well-known/assetlinks.json",
+   "result": "http-500"
+  },
+  {
+   "host": "www.highwaydelite.com",
+   "url": "https://www.highwaydelite.com/.well-known/assetlinks.json",
+   "http": 200,
+   "finalUrl": "https://www.highwaydelite.com/.well-known/assetlinks.json",
+   "result": "no-assetlinks"
+  },
+  {
+   "host": "www.hindustanpetroleum.com",
+   "url": "https://www.hindustanpetroleum.com/.well-known/assetlinks.json",
+   "http": 200,
+   "finalUrl": "https://www.hindustanpetroleum.com/",
+   "result": "no-assetlinks"
+  },
+  {
+   "host": "www.incredibleindia.gov.in",
+   "url": "https://www.incredibleindia.gov.in/.well-known/assetlinks.json",
+   "http": 404,
+   "finalUrl": "https://www.incredibleindia.gov.in/.well-known/assetlinks.json",
+   "result": "no-assetlinks"
+  },
+  {
+   "host": "www.indiapost.gov.in",
+   "url": "https://www.indiapost.gov.in/.well-known/assetlinks.json",
+   "http": 404,
+   "finalUrl": "https://www.indiapost.gov.in/.well-known/assetlinks.json",
+   "result": "no-assetlinks"
+  },
+  {
+   "host": "www.inoxmovies.com",
+   "url": "https://www.inoxmovies.com/.well-known/assetlinks.json",
+   "http": 403,
+   "finalUrl": "https://www.inoxmovies.com/.well-known/assetlinks.json",
+   "result": "http-403"
+  },
+  {
+   "host": "www.iocl.com",
+   "url": "https://www.iocl.com/.well-known/assetlinks.json",
+   "http": 404,
+   "finalUrl": "https://www.iocl.com/.well-known/assetlinks.json",
+   "result": "no-assetlinks"
+  },
+  {
+   "host": "www.irctc.co.in",
+   "url": "https://www.irctc.co.in/.well-known/assetlinks.json",
+   "http": 403,
+   "finalUrl": "https://www.irctc.co.in/.well-known/assetlinks.json",
+   "result": "http-403"
+  },
+  {
+   "host": "www.jiobp.com",
+   "url": "https://www.jiobp.com/.well-known/assetlinks.json",
+   "http": 404,
+   "finalUrl": "https://www.jiobp.com/.well-known/assetlinks.json",
+   "result": "no-assetlinks"
+  },
+  {
+   "host": "www.jiomart.com",
+   "url": "https://www.jiomart.com/.well-known/assetlinks.json",
+   "http": 200,
+   "finalUrl": "https://www.jiomart.com/.well-known/assetlinks.json",
+   "result": "assetlinks",
+   "android": [
+    {
+     "package": "com.jpl.jiomart",
+     "handle_all_urls": true,
+     "sha256": [
+      "6E:85:A9:B6:45:4F:9A:74:92:33:92:E2:5A:59:B8:33:6D:C5:97:3C:36:E1:D0:CD:70:E4:6E:6C:2A:D5:8E:FC",
+      "8A:2F:2C:36:FC:5B:A9:B6:E5:86:F6:31:62:3E:9B:F4:0F:AB:89:A9:57:A5:48:4F:E5:44:CD:49:3B:C4:DB:4E",
+      "A1:A9:F3:29:B0:E1:69:D7:5A:92:40:2A:1E:48:09:E0:5D:BB:AD:9F:44:77:16:DD:03:A4:08:3A:B9:11:BD:83",
+      "4C:6F:0C:ED:D0:6F:7F:8E:21:E1:30:59:98:4E:D3:1E:3B:6E:CD:D7:13:D0:40:2C:2A:43:5D:63:81:2D:15:55",
+      "E3:89:7F:F8:3D:EE:D6:8D:A4:5C:04:DB:47:48:66:72:A1:0E:79:F1:39:29:AC:53:C2:E5:6D:20:3C:3C:61:EA"
+     ]
+    }
+   ]
+  },
+  {
+   "host": "www.keralartc.com",
+   "url": "https://www.keralartc.com/.well-known/assetlinks.json",
+   "http": 0,
+   "error": "URLError",
+   "result": "unreachable"
+  },
+  {
+   "host": "www.kochimetro.org",
+   "url": "https://www.kochimetro.org/.well-known/assetlinks.json",
+   "http": 0,
+   "error": "URLError",
+   "result": "unreachable"
+  },
+  {
+   "host": "www.ksrtc.in",
+   "url": "https://www.ksrtc.in/.well-known/assetlinks.json",
+   "http": 200,
+   "finalUrl": "https://www.ksrtc.in/",
+   "result": "no-assetlinks"
+  },
+  {
+   "host": "www.ltmetro.com",
+   "url": "https://www.ltmetro.com/.well-known/assetlinks.json",
+   "http": 0,
+   "error": "URLError",
+   "result": "unreachable"
+  },
+  {
+   "host": "www.magicpin.in",
+   "url": "https://www.magicpin.in/.well-known/assetlinks.json",
+   "http": 200,
+   "finalUrl": "https://magicpin.in/.well-known/assetlinks.json",
+   "result": "assetlinks",
+   "android": [
+    {
+     "package": "com.magicpin.local",
+     "handle_all_urls": true,
+     "sha256": [
+      "SHA256: C5:25:E5:75:F6:7A:27:C4:4E:D8:54:C5:AC:52:E7:3B:4F:CE:0C:80:3D:CB:F6:AB:25:7C:23:EC:19:06:F2:1E",
+      "C5:25:E5:75:F6:7A:27:C4:4E:D8:54:C5:AC:52:E7:3B:4F:CE:0C:80:3D:CB:F6:AB:25:7C:23:EC:19:06:F2:1E"
+     ],
+     "malformed": [
+      "SHA256: C5:25:E5:75:F6:7A:27:C4:4E:D8:54:C5:AC:52:E7:3B:4F:CE:0C:80:3D:CB:F6:AB:25:7C:23:EC:19:06:F2:1E"
+     ]
+    }
+   ]
+  },
+  {
+   "host": "www.metrorailnagpur.com",
+   "url": "https://www.metrorailnagpur.com/.well-known/assetlinks.json",
+   "http": 200,
+   "finalUrl": "https://www.metrorailnagpur.com/.well-known/assetlinks.json",
+   "result": "no-assetlinks"
+  },
+  {
+   "host": "www.mmrcl.com",
+   "url": "https://www.mmrcl.com/.well-known/assetlinks.json",
+   "http": 200,
+   "finalUrl": "https://mmrcl.com/.well-known/assetlinks.json",
+   "result": "no-assetlinks"
+  },
+  {
+   "host": "www.nammayatri.in",
+   "url": "https://www.nammayatri.in/.well-known/assetlinks.json",
+   "http": 200,
+   "finalUrl": "https://www.nammayatri.in/.well-known/assetlinks.json",
+   "result": "assetlinks",
+   "android": [
+    {
+     "package": "in.juspay.nammayatripartner",
+     "handle_all_urls": true,
+     "sha256": [
+      "60:A9:16:23:19:EA:AC:E8:88:72:5A:26:51:2F:B3:37:19:5A:B4:E1:E9:98:06:AC:64:4D:03:6D:D8:E1:E8:C9"
+     ]
+    },
+    {
+     "package": "in.juspay.nammayatri",
+     "handle_all_urls": true,
+     "sha256": [
+      "4B:74:EB:A7:A5:1A:A3:50:31:EA:69:50:A8:1E:99:A7:47:57:F2:58:5C:E1:A6:84:80:A6:B0:FD:A9:57:2F:4D"
+     ]
+    },
+    {
+     "package": "in.juspay.nammayatripartner.debug",
+     "handle_all_urls": true,
+     "sha256": [
+      "B5:A7:E7:70:1B:6F:62:E8:B2:91:74:4C:93:E9:32:F3:0D:0A:B6:A2:93:A0:FA:CF:41:F3:CF:55:60:65:08:E5"
+     ]
+    },
+    {
+     "package": "in.juspay.nammayatri.debug",
+     "handle_all_urls": true,
+     "sha256": [
+      "B6:09:5F:A8:0F:BF:2F:DC:68:C3:21:95:40:F4:79:89:84:52:0F:E8:52:2D:FF:47:34:1E:9A:9D:7C:7F:1C:CC"
+     ]
+    }
+   ]
+  },
+  {
+   "host": "www.netmeds.com",
+   "url": "https://www.netmeds.com/.well-known/assetlinks.json",
+   "http": 200,
+   "finalUrl": "https://www.netmeds.com/.well-known/assetlinks.json",
+   "result": "assetlinks",
+   "android": [
+    {
+     "package": "com.NetmedsMarketplace.Netmeds",
+     "handle_all_urls": true,
+     "sha256": [
+      "61:D4:71:1D:54:B0:C6:E6:07:7D:94:93:FD:3F:E9:A5:B7:B1:78:2E:92:9D:F2:0E:DF:FF:5E:CE:33:07:9A:5F"
+     ]
+    }
+   ]
+  },
+  {
+   "host": "www.nmrcnoida.com",
+   "url": "https://www.nmrcnoida.com/.well-known/assetlinks.json",
+   "http": 200,
+   "finalUrl": "https://www.nmrcnoida.com/.well-known/assetlinks.json",
+   "result": "no-assetlinks"
+  },
+  {
+   "host": "www.olacabs.com",
+   "url": "https://www.olacabs.com/.well-known/assetlinks.json",
+   "http": 403,
+   "finalUrl": "https://www.olacabs.com/.well-known/assetlinks.json",
+   "result": "http-403"
+  },
+  {
+   "host": "www.ondc.org",
+   "url": "https://www.ondc.org/.well-known/assetlinks.json",
+   "http": 404,
+   "finalUrl": "https://www.ondc.org/.well-known/assetlinks.json",
+   "result": "no-assetlinks"
+  },
+  {
+   "host": "www.parkmate.in",
+   "url": "https://www.parkmate.in/.well-known/assetlinks.json",
+   "http": 404,
+   "finalUrl": "https://parkmate.in/.well-known/assetlinks.json",
+   "result": "no-assetlinks"
+  },
+  {
+   "host": "www.pmpml.org",
+   "url": "https://www.pmpml.org/.well-known/assetlinks.json",
+   "http": 0,
+   "error": "URLError",
+   "result": "unreachable"
+  },
+  {
+   "host": "www.practo.com",
+   "url": "https://www.practo.com/.well-known/assetlinks.json",
+   "http": 200,
+   "finalUrl": "https://www.practo.com/.well-known/assetlinks.json",
+   "result": "assetlinks",
+   "android": [
+    {
+     "package": "com.practo.fabric",
+     "handle_all_urls": true,
+     "sha256": [
+      "DE:57:81:8A:6D:97:A7:5F:32:5C:1D:C3:D4:C8:9F:13:83:70:B4:D8:25:52:1B:EF:FF:F2:56:93:9B:1E:3B:AD"
+     ]
+    },
+    {
+     "package": "com.practo.fabric",
+     "handle_all_urls": true,
+     "sha256": [
+      "E9:B7:43:6E:7F:0E:A6:62:1A:80:B8:F1:1E:FC:0D:95:74:9F:6F:4D:96:98:45:0D:35:AF:AF:BE:FB:00:F7:AE"
+     ]
+    },
+    {
+     "package": "com.practo.droid",
+     "handle_all_urls": true,
+     "sha256": [
+      "DE:57:81:8A:6D:97:A7:5F:32:5C:1D:C3:D4:C8:9F:13:83:70:B4:D8:25:52:1B:EF:FF:F2:56:93:9B:1E:3B:AD"
+     ]
+    },
+    {
+     "package": "com.practo.droid",
+     "handle_all_urls": true,
+     "sha256": [
+      "E9:B7:43:6E:7F:0E:A6:62:1A:80:B8:F1:1E:FC:0D:95:74:9F:6F:4D:96:98:45:0D:35:AF:AF:BE:FB:00:F7:AE"
+     ]
+    }
+   ]
+  },
+  {
+   "host": "www.punemetrorail.org",
+   "url": "https://www.punemetrorail.org/.well-known/assetlinks.json",
+   "http": 200,
+   "finalUrl": "https://www.punemetrorail.org/.well-known/assetlinks.json",
+   "result": "no-assetlinks"
+  },
+  {
+   "host": "www.pvrcinemas.com",
+   "url": "https://www.pvrcinemas.com/.well-known/assetlinks.json",
+   "http": 403,
+   "finalUrl": "https://www.pvrcinemas.com/.well-known/assetlinks.json",
+   "result": "http-403"
+  },
+  {
+   "host": "www.shiprocket.in",
+   "url": "https://www.shiprocket.in/.well-known/assetlinks.json",
+   "http": 404,
+   "finalUrl": "https://www.shiprocket.in/.well-known/assetlinks.json",
+   "result": "no-assetlinks"
+  },
+  {
+   "host": "www.statiq.in",
+   "url": "https://www.statiq.in/.well-known/assetlinks.json",
+   "http": 404,
+   "finalUrl": "https://www.statiq.in/.well-known/assetlinks.json",
+   "result": "no-assetlinks"
+  },
+  {
+   "host": "www.tatapower.com",
+   "url": "https://www.tatapower.com/.well-known/assetlinks.json",
+   "http": 200,
+   "finalUrl": "https://www.tatapower.com/error-pages/404",
+   "result": "no-assetlinks"
+  },
+  {
+   "host": "www.tgsrtc.telangana.gov.in",
+   "url": "https://www.tgsrtc.telangana.gov.in/.well-known/assetlinks.json",
+   "http": 200,
+   "finalUrl": "https://www.tgsrtc.telangana.gov.in/.well-known/assetlinks.json",
+   "result": "no-assetlinks"
+  },
+  {
+   "host": "www.tgsrtcbus.in",
+   "url": "https://www.tgsrtcbus.in/.well-known/assetlinks.json",
+   "http": 200,
+   "finalUrl": "https://www.tgsrtcbus.in/.well-known/assetlinks.json",
+   "result": "no-assetlinks"
+  },
+  {
+   "host": "www.tnstc.in",
+   "url": "https://www.tnstc.in/.well-known/assetlinks.json",
+   "http": 404,
+   "finalUrl": "https://www.tnstc.in/.well-known/assetlinks.json",
+   "result": "no-assetlinks"
+  },
+  {
+   "host": "www.tummoc.com",
+   "url": "https://www.tummoc.com/.well-known/assetlinks.json",
+   "http": 200,
+   "finalUrl": "https://www.tummoc.com/.well-known/assetlinks.json",
+   "result": "no-assetlinks"
+  },
+  {
+   "host": "www.yatrisathi.in",
+   "url": "https://www.yatrisathi.in/.well-known/assetlinks.json",
+   "http": 200,
+   "finalUrl": "https://www.yatrisathi.in/.well-known/assetlinks.json",
+   "result": "assetlinks",
+   "android": [
+    {
+     "package": "in.juspay.jatrisaathidriver",
+     "handle_all_urls": true,
+     "sha256": [
+      "BA:50:4D:59:8E:67:8B:8B:2B:3E:32:4A:71:54:5F:18:A0:46:47:77:89:EB:D6:88:C7:03:B3:5F:83:CD:4F:FB"
+     ]
+    },
+    {
+     "package": "in.juspay.jatrisaathi",
+     "handle_all_urls": true,
+     "sha256": [
+      "67:E9:37:EF:9C:88:1C:A3:63:5A:25:44:87:1F:84:C2:86:9A:3C:D3:63:29:65:8D:FE:AF:27:DA:BB:CC:46:C1"
+     ]
+    },
+    {
+     "package": "in.juspay.jatrisaathidriver.debug",
+     "handle_all_urls": true,
+     "sha256": [
+      "4E:16:FD:EE:68:5C:C7:EF:80:1F:25:72:3C:37:8B:DA:70:D9:DE:72:07:F5:5E:56:D7:57:31:6B:4D:90:A6:A6"
+     ]
+    },
+    {
+     "package": "in.juspay.whereAndWhen.debug",
+     "handle_all_urls": true,
+     "sha256": [
+      "F9:51:8E:FF:42:5C:19:6E:77:EB:5F:4F:BE:97:74:44:38:D6:B2:BF:B4:1F:A6:BA:C3:9B:FF:5F:81:26:9F:A0"
+     ]
+    },
+    {
+     "package": "in.juspay.whereAndWhen",
+     "handle_all_urls": true,
+     "sha256": [
+      "4F:2F:57:C3:B9:86:44:E2:9A:F6:F8:03:93:2E:C2:26:5A:7B:DB:D0:92:89:52:DE:08:DB:81:35:4A:D1:DF:8E"
+     ]
+    }
+   ]
+  },
+  {
+   "host": "www.zepto.com",
+   "url": "https://www.zepto.com/.well-known/assetlinks.json",
+   "http": 200,
+   "finalUrl": "https://www.zepto.com/.well-known/assetlinks.json",
+   "result": "assetlinks",
+   "android": [
+    {
+     "package": "com.zeptoconsumerapp",
+     "handle_all_urls": true,
+     "sha256": [
+      "2B:B7:60:55:AF:EA:ED:E6:D0:2C:D0:B3:92:C7:7F:69:52:A6:F8:0E:4C:C1:94:4B:71:3E:FB:85:4E:F1:98:F4",
+      "FA:C6:17:45:DC:09:03:78:6F:B9:ED:E6:2A:96:2B:39:9F:73:48:F0:BB:6F:89:9B:83:32:66:75:91:03:3B:9C",
+      "E3:FB:E1:A6:0A:18:D0:4B:AC:31:66:B5:73:AB:04:1C:F7:3E:2A:B4:7F:92:3B:C8:F4:7F:BF:A5:F9:0A:36:9D"
+     ]
+    },
+    {
+     "package": "com.zeptoconsumerapp.qa",
+     "handle_all_urls": true,
+     "sha256": [
+      "2B:B7:60:55:AF:EA:ED:E6:D0:2C:D0:B3:92:C7:7F:69:52:A6:F8:0E:4C:C1:94:4B:71:3E:FB:85:4E:F1:98:F4"
+     ]
+    }
+   ]
+  },
+  {
+   "host": "www.zeptonow.com",
+   "url": "https://www.zeptonow.com/.well-known/assetlinks.json",
+   "http": 200,
+   "finalUrl": "https://www.zeptonow.com/.well-known/assetlinks.json",
+   "result": "assetlinks",
+   "android": [
+    {
+     "package": "com.zeptoconsumerapp",
+     "handle_all_urls": true,
+     "sha256": [
+      "2B:B7:60:55:AF:EA:ED:E6:D0:2C:D0:B3:92:C7:7F:69:52:A6:F8:0E:4C:C1:94:4B:71:3E:FB:85:4E:F1:98:F4",
+      "FA:C6:17:45:DC:09:03:78:6F:B9:ED:E6:2A:96:2B:39:9F:73:48:F0:BB:6F:89:9B:83:32:66:75:91:03:3B:9C",
+      "E3:FB:E1:A6:0A:18:D0:4B:AC:31:66:B5:73:AB:04:1C:F7:3E:2A:B4:7F:92:3B:C8:F4:7F:BF:A5:F9:0A:36:9D"
+     ]
+    }
+   ]
+  },
+  {
+   "host": "yatrisathi.in",
+   "url": "https://yatrisathi.in/.well-known/assetlinks.json",
+   "http": 200,
+   "finalUrl": "https://yatrisathi.in/.well-known/assetlinks.json",
+   "result": "assetlinks",
+   "android": [
+    {
+     "package": "in.juspay.jatrisaathidriver",
+     "handle_all_urls": true,
+     "sha256": [
+      "BA:50:4D:59:8E:67:8B:8B:2B:3E:32:4A:71:54:5F:18:A0:46:47:77:89:EB:D6:88:C7:03:B3:5F:83:CD:4F:FB"
+     ]
+    },
+    {
+     "package": "in.juspay.jatrisaathi",
+     "handle_all_urls": true,
+     "sha256": [
+      "67:E9:37:EF:9C:88:1C:A3:63:5A:25:44:87:1F:84:C2:86:9A:3C:D3:63:29:65:8D:FE:AF:27:DA:BB:CC:46:C1"
+     ]
+    },
+    {
+     "package": "in.juspay.jatrisaathidriver.debug",
+     "handle_all_urls": true,
+     "sha256": [
+      "4E:16:FD:EE:68:5C:C7:EF:80:1F:25:72:3C:37:8B:DA:70:D9:DE:72:07:F5:5E:56:D7:57:31:6B:4D:90:A6:A6"
+     ]
+    },
+    {
+     "package": "in.juspay.whereAndWhen.debug",
+     "handle_all_urls": true,
+     "sha256": [
+      "F9:51:8E:FF:42:5C:19:6E:77:EB:5F:4F:BE:97:74:44:38:D6:B2:BF:B4:1F:A6:BA:C3:9B:FF:5F:81:26:9F:A0"
+     ]
+    },
+    {
+     "package": "in.juspay.whereAndWhen",
+     "handle_all_urls": true,
+     "sha256": [
+      "4F:2F:57:C3:B9:86:44:E2:9A:F6:F8:03:93:2E:C2:26:5A:7B:DB:D0:92:89:52:DE:08:DB:81:35:4A:D1:DF:8E"
+     ]
+    }
+   ]
+  },
+  {
+   "host": "zepto.com",
+   "url": "https://zepto.com/.well-known/assetlinks.json",
+   "http": 200,
+   "finalUrl": "https://www.zepto.com:443/.well-known/assetlinks.json",
+   "result": "assetlinks",
+   "android": [
+    {
+     "package": "com.zeptoconsumerapp",
+     "handle_all_urls": true,
+     "sha256": [
+      "2B:B7:60:55:AF:EA:ED:E6:D0:2C:D0:B3:92:C7:7F:69:52:A6:F8:0E:4C:C1:94:4B:71:3E:FB:85:4E:F1:98:F4",
+      "FA:C6:17:45:DC:09:03:78:6F:B9:ED:E6:2A:96:2B:39:9F:73:48:F0:BB:6F:89:9B:83:32:66:75:91:03:3B:9C",
+      "E3:FB:E1:A6:0A:18:D0:4B:AC:31:66:B5:73:AB:04:1C:F7:3E:2A:B4:7F:92:3B:C8:F4:7F:BF:A5:F9:0A:36:9D"
+     ]
+    },
+    {
+     "package": "com.zeptoconsumerapp.qa",
+     "handle_all_urls": true,
+     "sha256": [
+      "2B:B7:60:55:AF:EA:ED:E6:D0:2C:D0:B3:92:C7:7F:69:52:A6:F8:0E:4C:C1:94:4B:71:3E:FB:85:4E:F1:98:F4"
+     ]
+    }
+   ]
+  },
+  {
+   "host": "zeptonow.com",
+   "url": "https://zeptonow.com/.well-known/assetlinks.json",
+   "http": 200,
+   "finalUrl": "https://www.zepto.com/.well-known/assetlinks.json",
+   "result": "assetlinks",
+   "android": [
+    {
+     "package": "com.zeptoconsumerapp",
+     "handle_all_urls": true,
+     "sha256": [
+      "2B:B7:60:55:AF:EA:ED:E6:D0:2C:D0:B3:92:C7:7F:69:52:A6:F8:0E:4C:C1:94:4B:71:3E:FB:85:4E:F1:98:F4",
+      "FA:C6:17:45:DC:09:03:78:6F:B9:ED:E6:2A:96:2B:39:9F:73:48:F0:BB:6F:89:9B:83:32:66:75:91:03:3B:9C",
+      "E3:FB:E1:A6:0A:18:D0:4B:AC:31:66:B5:73:AB:04:1C:F7:3E:2A:B4:7F:92:3B:C8:F4:7F:BF:A5:F9:0A:36:9D"
+     ]
+    },
+    {
+     "package": "com.zeptoconsumerapp.qa",
+     "handle_all_urls": true,
+     "sha256": [
+      "2B:B7:60:55:AF:EA:ED:E6:D0:2C:D0:B3:92:C7:7F:69:52:A6:F8:0E:4C:C1:94:4B:71:3E:FB:85:4E:F1:98:F4"
+     ]
+    }
+   ]
+  }
+ ]
+}

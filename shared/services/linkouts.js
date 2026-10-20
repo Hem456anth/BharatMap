@@ -65,17 +65,23 @@ export function uberLink({ pickup = null, dropoff, clientId = '' } = {}) {
   const al = appLink('uber', { kind: 'ride', url: `https://m.uber.com/ul/?${q.join('&')}` });
   return { ...L('uber', al.url, 'ride', true, clientId ? al.note : `${al.note} (client_id not configured)`), deeplink: al.deeplink, clientIdConfigured: !!clientId };
 }
-/** Ola: the documented web booking link needs an Ola-issued affiliate token (utm_source). Without one: the home page (unverified as an app opener). */
+/**
+ * Ola. Documented deep link (https://developers.olacabs.com/docs/deep-linking): book.olacabs.com/?lat&lng&drop_lat&drop_lng&
+ * category&utm_source=<XAPP token, mandatory>&dsw=yes — used only when an Ola-issued token is configured. Without one: the
+ * book.olacabs.com App Link (assetlinks.json lists com.olacabs.customer), no pickup/drop.
+ */
 export function olaLink({ pickup = null, dropoff, xappToken = '' } = {}) {
+  const al = appLink('ola', { kind: 'ride' });
   if (xappToken && pickup && dropoff) {
     const qs = new URLSearchParams({ lat: r6(pickup.lat), lng: r6(pickup.lng), drop_lat: r6(dropoff.lat), drop_lng: r6(dropoff.lng), category: 'compact', utm_source: xappToken, dsw: 'yes' });
-    return L('ola', `https://book.olacabs.com/?${qs}`, 'ride', true);
+    return { ...L('ola', `https://book.olacabs.com/?${qs}`, 'ride', true, 'Documented Ola deep link (affiliate token configured)'), deeplink: { ...al.deeplink, type: 'documented', prefill: ['pickup lat/lng', 'drop lat/lng'] } };
   }
-  return L('ola', 'https://book.olacabs.com/', 'ride', false, 'Ola deep links need an Ola affiliate token; opens Ola without pickup or drop');
+  return { ...al, note: `${al.note}. Pickup/drop need an Ola affiliate token (not configured)` };
 }
 /** Rapido: no documented deep link or ride API — the manifest-declared rapido://open entry point (app home, no pickup/drop) with www.rapido.bike as fallback. */
 export const rapidoLink = () => appLink('rapido', { kind: 'ride' });
-export const nammaYatriLink = () => L('namma-yatri', 'https://nammayatri.in/', 'ride', false, 'No documented consumer deep link; opens the Namma Yatri site');
+/** Namma Yatri: no public consumer deep-link format (open-source repo checked) — App Link to nammayatri.in (assetlinks.json lists in.juspay.nammayatri). */
+export const nammaYatriLink = () => appLink('namma-yatri', { kind: 'ride' });
 
 /** Food: App Links to the Swiggy / Zomato home (no restaurant search parameter: the format is undocumented). Never a menu item or price. */
 export const swiggyLink = () => appLink('swiggy', { kind: 'food' });
@@ -83,17 +89,17 @@ export const zomatoLink = () => appLink('zomato', { kind: 'food' });
 /** Movies: App Links (BookMyShow home, District movies); no showtimes in Bharat Map, no city slug guessed. */
 export const bookMyShowLink = () => appLink('bookmyshow', { kind: 'tickets' });
 export const districtMovies = () => appLink('district', { kind: 'tickets' });
-/** Quick commerce: home pages only — no fabricated product or search-result URLs. Blinkit / Instamart are App Links. */
+/** Quick commerce: home pages only — no fabricated product or search-result URLs. All App Links (APK-verified or assetlinks.json). */
 export const GROCERY_APPS = {
   blinkit: () => appLink('blinkit', { kind: 'grocery' }),
-  zepto: () => L('zepto', 'https://www.zeptonow.com/', 'grocery', false),
+  zepto: () => appLink('zepto', { kind: 'grocery' }),
   instamart: () => appLink('instamart', { kind: 'grocery' }),
-  'flipkart-minutes': () => L('flipkart-minutes', 'https://www.flipkart.com/', 'grocery', false, 'Flipkart Minutes is chosen inside Flipkart'),
-  bigbasket: () => L('bigbasket', 'https://www.bigbasket.com/', 'grocery', false),
+  'flipkart-minutes': () => ({ ...appLink('flipkart-minutes', { kind: 'grocery' }), note: 'App Link to the Flipkart home; Flipkart Minutes is chosen inside Flipkart' }),
+  bigbasket: () => appLink('bigbasket', { kind: 'grocery' }),
 };
-/** Hyderabad Metro ticketing (INTEGRATIONS.md §3): WhatsApp click-to-chat to HMRL's published number, TSavaari via Play Store search, official FAQ. */
+/** Hyderabad Metro ticketing (INTEGRATIONS.md §3): WhatsApp click-to-chat to HMRL's published number, the official TSavaari app (Store link, package confirmed on its Play listing), official FAQ. */
 export const hmrlWhatsApp = () => L('hmrl-whatsapp', 'https://wa.me/918341146468?text=Hi', 'tickets', true, 'HMRL WhatsApp ticketing (+91 83411 46468)');
-export const tsavaariSearch = () => L('tsavaari', 'https://play.google.com/store/search?q=TSavaari&c=apps', 'tickets', true, 'Play Store search for the official TSavaari app');
+export const tsavaariSearch = () => ({ ...appLink('metro-hyderabad', { kind: 'tickets' }), provider: 'metro-hyderabad' });
 export const hmrlOfficial = () => L('ltmetro', 'https://ltmetro.com/faqs/', 'tickets', true, 'Official L&T Metro Hyderabad site');
 export const irctc = () => L('irctc', 'https://www.irctc.co.in/', 'tickets', true);
 export const indiaPostTracking = () => L('indiapost', 'https://www.indiapost.gov.in/', 'tracking', true, 'Tracking number is entered on India Post (captcha form)');
