@@ -1,3 +1,18 @@
+# Bharat Map — technical audit fixes (Nov 2026) — Test report
+
+Run date: 3 Nov 2026 (IST). Findings and fixes: `docs/AUDIT-2026-11.md`.
+
+## Summary
+| Suite | Before (`9ced124`) | After |
+|---|---|---|
+| Unit + API (`npm test`) | 209 / 209 | **228 / 228** locally (209 + 19 regression tests in `tests/audit-2026-11.test.js`) |
+| Browser E2E (`tests/e2e.mjs`, full run) | 137 / 137 (CI run 18) | **137 PASS, 0 FAIL** locally (Chromium from Debian + fonts-noto-core, server via `scripts/dev-restart.sh`); raw output `docs/e2e-results.txt` |
+| `npm audit --audit-level=high` | 1 high (body-parser) | 0 high (4 moderate, build-time `@capacitor/cli` chain, accepted — AUD-22) |
+| semgrep / gitleaks / ESLint | — | 0 true positives / 2 false positives / 0 errors |
+| CI | — | pending (see the next commit) |
+
+No APK was signed or attached in this round, and no APK slimming was done.
+
 # Bharat Map 0.7.18 — UI/UX pass (A1–A7, A15) — Test report
 
 Run date: 20 Oct 2026 (IST).

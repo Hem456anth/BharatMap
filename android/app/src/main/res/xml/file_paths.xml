@@ -1,5 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- Audit 2026-11 (AUD-19): only the app cache is shareable. GPX/KML exports are written to Directory.Cache
+     (web/lib/file-io.js) and shared from there; the Capacitor template's external-path "." (whole shared storage)
+     is not needed and is removed. -->
 <paths xmlns:android="http://schemas.android.com/apk/res/android">
-    <external-path name="my_images" path="." />
     <cache-path name="my_cache_images" path="." />
 </paths>

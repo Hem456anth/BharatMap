@@ -88,7 +88,8 @@ node tests/e2e.mjs      # Chromium E2E (needs the server running and Chromium at
 npm run build:demo      # dist/india-mapos-demo.html — one-file serverless demo
 ```
 
-Demo logins (password `demo1234`, change via `DEMO_PASSWORD`): customer@mapos.demo · seller+b2@mapos.demo · admin@mapos.demo
+Demo logins (password `demo1234`, change via `DEMO_PASSWORD`): customer@mapos.demo · seller+b2@mapos.demo · admin@mapos.demo.
+In production (`NODE_ENV=production`) there is no known password: `ADMIN_PASSWORD` is required, and demo accounts only accept a `DEMO_PASSWORD` of ≥ 12 characters (otherwise a random one) — see `docs/AUDIT-2026-11.md`.
 
 ## Layout
 ```

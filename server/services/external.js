@@ -9,13 +9,31 @@ const CACHE_MAX = 2000;
 function cacheGet(k) { const v = cache.get(k); if (v && v.exp > Date.now()) return v.val; cache.delete(k); return undefined; }
 function cacheSet(k, val, ttlMs) { if (cache.size >= CACHE_MAX) cache.delete(cache.keys().next().value); cache.set(k, { val, exp: Date.now() + ttlMs }); }
 
+// Per-host circuit breaker (same policy as server/lib/upstream.js): after 3 consecutive failures the host is skipped
+// for 30 s, so the legacy /api/route, /api/geocode, /api/mobility and order creation fall back at once instead of each
+// waiting for a 6–12 s timeout while the upstream is down.
+const breakers = new Map();
+export const BREAKER = { threshold: 3, cooldownMs: 30_000 };
+export function breakerState(host) { return breakers.get(host) || { failures: 0, openUntil: 0 }; }
+export function resetBreakers() { breakers.clear(); }
 async function fetchJson(url, { timeoutMs = 6000, method = 'GET', body } = {}) {
+  const host = new URL(url).host;
+  const b = breakerState(host);
+  if (b.openUntil > Date.now()) throw new Error(`circuit_open:${host}`);
   const ctl = new AbortController();
   const t = setTimeout(() => ctl.abort(), timeoutMs);
   try {
     const r = await fetch(url, { method, body, signal: ctl.signal, headers: { 'User-Agent': UA, Accept: 'application/json', ...(body ? { 'Content-Type': 'application/x-www-form-urlencoded' } : {}) } });
-    if (!r.ok) throw new Error(`HTTP ${r.status}`);
-    return await r.json();
+    if (!r.ok) { const e = new Error(`HTTP ${r.status}`); e.status = r.status; throw e; }
+    const j = await r.json();
+    breakers.delete(host);
+    return j;
+  } catch (e) {
+    if (!e.status || e.status === 429 || e.status >= 500) { // 4xx = our request, not an outage
+      const f = b.failures + 1;
+      breakers.set(host, { failures: f, openUntil: f >= BREAKER.threshold ? Date.now() + BREAKER.cooldownMs : 0 });
+    }
+    throw e;
   } finally { clearTimeout(t); }
 }
 

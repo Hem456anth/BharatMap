@@ -29,7 +29,8 @@ jobs:
         run: |
           BT=$ANDROID_HOME/build-tools/$(ls $ANDROID_HOME/build-tools | sort -V | tail -1)
           $BT/apksigner verify --verbose --print-certs "$NAME" | tee apksigner.txt
-          grep -q "CN=Bharat Map" apksigner.txt || { echo "::error::not signed with the Bharat Map release key"; exit 1; }
+          # Pin the release certificate itself (audit 2026-11, AUD-22): a CN string can be forged by any self-signed key.
+          grep -qi "certificate SHA-256 digest: d04d20f9fd727d7ca6d966e771e2ed5760b20fefe9c139d36f0e3e86b7997c6c" apksigner.txt || { echo "::error::not signed with the Bharat Map release key (d04d20f9…)"; exit 1; }
           $BT/zipalign -c -P 16 4 "$NAME"
           $BT/aapt dump badging "$NAME" | grep -E "^package"
           if $BT/aapt dump badging "$NAME" | grep -q application-debuggable; then echo "::error::APK is debuggable"; exit 1; fi

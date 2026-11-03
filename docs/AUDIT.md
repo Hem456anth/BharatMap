@@ -1,3 +1,9 @@
+# Audit — technical / security audit (3 Nov 2026)
+
+Full findings in `docs/AUDIT-2026-11.md`: 41 findings (0 Critical, 4 High, 11 Medium, 20 Low, 6 Info); all High and
+Medium fixed with regression tests (`tests/audit-2026-11.test.js`), 6 Low fixed, 14 Low open with reasons. This also
+closes the v0.2 "Seeded demo accounts with shared password" risk below (AUD-01).
+
 # Audit — UI/UX pass 0.7.18 (20 Oct 2026)
 
 Details per item: `docs/re/UI_UX_V0718.md`. Clean-room: no third-party screenshots, icons, fonts or copy in the repo;

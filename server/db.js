@@ -1,4 +1,5 @@
 import { DatabaseSync } from 'node:sqlite';
+import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -37,7 +38,15 @@ export function migrate(db) {
   }
 }
 
-export function seed(db, { demoPassword = process.env.DEMO_PASSWORD || 'demo1234' } = {}) {
+/** Password for the seeded demo customer / seller / rider accounts. Development keeps the documented 'demo1234';
+ * production never ships a known password: DEMO_PASSWORD (≥ 12 chars) enables demo logins, otherwise each start uses
+ * an unguessable random one (demo accounts exist but cannot be signed in to). */
+export function demoPasswordFor(env = process.env) {
+  if (env.NODE_ENV !== 'production') return env.DEMO_PASSWORD || 'demo1234';
+  if (env.DEMO_PASSWORD) { if (env.DEMO_PASSWORD.length < 12) throw new Error('DEMO_PASSWORD must be at least 12 chars in production'); return env.DEMO_PASSWORD; }
+  return crypto.randomBytes(24).toString('base64url');
+}
+export function seed(db, { demoPassword = demoPasswordFor() } = {}) {
   if (db.prepare('SELECT COUNT(*) c FROM businesses').get().c > 0) return false;
   const pw = hashPassword(demoPassword);
   // Production never ships a known admin password: ADMIN_PASSWORD (≥12 chars) is required.
@@ -45,24 +54,26 @@ export function seed(db, { demoPassword = process.env.DEMO_PASSWORD || 'demo1234
   if (!adminPw || adminPw.length < (process.env.NODE_ENV === 'production' ? 12 : 1)) throw new Error('ADMIN_PASSWORD (min 12 chars) is required in production');
   const insUser = db.prepare('INSERT INTO users(id,email,name,role,password_hash) VALUES (?,?,?,?,?)');
   db.exec('BEGIN');
-  insUser.run('u_admin', process.env.ADMIN_EMAIL || 'admin@mapos.demo', 'Admin', 'admin', hashPassword(adminPw));
-  insUser.run('u_customer', 'customer@mapos.demo', 'Demo Customer', 'customer', pw);
-  const insB = db.prepare(`INSERT INTO businesses(id,owner_id,name,type,category,city,lat,lng,address,digipin,phone,hours,verified,rating,delivery,pickup)
-    VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`);
-  const insP = db.prepare(`INSERT INTO products(id,business_id,name,category,brand,unit,price,mrp,stock,wholesale_price,min_wholesale_qty,tags)
-    VALUES (?,?,?,?,?,?,?,?,?,?,?,?)`);
-  for (const b of BUSINESSES) {
-    const owner = `u_seller_${b.id}`;
-    insUser.run(owner, `seller+${b.id}@mapos.demo`, `${b.name} (owner)`, 'seller', pw);
-    insB.run(b.id, owner, b.name, b.type, b.category, b.city, b.lat, b.lng, b.address, encodeDigipin(b.lat, b.lng), b.phone, b.hours, b.verified ? 1 : 0, b.rating, b.delivery ? 1 : 0, b.pickup ? 1 : 0);
-    for (const p of b.products) insP.run(p.id, b.id, p.name, p.category, p.brand, p.unit, p.price, p.mrp, p.stock, p.wholesale_price, p.min_wholesale_qty, JSON.stringify(p.tags));
-  }
-  const insR = db.prepare('INSERT INTO riders(id,user_id,name,vehicle,city,lat,lng,available) VALUES (?,?,?,?,?,?,?,?)');
-  for (const r of RIDERS) { insUser.run(`u_${r.id}`, `rider+${r.id}@mapos.demo`, r.name, 'rider', pw); insR.run(r.id, `u_${r.id}`, r.name, r.vehicle, r.city, r.lat, r.lng, 1); }
-  const insW = db.prepare('INSERT INTO warehouses VALUES (?,?,?,?,?)');
-  for (const w of WAREHOUSES) insW.run(w.id, w.name, w.city, w.lat, w.lng);
-  const insM = db.prepare('INSERT INTO mobility_pois(id,kind,name,city,lat,lng,meta,source) VALUES (?,?,?,?,?,?,?,?)');
-  for (const m of MOBILITY) insM.run(m.id, m.kind, m.name, m.city, m.lat, m.lng, m.meta || null, 'sample');
+  try {
+    insUser.run('u_admin', process.env.ADMIN_EMAIL || 'admin@mapos.demo', 'Admin', 'admin', hashPassword(adminPw));
+    insUser.run('u_customer', 'customer@mapos.demo', 'Demo Customer', 'customer', pw);
+    const insB = db.prepare(`INSERT INTO businesses(id,owner_id,name,type,category,city,lat,lng,address,digipin,phone,hours,verified,rating,delivery,pickup)
+      VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`);
+    const insP = db.prepare(`INSERT INTO products(id,business_id,name,category,brand,unit,price,mrp,stock,wholesale_price,min_wholesale_qty,tags)
+      VALUES (?,?,?,?,?,?,?,?,?,?,?,?)`);
+    for (const b of BUSINESSES) {
+      const owner = `u_seller_${b.id}`;
+      insUser.run(owner, `seller+${b.id}@mapos.demo`, `${b.name} (owner)`, 'seller', pw);
+      insB.run(b.id, owner, b.name, b.type, b.category, b.city, b.lat, b.lng, b.address, encodeDigipin(b.lat, b.lng), b.phone, b.hours, b.verified ? 1 : 0, b.rating, b.delivery ? 1 : 0, b.pickup ? 1 : 0);
+      for (const p of b.products) insP.run(p.id, b.id, p.name, p.category, p.brand, p.unit, p.price, p.mrp, p.stock, p.wholesale_price, p.min_wholesale_qty, JSON.stringify(p.tags));
+    }
+    const insR = db.prepare('INSERT INTO riders(id,user_id,name,vehicle,city,lat,lng,available) VALUES (?,?,?,?,?,?,?,?)');
+    for (const r of RIDERS) { insUser.run(`u_${r.id}`, `rider+${r.id}@mapos.demo`, r.name, 'rider', pw); insR.run(r.id, `u_${r.id}`, r.name, r.vehicle, r.city, r.lat, r.lng, 1); }
+    const insW = db.prepare('INSERT INTO warehouses VALUES (?,?,?,?,?)');
+    for (const w of WAREHOUSES) insW.run(w.id, w.name, w.city, w.lat, w.lng);
+    const insM = db.prepare('INSERT INTO mobility_pois(id,kind,name,city,lat,lng,meta,source) VALUES (?,?,?,?,?,?,?,?)');
+    for (const m of MOBILITY) insM.run(m.id, m.kind, m.name, m.city, m.lat, m.lng, m.meta || null, 'sample');
+  } catch (e) { db.exec('ROLLBACK'); throw e; }
   db.exec('COMMIT');
   return true;
 }

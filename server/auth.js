@@ -22,6 +22,21 @@ export function verifyPassword(pw, stored) {
   return expected.length === hash.length && crypto.timingSafeEqual(expected, hash);
 }
 
+// Async variant for request handlers: scrypt runs on the libuv thread pool, so a burst of logins cannot block the
+// event loop (the sync version above is kept for seeding and tests).
+const scryptAsync = (pw, salt) => new Promise((ok, no) => crypto.scrypt(String(pw), salt, 64, { N: 16384, r: 8, p: 1 }, (e, k) => (e ? no(e) : ok(k))));
+// A fixed dummy hash so an unknown e-mail costs the same scrypt work as a wrong password (no timing-based user enumeration).
+const DUMMY = `scrypt$${'00'.repeat(16)}$${'00'.repeat(64)}`;
+export async function verifyPasswordAsync(pw, stored) {
+  const [alg, saltHex, hashHex] = String(stored || DUMMY).split('$');
+  if (alg !== 'scrypt' || !saltHex || !hashHex) return false;
+  const hash = await scryptAsync(pw, Buffer.from(saltHex, 'hex'));
+  const expected = Buffer.from(hashHex, 'hex');
+  return !!stored && expected.length === hash.length && crypto.timingSafeEqual(expected, hash);
+}
+/** Throws at startup in production when JWT_SECRET is missing (instead of failing on the first login). */
+export function assertAuthConfig() { SECRET(); }
+
 export function signToken(payload, ttlSec = 60 * 60 * 12) {
   const header = b64u(JSON.stringify({ alg: 'HS256', typ: 'JWT' }));
   const now = Math.floor(Date.now() / 1000);
@@ -35,7 +50,10 @@ export function verifyToken(token) {
   if (parts.length !== 3) return null;
   const [h, b, s] = parts;
   const expected = b64u(crypto.createHmac('sha256', SECRET()).update(`${h}.${b}`).digest());
-  if (s.length !== expected.length || !crypto.timingSafeEqual(Buffer.from(s), Buffer.from(expected))) return null;
+  // Compare BYTE lengths: a signature with multi-byte characters has the same string length but a different byte
+  // length, and timingSafeEqual would throw (500) instead of rejecting the token.
+  const sb = Buffer.from(s), eb = Buffer.from(expected);
+  if (sb.length !== eb.length || !crypto.timingSafeEqual(sb, eb)) return null;
   try {
     const header = JSON.parse(Buffer.from(h, 'base64url').toString());
     if (header.alg !== 'HS256') return null;

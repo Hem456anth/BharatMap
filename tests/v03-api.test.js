@@ -39,7 +39,8 @@ test('saved places: auth required, round-trip, normalised, isolated per user, si
 test('CSP: server header equals the app-shell <meta>, and lists only the required third-party hosts', async () => {
   const r = await j('GET', '/api/health');
   const header = r.headers.get('content-security-policy');
-  assert.equal(header, cspString());
+  // The HTTP header adds frame-ancestors (header-only directive, audit 2026-11 AUD-13); otherwise identical to the <meta>.
+  assert.equal(header, `${cspString()}; frame-ancestors 'none'`);
   const html = fs.readFileSync(new URL('../web/index.html', import.meta.url), 'utf8');
   const meta = html.match(/http-equiv="Content-Security-Policy" content="([^"]+)"/)[1];
   assert.equal(meta, cspString());

@@ -3,7 +3,8 @@ import crypto from 'node:crypto';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { openDb, seed, loadCatalog } from './db.js';
-import { authOptional, requireRole, signToken, verifyPassword, hashPassword } from './auth.js';
+import { authOptional, requireRole, signToken, verifyPasswordAsync, hashPassword, assertAuthConfig } from './auth.js';
+import { TokenBucketLimiter, rateLimitMiddleware } from './lib/ratelimit.js';
 import { route as routeSvc, geocodeExternal, overpassNearby, llmRewrite } from './services/external.js';
 import { searchMarketplace, searchPlaces, searchMobility, assistant } from '../shared/search.js';
 import { parseIndianAddress } from '../shared/address.js';
@@ -24,6 +25,9 @@ import zlib from 'node:zlib';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const CSP = cspString();
+// frame-ancestors only works as an HTTP header (browsers ignore and warn about it in a <meta> CSP), so it is added here only.
+const CSP_HEADER = `${CSP}; frame-ancestors 'none'`;
+const REQ_ID = /^[A-Za-z0-9._:-]{1,64}$/;
 export const VERSION = '0.7.0';
 
 // ---------- small infra helpers ----------
@@ -48,11 +52,40 @@ const str = (v, max = 300) => (typeof v === 'string' ? v.trim().slice(0, max) : 
 
 export function createApp({ db = openDb(), timeScale = Number(process.env.DEMO_TIME_SCALE || RULES.demoTimeScale), payments = createRazorpay(), paymentAdapters, env = process.env, providers, transit, now } = {}) {
   const pay = createPayments({ env, razorpay: payments, adapters: paymentAdapters });
+  if (process.env.NODE_ENV === 'production') assertAuthConfig(); // fail fast: no JWT_SECRET → no start
   seed(db);
+  // One transaction helper: every BEGIN is paired with COMMIT or ROLLBACK, so a failing statement can never leave the
+  // shared connection inside an open transaction (which made every later BEGIN fail until restart).
+  const tx = (fn) => { db.exec('BEGIN'); try { const r = fn(); db.exec('COMMIT'); return r; } catch (e) { try { db.exec('ROLLBACK'); } catch { /* already rolled back */ } throw e; } };
+  // Close an order and give back what it reserved (stock, rider). Conditional on the status it was read in, so two
+  // concurrent closes cannot restock twice. Returns true when this call closed it.
+  const releaseOrder = (o, status, note, extra = {}) => tx(() => {
+    const ch = db.prepare(`UPDATE orders SET status=?, payment_status=COALESCE(?, payment_status), updated_at=datetime('now') WHERE id=? AND status=?`).run(status, extra.paymentStatus || null, o.id, o.status).changes;
+    if (!ch) return false;
+    for (const it of db.prepare('SELECT * FROM order_items WHERE order_id=?').all(o.id)) db.prepare('UPDATE products SET stock=stock+? WHERE id=?').run(it.qty, it.product_id);
+    if (o.rider_id) db.prepare('UPDATE riders SET available=1 WHERE id=?').run(o.rider_id);
+    db.prepare('INSERT INTO order_events(order_id,status,note) VALUES (?,?,?)').run(o.id, status, note);
+    if (extra.refund) db.prepare('INSERT INTO order_events(order_id,status,note) VALUES (?,?,?)').run(o.id, 'refund_required', extra.refund);
+    return true;
+  });
+  // Unpaid online orders reserve stock and a rider; without an expiry anyone could hold the whole catalogue and fleet.
+  const PENDING_TTL_MS = Math.max(1, Number(process.env.PENDING_PAYMENT_TTL_MIN || 30)) * 60_000;
+  const MAX_PENDING_PER_CUSTOMER = Math.max(1, Number(process.env.MAX_PENDING_PAYMENTS || 5));
+  function expirePendingPayments(nowMs = Date.now()) {
+    let n = 0;
+    for (const o of db.prepare("SELECT * FROM orders WHERE status='pending_payment' AND created_ms < ?").all(nowMs - PENDING_TTL_MS)) {
+      if (releaseOrder(o, 'cancelled', 'payment not completed in time · stock and rider released', { paymentStatus: 'expired' })) {
+        n++; notify(db, o.customer_id, { kind: 'order_expired', title: 'Order cancelled', body: 'Payment was not completed in time. Nothing was charged.', order_id: o.id });
+      }
+    }
+    return n;
+  }
+  setInterval(() => { try { expirePendingPayments(); } catch (e) { console.error(JSON.stringify({ level: 'warn', msg: 'pending_sweep_failed', err: e.message })); } }, 60_000).unref();
   const app = express();
   app.disable('x-powered-by');
   app.set('trust proxy', process.env.TRUST_PROXY === '1');
   app.locals.db = db;
+  app.locals.expirePendingPayments = expirePendingPayments;
 
   // Security headers (helmet-equivalent, dependency-free)
   app.use((req, res, next) => {
@@ -61,13 +94,14 @@ export function createApp({ db = openDb(), timeScale = Number(process.env.DEMO_T
     res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
     res.setHeader('Permissions-Policy', 'geolocation=(self), camera=(), microphone=()');
     res.setHeader('Cross-Origin-Opener-Policy', 'same-origin');
-    res.setHeader('Content-Security-Policy', CSP);
+    res.setHeader('Content-Security-Policy', CSP_HEADER);
     if (process.env.NODE_ENV === 'production') res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
     next();
   });
   app.use((req, res, next) => {
     const t0 = process.hrtime.bigint();
-    req.id = req.headers['x-request-id'] || crypto.randomUUID();
+    // A client-supplied request id is echoed only when it is short and header/log safe.
+    req.id = REQ_ID.test(req.headers['x-request-id'] || '') ? req.headers['x-request-id'] : crypto.randomUUID();
     res.setHeader('X-Request-Id', req.id);
     res.on('finish', () => {
       const ms = Number(process.hrtime.bigint() - t0) / 1e6;
@@ -87,12 +121,25 @@ export function createApp({ db = openDb(), timeScale = Number(process.env.DEMO_T
     next();
   });
   // rawBody kept for webhook signature verification (Razorpay signs the exact bytes).
-  app.use(express.json({ limit: '64kb', verify: (req, _res, buf) => { if (/^\/api\/payments\/[a-z]+\/webhook/.test(req.url)) req.rawBody = buf.toString('utf8'); } }));
+  const keepRaw = (req, _res, buf) => { if (/^\/api\/payments\/[a-z]+\/webhook/.test(req.originalUrl || req.url)) req.rawBody = buf.toString('utf8'); };
+  app.use(express.json({ limit: '64kb', verify: keepRaw }));
+  // Paytm (and other gateways) post webhooks as application/x-www-form-urlencoded: keep their exact bytes too.
+  app.use('/api/payments', express.urlencoded({ extended: false, limit: '64kb', verify: keepRaw }));
   app.use('/api', rateLimiter({ max: Number(process.env.RATE_LIMIT_PER_MIN || 240) }));
+  app.use('/ondc', rateLimiter({ max: Number(process.env.RATE_LIMIT_PER_MIN || 240) }));
   app.use(authOptional);
-  // Stateless JWTs are re-checked against the users table so an admin can disable an account immediately.
-  const isDisabled = db.prepare('SELECT disabled FROM users WHERE id=?');
-  app.use((req, _res, next) => { if (req.user && isDisabled.get(req.user.sub)?.disabled) req.user = null; next(); });
+  // Stateless JWTs are re-checked against the users table on every request: a disabled or deleted account loses
+  // access immediately, and the role / seller business come from the database, not the 12-hour token (a demoted
+  // admin stops being admin at once).
+  const liveUser = db.prepare('SELECT u.disabled, u.role, (SELECT b.id FROM businesses b WHERE b.owner_id = u.id ORDER BY b.id LIMIT 1) AS biz FROM users u WHERE u.id = ?');
+  app.use((req, _res, next) => {
+    if (req.user) {
+      const u = liveUser.get(String(req.user.sub || ''));
+      if (!u || u.disabled) req.user = null;
+      else { req.user.role = u.role; req.user.biz = u.role === 'seller' ? (u.biz || undefined) : undefined; }
+    }
+    next();
+  });
 
   // gzip JSON API responses (> 1 KB) for low-bandwidth clients; dependency-free.
   app.use('/api', (req, res, next) => {
@@ -121,13 +168,30 @@ export function createApp({ db = openDb(), timeScale = Number(process.env.DEMO_T
 
   // ---------- map tile proxy (same-origin, cacheable at CDN; swap upstream for self-hosted PMTiles) ----------
   const TILE_UP = (process.env.TILE_UPSTREAM || 'https://tiles.openfreemap.org').replace(/\/$/, '');
-  const tileCache = new Map();
+  // The cache holds the UPSTREAM bytes only; the own-origin rewrite of style/TileJSON documents happens per response.
+  // (Caching the rewritten body let one request with a forged Host header point every user's tiles, glyphs and
+  // sprites at another host.) Bounded by entries and bytes.
+  const tileCache = new Map(); let tileBytes = 0;
+  const TILE_CACHE_MAX_BYTES = Number(process.env.TILE_CACHE_MAX_MB || 64) * 1048576;
+  const HOST_OK = /^[A-Za-z0-9.-]{1,253}(?::\d{1,5})?$|^\[[0-9A-Fa-f:.]+\](?::\d{1,5})?$/;
+  const selfBase = (req) => {
+    if (process.env.PUBLIC_BASE_URL) return process.env.PUBLIC_BASE_URL.replace(/\/$/, '');
+    const host = req.get('host') || '';
+    return HOST_OK.test(host) ? `${req.protocol}://${host}` : null;
+  };
   app.get(['/map/style.json', '/map/ofm/*'], async (req, res) => {
     const styleName = req.query.style === 'dark' ? 'dark' : (process.env.MAP_STYLE || 'liberty');
     const upPath = req.path === '/map/style.json' ? `/styles/${styleName}` : req.path.slice('/map/ofm'.length);
     const key = upPath;
+    const send = (v) => {
+      let body = v.body;
+      if (/json/.test(v.type)) {
+        const base = selfBase(req); if (!base) return bad(res, 'invalid_host');
+        body = Buffer.from(body.toString('utf8').split(TILE_UP).join(`${base}/map/ofm`));
+      }
+      res.setHeader('Content-Type', v.type); res.setHeader('Cache-Control', 'public, max-age=86400'); res.setHeader('Vary', 'Host'); res.end(body);
+    };
     const hit = tileCache.get(key);
-    const send = (v) => { res.setHeader('Content-Type', v.type); res.setHeader('Cache-Control', 'public, max-age=86400'); res.end(v.body); };
     if (hit) return send(hit);
     try {
       const ctl = new AbortController(); const tm = setTimeout(() => ctl.abort(), 10000);
@@ -135,14 +199,15 @@ export function createApp({ db = openDb(), timeScale = Number(process.env.DEMO_T
       clearTimeout(tm);
       if (!r.ok) return res.sendStatus(r.status);
       const type = r.headers.get('content-type') || 'application/octet-stream';
-      let body = Buffer.from(await r.arrayBuffer());
-      if (/json/.test(type)) body = Buffer.from(body.toString('utf8').split(TILE_UP).join(`${req.protocol}://${req.get('host')}/map/ofm`));
-      const v = { type, body };
-      if (tileCache.size > 4000) tileCache.delete(tileCache.keys().next().value);
-      tileCache.set(key, v);
+      const v = { type, body: Buffer.from(await r.arrayBuffer()) };
+      while (tileCache.size && (tileCache.size >= 4000 || tileBytes + v.body.length > TILE_CACHE_MAX_BYTES)) {
+        const k0 = tileCache.keys().next().value; tileBytes -= tileCache.get(k0).body.length; tileCache.delete(k0);
+      }
+      if (v.body.length <= TILE_CACHE_MAX_BYTES) { tileCache.set(key, v); tileBytes += v.body.length; }
       send(v);
     } catch { res.sendStatus(502); }
   });
+  app.locals.tileCache = tileCache;
 
   // ---------- ops ----------
   app.get('/api/health', (_req, res) => {
@@ -158,7 +223,13 @@ export function createApp({ db = openDb(), timeScale = Number(process.env.DEMO_T
     llm: Boolean(process.env.LLM_API_KEY),
     integrations: app.locals.svc?.integrations.clientConfig() || null,
   }));
-  app.get('/metrics', (_req, res) => {
+  app.get('/metrics', (req, res, next) => {
+    // Opt-in protection: with METRICS_TOKEN set, a matching bearer token is required; in production without it the
+    // endpoint is not exposed at all.
+    const tok = process.env.METRICS_TOKEN;
+    if (tok ? req.headers.authorization !== `Bearer ${tok}` : process.env.NODE_ENV === 'production') return res.status(404).json({ error: 'not_found' });
+    next();
+  }, (_req, res) => {
     const l = [...metrics.latencyMs].sort((a, b) => a - b);
     const q = (p) => (l.length ? l[Math.min(l.length - 1, Math.floor(p * l.length))] : 0);
     let out = `# TYPE mapos_requests_total counter\nmapos_requests_total ${metrics.requests}\n# TYPE mapos_errors_total counter\nmapos_errors_total ${metrics.errors}\n`;
@@ -169,7 +240,9 @@ export function createApp({ db = openDb(), timeScale = Number(process.env.DEMO_T
   app.get('/api/i18n', (_req, res) => res.json({ languages: LANGS, strings: STRINGS }));
 
   // ---------- auth ----------
-  app.post('/api/auth/register', (req, res) => {
+  // Per-IP limit on the password endpoints (scrypt is deliberately expensive), on top of the per-email lockout.
+  const authLimiter = rateLimitMiddleware(new TokenBucketLimiter({ capacity: Number(process.env.AUTH_RATE_BURST || 30), refillPerSec: Number(process.env.AUTH_RATE_PER_SEC || 0.5) }), { name: 'auth' });
+  app.post('/api/auth/register', authLimiter, (req, res) => {
     const email = str(req.body?.email, 120).toLowerCase(); const name = str(req.body?.name, 80); const password = String(req.body?.password || '');
     const role = ['customer', 'seller'].includes(req.body?.role) ? req.body.role : 'customer';
     if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return bad(res, 'invalid_email');
@@ -181,13 +254,17 @@ export function createApp({ db = openDb(), timeScale = Number(process.env.DEMO_T
     res.status(201).json({ token: signToken({ sub: id, role, name }), user: { id, email, name, role } });
   });
   const loginFails = new Map();
-  app.post('/api/auth/login', (req, res) => {
+  app.post('/api/auth/login', authLimiter, async (req, res) => {
     const email = str(req.body?.email, 120).toLowerCase();
     const f = loginFails.get(email) || { n: 0, until: 0 };
     if (f.until > Date.now()) return bad(res, 'too_many_attempts', 429);
     const u = db.prepare('SELECT * FROM users WHERE email=?').get(email);
-    if (!u || !verifyPassword(req.body?.password, u.password_hash) || u.disabled) {
-      f.n++; if (f.n >= 5) { f.until = Date.now() + 5 * 60_000; f.n = 0; } loginFails.set(email, f);
+    // Always run scrypt (dummy hash for unknown e-mails) on the thread pool: same cost for every failure, no event-loop stall.
+    const ok = await verifyPasswordAsync(req.body?.password, u?.password_hash).catch(() => false);
+    if (!u || !ok || u.disabled) {
+      f.n++; if (f.n >= 5) { f.until = Date.now() + 5 * 60_000; f.n = 0; }
+      if (loginFails.size >= 10_000 && !loginFails.has(email)) loginFails.delete(loginFails.keys().next().value); // bounded memory
+      loginFails.set(email, f);
       return bad(res, 'invalid_credentials', 401);
     }
     loginFails.delete(email);
@@ -308,6 +385,11 @@ export function createApp({ db = openDb(), timeScale = Number(process.env.DEMO_T
     if (payment === 'razorpay' && !payments.enabled) return bad(res, 'payments_not_configured', 503);
     // Simulated UPI never marks anything paid and is off unless explicitly enabled for demos.
     if (payment === 'upi_simulated' && process.env.ALLOW_SIMULATED_UPI !== '1') return bad(res, 'simulated_payments_disabled');
+    if (payment === 'online' || payment === 'razorpay') {
+      expirePendingPayments();
+      const open = db.prepare("SELECT COUNT(*) c FROM orders WHERE customer_id=? AND status='pending_payment'").get(req.user.sub).c;
+      if (open >= MAX_PENDING_PER_CUSTOMER) return bad(res, 'too_many_pending_payments', 429);
+    }
     const items = Array.isArray(req.body?.items) ? req.body.items.slice(0, 30) : [];
     const drop = fulfilment === 'delivery' ? point(req.body?.drop?.lat, req.body?.drop?.lng) : null;
     if (!items.length) return bad(res, 'items_required');
@@ -360,9 +442,9 @@ export function createApp({ db = openDb(), timeScale = Number(process.env.DEMO_T
     const view = orderView(db, id, timeScale);
     if (payment === 'razorpay') {
       try {
-        const rz = await payments.createOrder({ amountPaise: priced.total * 100, receipt: id, notes: { mapos_order: id } });
-        db.prepare('INSERT INTO payments(order_id,provider,provider_order_id,amount_paise,status,raw) VALUES (?,?,?,?,?,?)').run(id, 'razorpay', rz.id, priced.total * 100, 'created', JSON.stringify({ status: rz.status }));
-        view.razorpay = { key_id: payments.keyId, order_id: rz.id, amount: priced.total * 100, currency: 'INR', name: 'Bharat Map', description: `Order ${id}` };
+        const rz = await payments.createOrder({ amountPaise: Math.round(priced.total * 100), receipt: id, notes: { mapos_order: id } });
+        db.prepare('INSERT INTO payments(order_id,provider,provider_order_id,amount_paise,status,raw) VALUES (?,?,?,?,?,?)').run(id, 'razorpay', rz.id, Math.round(priced.total * 100), 'created', JSON.stringify({ status: rz.status }));
+        view.razorpay = { key_id: payments.keyId, order_id: rz.id, amount: Math.round(priced.total * 100), currency: 'INR', name: 'Bharat Map', description: `Order ${id}` };
       } catch (e) {
         db.prepare("UPDATE orders SET payment_status='payment_init_failed' WHERE id=?").run(id);
         view.payment_status = 'payment_init_failed'; view.payment_error = e.message;
@@ -393,31 +475,46 @@ export function createApp({ db = openDb(), timeScale = Number(process.env.DEMO_T
     res.json(orderView(db, o.id, timeScale).tracking);
   });
   // Server-Sent Events stream. EventSource can't set headers, so it accepts ?token=.
+  // Each stream polls the DB every 1.5 s, so streams are capped per user and closed after SSE_MAX_MIN minutes
+  // (EventSource reconnects by itself).
+  const sseOpen = new Map();
+  const SSE_PER_USER = Math.max(1, Number(process.env.SSE_PER_USER || 4));
+  const SSE_MAX_MS = Math.max(1, Number(process.env.SSE_MAX_MIN || 30)) * 60_000;
+  app.locals.sseOpen = sseOpen;
   app.get('/api/orders/:id/stream', (req, res) => {
-    if (!req.user && req.query.token) { req.headers.authorization = `Bearer ${req.query.token}`; authOptional(req, res, () => {}); }
+    if (!req.user && typeof req.query.token === 'string') {
+      req.headers.authorization = `Bearer ${req.query.token}`; authOptional(req, res, () => {});
+      const u = req.user && liveUser.get(String(req.user.sub || ''));
+      if (!u || u.disabled) req.user = null; else { req.user.role = u.role; req.user.biz = u.role === 'seller' ? (u.biz || undefined) : undefined; }
+    }
     if (!req.user) return bad(res, 'auth_required', 401);
     const o = db.prepare('SELECT * FROM orders WHERE id=?').get(req.params.id);
     if (!o || !canSee(req, o)) return bad(res, 'not_found', 404);
+    const uid = req.user.sub; const n = sseOpen.get(uid) || 0;
+    if (n >= SSE_PER_USER) return bad(res, 'too_many_streams', 429);
+    sseOpen.set(uid, n + 1);
     res.writeHead(200, { 'Content-Type': 'text/event-stream', 'Cache-Control': 'no-cache', Connection: 'keep-alive' });
+    let done = false;
+    const stop = () => { if (done) return; done = true; clearInterval(iv); clearTimeout(cap); const m = (sseOpen.get(uid) || 1) - 1; if (m > 0) sseOpen.set(uid, m); else sseOpen.delete(uid); res.end(); };
     const tick = () => {
+      if (done) return;
       const v = orderView(db, o.id, timeScale);
       res.write(`data: ${JSON.stringify(v.tracking)}\n\n`);
-      if (['delivered', 'completed', 'cancelled', 'rejected'].includes(v.tracking.status)) { clearInterval(iv); res.end(); }
+      if (['delivered', 'completed', 'cancelled', 'rejected'].includes(v.tracking.status)) stop();
     };
-    const iv = setInterval(tick, 1500); tick();
-    req.on('close', () => clearInterval(iv));
+    const iv = setInterval(tick, 1500);
+    const cap = setTimeout(stop, SSE_MAX_MS);
+    req.on('close', stop);
+    tick();
   });
-  app.post('/api/orders/:id/cancel', requireRole(), (req, res) => {
+  app.post('/api/orders/:id/cancel', requireRole('customer', 'seller', 'admin'), (req, res) => {
     const o = db.prepare('SELECT * FROM orders WHERE id=?').get(req.params.id);
     if (!o || !canSee(req, o)) return bad(res, 'not_found', 404);
     const live = orderView(db, o.id, timeScale).tracking.status;
     if (!['placed', 'accepted', 'pending_payment'].includes(live)) return bad(res, 'cannot_cancel_now', 409);
-    db.exec('BEGIN');
-    db.prepare("UPDATE orders SET status='cancelled', updated_at=datetime('now') WHERE id=?").run(o.id);
-    for (const it of db.prepare('SELECT * FROM order_items WHERE order_id=?').all(o.id)) db.prepare('UPDATE products SET stock=stock+? WHERE id=?').run(it.qty, it.product_id);
-    if (o.rider_id) db.prepare('UPDATE riders SET available=1 WHERE id=?').run(o.rider_id);
-    db.prepare('INSERT INTO order_events(order_id,status,note) VALUES (?,?,?)').run(o.id, 'cancelled', `by ${req.user.role}`);
-    db.exec('COMMIT');
+    const fresh = db.prepare('SELECT * FROM orders WHERE id=?').get(o.id);
+    const paid = fresh.payment_status === 'paid';
+    if (!releaseOrder(fresh, 'cancelled', `by ${req.user.role}`, paid ? { paymentStatus: 'refund_required', refund: 'paid order cancelled — refund needed' } : {})) return bad(res, 'cannot_cancel_now', 409);
     res.json(orderView(db, o.id, timeScale));
   });
 
@@ -446,7 +543,7 @@ export function createApp({ db = openDb(), timeScale = Number(process.env.DEMO_T
     if (!db.prepare('SELECT 1 FROM businesses WHERE id=?').get(bid)) return bad(res, 'no_business', 404);
     const name = str(req.body?.name, 120), category = str(req.body?.category, 40).toLowerCase();
     const price = Math.round(num(req.body?.price)), stock = Math.round(num(req.body?.stock ?? 0));
-    if (!name || !category || !(price >= 0) || !(stock >= 0)) return bad(res, 'invalid_product');
+    if (!name || !category || !(price >= 0 && price <= 10_000_000) || !(stock >= 0 && stock <= 1_000_000)) return bad(res, 'invalid_product');
     const id = `p_${crypto.randomBytes(5).toString('hex')}`;
     const tags = (Array.isArray(req.body?.tags) ? req.body.tags : []).slice(0, 10).map((t) => str(t, 30).toLowerCase()).filter(Boolean);
     db.prepare('INSERT INTO products(id,business_id,name,category,brand,unit,price,mrp,stock,tags) VALUES (?,?,?,?,?,?,?,?,?,?)').run(id, bid, name, category, str(req.body?.brand, 60) || null, str(req.body?.unit, 20) || 'piece', price, Math.round(num(req.body?.mrp)) || price, stock, JSON.stringify(tags));
@@ -455,16 +552,16 @@ export function createApp({ db = openDb(), timeScale = Number(process.env.DEMO_T
   app.post('/api/seller/orders/:id/:action(accept|reject)', requireRole('seller', 'admin'), (req, res) => {
     const o = db.prepare('SELECT * FROM orders WHERE id=?').get(req.params.id);
     if (!o || (req.user.role !== 'admin' && o.business_id !== req.user.biz)) return bad(res, 'not_found', 404);
+    const liveStatus = orderView(db, o.id, timeScale).tracking.status;
     if (req.params.action === 'reject') {
-      if (!['placed', 'accepted'].includes(orderView(db, o.id, timeScale).tracking.status)) return bad(res, 'cannot_reject_now', 409);
-      db.exec('BEGIN');
-      db.prepare("UPDATE orders SET status='rejected' WHERE id=?").run(o.id);
-      for (const it of db.prepare('SELECT * FROM order_items WHERE order_id=?').all(o.id)) db.prepare('UPDATE products SET stock=stock+? WHERE id=?').run(it.qty, it.product_id);
-      if (o.rider_id) db.prepare('UPDATE riders SET available=1 WHERE id=?').run(o.rider_id);
-      db.prepare('INSERT INTO order_events(order_id,status,note) VALUES (?,?,?)').run(o.id, 'rejected', 'by seller');
-      db.exec('COMMIT');
+      if (!['placed', 'accepted'].includes(liveStatus)) return bad(res, 'cannot_reject_now', 409);
+      const fresh = db.prepare('SELECT * FROM orders WHERE id=?').get(o.id);
+      const paid = fresh.payment_status === 'paid';
+      if (!releaseOrder(fresh, 'rejected', 'by seller', paid ? { paymentStatus: 'refund_required', refund: 'paid order rejected — refund needed' } : {})) return bad(res, 'cannot_reject_now', 409);
       notify(db, o.customer_id, { kind: 'order_rejected', title: 'Order rejected', body: 'The seller could not fulfil your order. Stock was released.', order_id: o.id });
     } else {
+      // An unpaid or closed order cannot be accepted (the customer would be told "accepted" for an order that is not confirmed).
+      if (['pending_payment', 'cancelled', 'rejected'].includes(liveStatus)) return bad(res, 'cannot_accept_now', 409);
       db.prepare('INSERT INTO order_events(order_id,status,note) VALUES (?,?,?)').run(o.id, 'accepted', 'by seller');
       notify(db, o.customer_id, { kind: 'order_accepted', title: 'Seller accepted your order', body: 'It is being packed now.', order_id: o.id });
     }
@@ -489,13 +586,25 @@ export function createApp({ db = openDb(), timeScale = Number(process.env.DEMO_T
     const p = db.prepare('SELECT * FROM payments WHERE provider=? AND provider_order_id=?').get(provider, providerOrderId);
     if (!p) return null;
     if (p.status !== 'paid') {
-      db.exec('BEGIN');
-      db.prepare("UPDATE payments SET status='paid', provider_payment_id=?, raw=?, updated_at=datetime('now') WHERE id=?").run(paymentId || null, raw ? JSON.stringify(raw).slice(0, 4000) : p.raw, p.id);
-      db.prepare("UPDATE orders SET payment_status='paid', updated_at=datetime('now') WHERE id=?").run(p.order_id);
-      const confirmed = db.prepare("UPDATE orders SET status='placed', created_ms=? WHERE id=? AND status='pending_payment'").run(Date.now(), p.order_id).changes;
-      db.prepare('INSERT INTO order_events(order_id,status,note) VALUES (?,?,?)').run(p.order_id, 'payment', `${provider} ${paymentId || ''} verified`.trim());
-      db.exec('COMMIT');
-      notifyOrderParties(db, p.order_id, 'payment_paid', 'Payment received', `₹${p.amount_paise / 100} via ${provider} · order confirmed`);
+      const o = db.prepare('SELECT status FROM orders WHERE id=?').get(p.order_id);
+      const otherPaid = db.prepare("SELECT 1 FROM payments WHERE order_id=? AND status='paid' AND id<>?").get(p.order_id, p.id);
+      // A payment that lands on a closed (cancelled / expired / rejected) order, or a second successful attempt for the
+      // same order, is recorded and flagged for refund; it never re-opens or re-confirms the order.
+      const refund = ['cancelled', 'rejected'].includes(o?.status) ? 'the order was already closed' : otherPaid ? 'another payment for this order already succeeded' : null;
+      let confirmed = 0;
+      tx(() => {
+        db.prepare("UPDATE payments SET status='paid', provider_payment_id=?, raw=?, updated_at=datetime('now') WHERE id=?").run(paymentId || null, raw ? JSON.stringify(raw).slice(0, 4000) : p.raw, p.id);
+        if (refund) {
+          db.prepare("UPDATE orders SET payment_status='refund_required', updated_at=datetime('now') WHERE id=?").run(p.order_id);
+          db.prepare('INSERT INTO order_events(order_id,status,note) VALUES (?,?,?)').run(p.order_id, 'refund_required', `${provider} ${paymentId || ''} paid but ${refund} — refund needed`.replace(/\s+/g, ' '));
+        } else {
+          db.prepare("UPDATE orders SET payment_status='paid', updated_at=datetime('now') WHERE id=?").run(p.order_id);
+          confirmed = db.prepare("UPDATE orders SET status='placed', created_ms=? WHERE id=? AND status='pending_payment'").run(Date.now(), p.order_id).changes;
+          db.prepare('INSERT INTO order_events(order_id,status,note) VALUES (?,?,?)').run(p.order_id, 'payment', `${provider} ${paymentId || ''} verified`.trim());
+        }
+      });
+      if (refund) notifyOrderParties(db, p.order_id, 'payment_refund_required', 'Payment needs a refund', `₹${p.amount_paise / 100} via ${provider} · ${refund}`);
+      else notifyOrderParties(db, p.order_id, 'payment_paid', 'Payment received', `₹${p.amount_paise / 100} via ${provider} · order confirmed`);
       if (confirmed) notifyOrderParties(db, p.order_id, 'order_placed', 'Order confirmed', `Paid order is now with the seller`);
     }
     return p.order_id;
@@ -503,6 +612,7 @@ export function createApp({ db = openDb(), timeScale = Number(process.env.DEMO_T
   const markFailed = (provider, providerOrderId) => db.prepare("UPDATE payments SET status='failed', updated_at=datetime('now') WHERE provider=? AND provider_order_id=? AND status!='paid'").run(provider, providerOrderId);
   app.get('/api/payments/config', (_req, res) => res.json(pay.publicConfig()));
   app.post('/api/payments/orders', requireRole(), async (req, res) => {
+    expirePendingPayments(); // an order past its payment window is closed before a new gateway order could be made
     const o = db.prepare('SELECT * FROM orders WHERE id=?').get(str(req.body?.order_id, 40));
     if (!o || (o.customer_id !== req.user.sub && req.user.role !== 'admin')) return bad(res, 'not_found', 404);
     if (o.status !== 'pending_payment' || o.payment_status === 'paid') return bad(res, 'order_not_awaiting_payment', 409);
@@ -513,10 +623,10 @@ export function createApp({ db = openDb(), timeScale = Number(process.env.DEMO_T
     const returnUrl = `${(process.env.PUBLIC_BASE_URL || `${req.protocol}://${req.get('host')}`).replace(/\/$/, '')}/#/pay/${o.id}`;
     const u = db.prepare('SELECT id,email FROM users WHERE id=?').get(o.customer_id);
     try {
-      const r = await gw.createOrder({ orderId: gw.id === 'razorpay' ? o.id : attempt, amountPaise: o.total * 100, customer: { id: u.id, email: u.email }, returnUrl });
-      db.prepare('INSERT INTO payments(order_id,provider,provider_order_id,amount_paise,status,raw) VALUES (?,?,?,?,?,?)').run(o.id, gw.id, r.providerOrderId, o.total * 100, 'created', JSON.stringify({ attempt }));
+      const r = await gw.createOrder({ orderId: gw.id === 'razorpay' ? o.id : attempt, amountPaise: Math.round(o.total * 100), customer: { id: u.id, email: u.email }, returnUrl });
+      db.prepare('INSERT INTO payments(order_id,provider,provider_order_id,amount_paise,status,raw) VALUES (?,?,?,?,?,?)').run(o.id, gw.id, r.providerOrderId, Math.round(o.total * 100), 'created', JSON.stringify({ attempt }));
       db.prepare("UPDATE orders SET payment_method='online', updated_at=datetime('now') WHERE id=? AND payment_method='online'").run(o.id);
-      res.status(201).json({ gateway: gw.id, mode: gw.mode, prototype: !!gw.prototype, provider_order_id: r.providerOrderId, checkout: r.checkout, amount_paise: o.total * 100 });
+      res.status(201).json({ gateway: gw.id, mode: gw.mode, prototype: !!gw.prototype, provider_order_id: r.providerOrderId, checkout: r.checkout, amount_paise: Math.round(o.total * 100) });
     } catch (e) { res.status(e.code || 502).json({ error: e.message }); }
   });
   app.post('/api/payments/:gateway/verify', requireRole(), async (req, res) => {

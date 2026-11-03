@@ -73,3 +73,17 @@ only when a provider **and** its key are set.
   **Unavailable**; metro panels show **Scheduled** departures only where a GTFS feed exists.
 - No hand-built `upi://` intents; UPI happens inside the gateway checkout.
 - `tests/v07.test.js` runs the panel honesty self-check over every sample place and fails on any violation.
+
+## Hardening limits (audit 2026-11, `docs/AUDIT-2026-11.md`)
+
+| Variable | What it does | Unset |
+| --- | --- | --- |
+| `DEMO_PASSWORD` | Password of the seeded demo customer / seller / rider accounts. **Production:** must be ≥ 12 chars to enable demo logins; when unset each start uses a random, unguessable password (demo accounts exist but nobody can sign in to them). | dev: `demo1234` · production: random |
+| `PENDING_PAYMENT_TTL_MIN` | Minutes an unpaid online order keeps its reserved stock and rider; then it is cancelled (`payment_status=expired`) and everything is released. A payment that still arrives is recorded as `refund_required`. | 30 |
+| `MAX_PENDING_PAYMENTS` | Unpaid online orders one customer may hold at once (`429 too_many_pending_payments` beyond). | 5 |
+| `SSE_PER_USER`, `SSE_MAX_MIN` | Concurrent order-tracking streams per user, and minutes before a stream is closed (EventSource reconnects). | 4, 30 |
+| `AUTH_RATE_BURST`, `AUTH_RATE_PER_SEC` | Per-IP token bucket on `/api/auth/login` and `/api/auth/register` (on top of the per-e-mail lockout). | 30, 0.5 |
+| `METRICS_TOKEN` | When set, `/metrics` needs `Authorization: Bearer <token>`. In production without it, `/metrics` is not exposed. | dev: open · production: 404 |
+| `TILE_CACHE_MAX_MB` | Memory budget of the `/map/*` style/tile proxy cache (also capped at 4,000 entries). | 64 |
+| `PUBLIC_BASE_URL` | Also used to rewrite upstream URLs in `/map/style.json`; without it the request's own (validated) Host is used per response, never cached. | request host |
+| `JWT_SECRET` | Production refuses to **start** without it (previously it failed at the first login). | dev secret (non-production only) |
