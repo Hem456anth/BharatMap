@@ -58,6 +58,7 @@ export function uberLink({ pickup = null, dropoff, clientId = '' } = {}) {
   if (pickup && Number.isFinite(pickup.lat) && Number.isFinite(pickup.lng)) {
     add('pickup[latitude]', r6(pickup.lat)); add('pickup[longitude]', r6(pickup.lng));
     add('pickup[nickname]', (pickup.name || '').slice(0, 60));
+    add('pickup[formatted_address]', (pickup.address || '').slice(0, 120)); // v0.7.20 (G9): "DIGIPIN … · near <landmark>"
   } else add('pickup', 'my_location');
   add('dropoff[latitude]', r6(dropoff.lat)); add('dropoff[longitude]', r6(dropoff.lng));
   add('dropoff[nickname]', (dropoff.name || '').slice(0, 60));

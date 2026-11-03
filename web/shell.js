@@ -13,6 +13,7 @@ import { initDirections } from './ui/directions.js';
 import { initSaved } from './ui/saved.js';
 import { initPanels } from './ui/panels.js';
 import { initNavigation } from './nav/navigation.js';
+import { initAlarms } from './nav/alarms.js';
 import { onBackButton } from './native.js';
 import { readConnection, bandwidthPolicy } from './lib/bandwidth.js';
 import { readDeviceSignals, resolveTier, bandwidthManualFor } from './lib/device-tier.js';
@@ -102,6 +103,7 @@ export function createShell({ map, maplibregl, state, api, apiBase, toast, onSho
   ctx.search = initSearch(ctx);
   ctx.directions = initDirections(ctx);
   ctx.nav = initNavigation(ctx);
+  ctx.alarms = initAlarms(ctx); // v0.7.20 (G7)
   ctx.panels = initPanels(ctx);
   ctx.report = initReport(ctx);
   ctx.privacy = initPrivacy(ctx);

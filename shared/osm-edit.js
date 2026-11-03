@@ -111,3 +111,42 @@ export function osmRef(p) {
 }
 /** Can this place get an edit suggestion? Only OSM features with a real element id. */
 export const canSuggestEdit = (p) => !!osmRef(p);
+
+// ---------- v0.7.20 (G6) "Add a missing place" → structured anonymous OSM note ----------
+// POI density is the #1 data complaint about open maps in India (GAPS_RANKED.md G6). Overture Places merging is a
+// separate data job (not done here); this is the contribution path: the user drops a pin, names the place, picks what
+// it is, optionally adds phone / hours / website, and the app files ONE structured note with the suggested OSM tags
+// for local mappers (same Notes API and rate limit as "Report a map problem"; nothing is written to the OSM database).
+export const PLACE_KINDS = {
+  shop: 'shop=yes', kirana: 'shop=convenience', restaurant: 'amenity=restaurant', cafe: 'amenity=cafe', hospital: 'amenity=hospital', clinic: 'amenity=clinic',
+  pharmacy: 'amenity=pharmacy', school: 'amenity=school', atm: 'amenity=atm', bank: 'amenity=bank', fuel: 'amenity=fuel', temple: 'amenity=place_of_worship + religion=hindu',
+  mosque: 'amenity=place_of_worship + religion=muslim', church: 'amenity=place_of_worship + religion=christian', bus_stop: 'highway=bus_stop', office: 'office=yes',
+  toilets: 'amenity=toilets', hotel: 'tourism=hotel', other: '',
+};
+/**
+ * Build the note: { url, body, text }. Throws 'invalid_point' | 'name_required' | 'invalid_kind' | `invalid_<field>`.
+ * x = { lat, lng, name, kind, phone, opening_hours, website, note, digipin, landmark }
+ */
+export function buildMissingPlaceNote(x = {}, { appVersion = '0.7' } = {}) {
+  const { lat, lng } = x;
+  if (!Number.isFinite(lat) || !Number.isFinite(lng) || Math.abs(lat) > 90 || Math.abs(lng) > 180) throw new Error('invalid_point');
+  const name = clean(x.name).slice(0, 120);
+  if (name.length < 2) throw new Error('name_required');
+  if (!(x.kind in PLACE_KINDS)) throw new Error('invalid_kind');
+  const lines = [`[Missing place] ${name}`, ''];
+  const tags = [`name=${name}`, ...(PLACE_KINDS[x.kind] ? PLACE_KINDS[x.kind].split(' + ') : [])];
+  for (const key of ['phone', 'opening_hours', 'website']) {
+    if (!clean(x[key])) continue;
+    const r = validateField(key, x[key]); if (r.error) throw new Error(`invalid_${key}`);
+    if (r.value) tags.push(`${key}=${r.value}`);
+  }
+  lines.push('Suggested tags:', ...tags.map((t) => `  ${t}`));
+  const where = [x.digipin ? `DIGIPIN ${clean(x.digipin)}` : '', x.landmark ? `near ${clean(x.landmark).slice(0, 80)}` : ''].filter(Boolean).join(' · ');
+  if (where) lines.push('', `Location: ${where}`);
+  const note = clean(x.note).slice(0, 500);
+  if (note) lines.push('', `Comment: ${note}`);
+  lines.push('', `— added in Bharat Map ${appVersion} (anonymous). Please verify on the ground or from an allowed source before adding to OSM.`);
+  const text = lines.join('\n');
+  if (text.length > 2000) throw new Error('text_too_long');
+  return { url: OSM_NOTES_URL, body: new URLSearchParams({ lat: lat.toFixed(6), lon: lng.toFixed(6), text }).toString(), text };
+}

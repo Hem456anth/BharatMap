@@ -701,3 +701,22 @@ html.sheet-hidden .maplibregl-ctrl-bottom-right { bottom: 0 !important; }
 .row-btn[aria-current=true] { background: var(--tonal); box-shadow: inset 4px 0 0 var(--neel); }
 @media (prefers-reduced-motion: reduce) { .ctile:active, .act:active, .route-opt:active, .tile:active, .sv-act:active, .also:active, .shortcut:active { transform: none; } }
 @media (forced-colors: active) { .ctile, .gcard, .route-opt, .map-fail, .dir-sum { border: 1px solid CanvasText; } .route-opt[aria-checked=true] { outline: 3px solid Highlight; } }
+
+/* v0.7.20: on-route incident, "Still there?", faster-route offer, alarm chips (G7, G8, G10) */
+.nav-chip { align-self: flex-start; margin: 6px 10px 0 20px; padding: 8px 12px; border-radius: 14px; background: #fff; color: #1d1d1f; font-weight: 600; font-size: 14px; box-shadow: var(--sh-ctl); display: flex; gap: 8px; align-items: center; flex-wrap: wrap; max-width: calc(100% - 40px); pointer-events: auto; }
+.nav-chip.inc { background: #FFE9E3; color: #5A1600; }
+.nav-chip.inc::before { content: "⚠"; }
+.nav-chip.alarm { background: #E7F3EE; color: #0B3D2C; }
+.nav-chip.alarm b { width: 100%; }
+[data-nav-theme=night] .nav-chip { background: #1f2430; color: #f2f2f2; }
+[data-nav-theme=night] .nav-chip.inc { background: #4a1d10; color: #ffd9cc; }
+.nav-chip .btn.ghost { color: inherit; border-color: currentColor; }
+@media (min-width: 900px) { .nav-chip { margin-left: 28px; } }
+.alarm-banner { position: fixed; left: 50%; transform: translateX(-50%); top: 12px; z-index: 60; background: #0F6E56; color: #fff; padding: 12px 16px; border-radius: 16px; box-shadow: 0 8px 28px rgba(0,0,0,.25); display: flex; gap: 10px; align-items: center; flex-wrap: wrap; max-width: min(92vw, 520px); }
+.alarm-banner b { width: 100%; font-size: 17px; }
+.alarm-banner .link { color: #fff; }
+.alarm-banner[data-state=armed] { background: #2F3A8F; }
+.itin-alarm { margin-top: 4px; }
+.ho-copy { margin-top: 6px; }
+#reportPlace label { display: block; margin: 10px 0 4px; font-weight: 600; }
+#reportPlace input, #reportPlace select, #reportPlace textarea { display: block; width: 100%; box-sizing: border-box; }

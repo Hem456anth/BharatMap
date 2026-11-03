@@ -284,6 +284,10 @@
     <div id="navHint" class="nav-hint" hidden role="status"><span></span></div>
     <div id="navRestrict" class="nav-restrict" hidden role="status"><b aria-hidden="true" data-icon="clock"></b><span></span><small></small></div>
     <div id="navArrival" class="nav-arrival" hidden role="status"></div>
+    <div id="navIncident" class="nav-chip inc" hidden role="status"><span></span></div>
+    <div id="navStill" class="nav-chip ask" hidden role="group"><span></span><button type="button" class="btn sm" id="navStillYes"></button><button type="button" class="btn sm ghost" id="navStillNo"></button></div>
+    <div id="navFaster" class="nav-chip ask" hidden role="group"><span></span><button type="button" class="btn sm primary" id="navFasterYes"></button><button type="button" class="btn sm ghost" id="navFasterNo"></button></div>
+    <div id="navAlarmBanner" class="nav-chip alarm" hidden role="alert"><b></b><span></span><button type="button" class="btn sm" id="navAlarmDismiss"></button></div>
     <div id="navGps" class="nav-gps" hidden role="status" data-i18n="gps_lost">GPS signal lost</div>
     <div class="nav-next" id="navNext" hidden><span data-i18n="nav_then">Then</span> <span id="navNextIcon" aria-hidden="true"></span> <span id="navNextText"></span></div>
     <div id="navSim" class="sim-badge" hidden><span data-i18n="sim_badge">Simulation</span> <button id="simSpeed" class="link" type="button"></button></div>
@@ -297,6 +301,7 @@
       <div class="nav-eta" id="navEta" role="status">
         <b id="navArrive"></b><span id="navRemain"></span>
       </div>
+      <button id="navAlarm" class="fab" aria-pressed="false" aria-label="Alarm before arrival" data-icon="bell"></button>
       <button id="navTheme" class="fab" aria-label="Navigation map: automatic" data-icon="moon"></button>
       <button id="navOverview" class="fab" data-i18n-aria="nav_overview" aria-label="Overview" data-icon="route"></button>
       <button id="navEnd" class="btn danger" data-i18n="nav_end">End</button>
@@ -426,6 +431,17 @@
       <div class="seg" role="tablist" id="reportTabs">
         <button type="button" role="tab" data-rtab="osm" aria-selected="true" data-i18n="report_map_problem">Map problem</button>
         <button type="button" role="tab" data-rtab="incident" aria-selected="false" data-i18n="report_incident">Road incident</button>
+        <button type="button" role="tab" data-rtab="place" aria-selected="false" data-i18n="mp_tab">Missing place</button>
+      </div>
+      <div id="reportPlace" hidden>
+        <p class="small muted" id="mpPin"></p>
+        <label for="mpName" data-i18n="mp_name">Name of the place</label><input id="mpName" maxlength="120" autocomplete="off" />
+        <label for="mpKind" data-i18n="mp_kind">What is it?</label><select id="mpKind"></select>
+        <label for="mpPhone" data-i18n="mp_phone">Phone (optional)</label><input id="mpPhone" inputmode="tel" maxlength="40" />
+        <label for="mpHours" data-i18n="mp_hours">Opening hours (optional)</label><input id="mpHours" maxlength="120" />
+        <label for="mpWebsite" data-i18n="mp_website">Website (optional)</label><input id="mpWebsite" inputmode="url" maxlength="200" />
+        <label for="mpNote" data-i18n="mp_note">Anything else (optional)</label><textarea id="mpNote" rows="2" maxlength="500"></textarea>
+        <p class="small muted" data-i18n="report_osm_note"></p>
       </div>
       <div id="reportOsm">
         <fieldset class="report-cats" id="reportCats"></fieldset>
@@ -442,6 +458,7 @@
     </form>
   </dialog>
 
+  <div id="alarmBanner" class="alarm-banner" hidden role="alert"><b id="alarmTitle"></b><span id="alarmText"></span><button type="button" class="btn sm" id="alarmDismiss"></button><button type="button" class="link" id="alarmCancel" hidden></button></div>
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
   <script type="module" src="app.js"></script>
 </body>

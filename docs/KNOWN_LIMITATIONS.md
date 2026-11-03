@@ -41,6 +41,24 @@ What Bharat Map v0.7 does **not** do yet, or has not been verified to do. Earlie
 - **Courier partners (Shiprocket, Delhivery) are stubs** returning `501 partner-pending`.
 
 ## Data and coverage
+- **v0.7.20 (competitor gaps, see `docs/UPGRADE_REPORT_2026-11.md`)**:
+  - "Prefer main roads" is applied only when the route comes from Valhalla (documented costing options). On OSRM (car
+    default, or a Valhalla outage) it is **not** applied and the directions sheet says so. Default: on for two-wheelers,
+    off for cars (turning it on moves car routing to the shared FOSSGIS Valhalla, 1 req/s policy). Gate/entrance snapping
+    and "never route me here" polygons are not built.
+  - Arrival / get-off alarms are **foreground only**: they fire on fixes the app receives while it is open or navigating
+    (the navigation foreground service keeps fixes coming with the screen off during navigation). No background geofence.
+  - Incident alerts along the route use the same unverified, 2-hour community reports (own server or this device only);
+    device-only votes stay on the device.
+  - Ride hand-offs: only Uber's documented link carries the pickup (pin, nickname, `formatted_address` with DIGIPIN +
+    landmark); Ola only with an affiliate token; Rapido / Namma Yatri / Bharat Taxi / Yatri Sathi get the details on the
+    clipboard. Landmark = nearest curated landmark within 300 m (none when far from one).
+  - Faster-route offers compare free-flow durations unless a traffic key is configured, so they are rare; checks run every
+    5 min during GPS navigation.
+  - Bengaluru Namma Metro timetable is an **unofficial** GTFS (ODbL) whose intermediate stop times are approximated from
+    BMRCL's published first/last trains and headways; the attribution line says so. No BMTC bus feed bundled (size; the
+    repo is ~1.7 GB) and no Delhi OTD feed (its terms are a click-through form, not an open licence — not verified open).
+  - Survey-of-India boundaries are **not** rendered yet (plan in `docs/UPGRADE_REPORT_2026-11.md` §G4).
 - Provider URLs were checked on 20 Oct 2026; Ahmedabad Metro (HTTP 500), Kerala RTC and Kolkata Metro (no response)
   could not be reached from the build sandbox at that time, and Swiggy/DMart blocked automated requests (403).
 - Truck routing depends on Valhalla truck costing and OSM `maxheight`/`maxweight` tagging, which is sparse in India; the

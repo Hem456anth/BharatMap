@@ -7,6 +7,8 @@ import { displayRow, LABEL_META } from '../shared/services/labels.js';
 import { PROVIDERS } from '../services/providers/index.js';
 import { openingStatus } from '../lib/opening-hours.js';
 import { encodeDigipin } from '../shared/geo.js';
+import { findLandmark } from '../nav/maneuver.js';
+import { copyText } from '../lib/clipboard.js';
 import { fallbackKeys } from '../shared/i18n.js';
 import { store } from '../shared/storage.js';
 import { icon } from './icons.js';
@@ -38,7 +40,7 @@ export function initServicePanel(ctx) {
     const dis = a.disabled ? ` disabled aria-disabled="true" title="${esc(ctx.t(a.disabledKey || 'sv_needs_internet'))}"` : '';
     const chip = a.kind === 'linkout' ? labelChip(ctx, 'linkout') : a.provenance === 'demo' ? `<span class="hl hl-demo">${esc(ctx.t('label_demo_short'))}</span>` : '';
     const host = a.kind === 'linkout' ? `<small class="host">${esc(a.host)}${a.verified ? '' : ' · ?'}</small>` : '';
-    const ic = { linkout: 'globe', order: 'bag', ondc: 'bag', call: 'phone', emergency: 'phone', directions: 'directions', addstop: 'plus', remember: 'pin', liststore: 'bag' }[a.kind] || 'chev';
+    const ic = { copy: 'copy', linkout: 'globe', order: 'bag', ondc: 'bag', call: 'phone', emergency: 'phone', directions: 'directions', addstop: 'plus', remember: 'pin', liststore: 'bag' }[a.kind] || 'chev';
     return `<button class="sv-act${a.kind === 'emergency' ? ' danger' : ''}" data-sva="${esc(a.id)}"${dis}>${icon(ic, { size: 18 })}<span><b>${esc(text)}</b>${host}</span>${chip}</button>`;
   }
 
@@ -52,13 +54,13 @@ export function initServicePanel(ctx) {
     for (const a of P.actions.filter((x) => x.group && !x.top)) (groups[a.group] = groups[a.group] || []).push(a);
     const groupHtml = Object.entries(groups).map(([g, list]) => `<details class="sv-group" data-group="${esc(g)}"${list.length <= 3 ? ' open' : ''}><summary>${esc(ctx.t(`sv_group_${g}`))} (${list.length})</summary><div class="sv-acts">${list.map(actionHtml).join('')}</div></details>`).join('');
     const ride = P.type !== 'ride' && P.ride ? `<details class="sv-more" id="svRide"${state?.rideOpen ? ' open' : ''}><summary>${icon('car', { size: 18 })} ${esc(ctx.t('sv_more_services'))}: ${esc(ctx.t('sv_ride_title'))}</summary>
-        <ul class="sv-rows">${P.ride.sections[0].rows.map(rowHtml).join('')}</ul><div class="sv-acts">${P.ride.actions.map(actionHtml).join('')}</div></details>` : '';
+        <ul class="sv-rows">${P.ride.sections[0].rows.map(rowHtml).join('')}</ul><div class="sv-acts">${P.ride.actions.map(actionHtml).join('')}${(P.ride.tools || []).map(actionHtml).join('')}</div></details>` : '';
     el.innerHTML = `<section class="sv-panel" role="region" aria-labelledby="svTitle" aria-busy="${loading}" data-type="${esc(P.type)}" data-state="${esc(P.state)}" data-provenance="${esc(P.provenance || '')}">
       <h4 id="svTitle">${esc(ctx.t(titleKey))}${P.state === 'offline' ? ` <span class="hl hl-na">${esc(ctx.t('sv_state_offline'))}</span>` : ''}</h4>
       ${P.safety ? `<p class="sv-safety" role="alert">${icon('phone', { size: 16 })} ${esc(ctx.t(P.safety))}</p>` : ''}
       ${notices}
       ${P.sections.map((s) => `<div class="sv-sec" data-sec="${esc(s.id)}"><h5>${esc(ctx.t(s.k))}</h5><ul class="sv-rows">${s.rows.map(rowHtml).join('')}</ul></div>`).join('')}
-      <div class="sv-acts">${primaryActs.map(actionHtml).join('')}</div>${groupHtml}
+      <div class="sv-acts">${primaryActs.map(actionHtml).join('')}</div>${groupHtml}${P.type === 'ride' && P.ride?.tools?.length ? `<div class="sv-acts ho-copy">${P.ride.tools.map(actionHtml).join('')}</div>` : ''}
       ${ride}
       <footer class="sv-foot small muted">${P.footer.map((f) => `<span${f.provenance === 'demo' ? ' class="prov-demo" data-prov="demo"' : ''}>${esc(f.text || ctx.tf(f.k, f.vars || {}))}${f.text && f.k ? ` · ${esc(ctx.t(f.k))}` : ''}</span>`).join(' · ')}</footer>
       <p class="sr" aria-live="polite" id="svLive">${loading ? esc(ctx.t('sv_checking')) : ''}</p>
@@ -69,6 +71,7 @@ export function initServicePanel(ctx) {
   async function onAction(a, place) {
     if (a.disabled) return;
     if (a.kind === 'linkout') return ctx.linkout.open(a);
+    if (a.kind === 'copy') { const ok = await copyText(a.copyText); ctx.toast(ok ? ctx.t('ho_copied_plain') : a.copyText); ctx.emit('handoff-copied', { text: a.copyText, provider: null }); return; }
     if (a.kind === 'call' || a.kind === 'emergency') { location.href = a.url; return; }
     if (a.kind === 'order') return ctx.openShop?.({ sellerId: a.sellerId, q: null, fromPlace: true });
     if (a.kind === 'ondc') return ctx.ondc?.open(place, a);
@@ -84,12 +87,12 @@ export function initServicePanel(ctx) {
     const lang = ctx.lang();
     if (lang !== 'en' && !loggedFallback.has(lang)) { loggedFallback.add(lang); const n = fallbackKeys(lang).length; if (n) console.info(`[i18n] ${lang}: ${n} v0.7 strings fall back to English`); }
     const env = { origin, demo: ctx.state.demo, apiBase: ctx.apiBase };
-    const base = { now: Date.now(), online: online(), seller, origin, config: cfg(), hours: place.tags?.opening_hours ? openingStatus(place.tags.opening_hours) : null, digipin: encodeDigipin(place.lat, place.lng) };
+    const base = { now: Date.now(), online: online(), seller, origin, pickupLandmark: origin ? findLandmark([origin.lng, origin.lat], { maxM: 300 }) : null, config: cfg(), hours: place.tags?.opening_hours ? openingStatus(place.tags.opening_hours) : null, digipin: encodeDigipin(place.lat, place.lng) };
     const first = buildServicePanel(place, base);
     state = { place, ctx: base, P: first, rideOpen: state?.place?.id === place.id ? state.rideOpen : false };
     // Skeleton only after 300 ms (spec §3) — until then the instant panel (with "Checking…" rows) is shown without spinners.
     render(el, first, place);
-    el.onclick = (e) => { const b = e.target.closest('[data-sva]'); if (!b) return; const a = [...state.P.actions, ...(state.P.ride?.actions || [])].find((x) => x.id === b.dataset.sva); if (a) onAction(a, place); };
+    el.onclick = (e) => { const b = e.target.closest('[data-sva]'); if (!b) return; const a = [...state.P.actions, ...(state.P.ride?.actions || []), ...(state.P.ride?.tools || [])].find((x) => x.id === b.dataset.sva); if (a) onAction(a, place); };
     const extra = {}; const failed = [];
     const type = first.type;
     const jobs = PROVIDERS.filter((p) => p.applies(type, place, env) && (online() || p.id === 'transit' || p.id === 'nearby')).map(async (p) => {

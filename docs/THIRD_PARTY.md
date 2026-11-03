@@ -25,7 +25,9 @@ changed file (Apache-2.0 §4).
 | esbuild, playwright-core, @protomaps/basemaps (dev) | MIT / Apache-2.0 / BSD-3 | build, tests, offline style |
 
 ## 3. Data
-OpenStreetMap (ODbL 1.0) · Protomaps basemap build of OSM · HMRL GTFS (HMRL open-data terms) · Open Charge Map (CC BY 4.0,
+OpenStreetMap (ODbL 1.0) · Protomaps basemap build of OSM · HMRL GTFS (HMRL open-data terms) · Bengaluru Namma Metro GTFS,
+unofficial, by Vonter (github.com/Vonter/bmrcl-gtfs, ODbL 1.0; subset bundled unchanged + compiled `web/transit/bmrcl.json`, offered under
+ODbL; provenance and changes in `server/transit/feeds/bmrcl/ATTRIBUTION.txt`) · Open Charge Map (CC BY 4.0,
 when enabled) · Noto fonts (OFL 1.1). Test fixtures named `*-SYNTHETIC.*` are hand-written and contain no third-party data.
 
 ## 4. Reference apps studied (behaviour / public docs only, nothing reused)

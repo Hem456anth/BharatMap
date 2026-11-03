@@ -18,6 +18,7 @@ import {
 } from './linkouts.js';
 import { BY_ID, PROVIDERS, linkable, metroFor, busFor } from './catalog.js';
 import { appLink, DEEPLINKS } from './deeplinks.js';
+import { describePoint, handoffPlan } from '../handoff.js';
 
 /**
  * Link-out action for a catalogue provider: its app hand-off when one is verified (deeplinks.js: APK App Link / documented /
@@ -33,7 +34,7 @@ function provAction(id, extra = {}) {
   if (extra.app && !al) return null;
   const url = extra.url || al?.url || p.url;
   const dl = al ? { deeplink: al.deeplink } : d && (d.type === 'web' || extra.web) && !extra.url ? { deeplink: { type: 'web', reason: d.type === 'web' ? d.reason : 'Official web page' } } : {};
-  return { id: `p-${id}${extra.app ? '-app' : ''}`, kind: 'linkout', k: extra.k || 'sv_open_provider', text: extra.app ? al.deeplink.app : p.name, url, host: al?.deeplink.webUrl ? hostOf(al.deeplink.webUrl) : al?.host || hostOf(url), verified: al ? al.verified : !!p.verified, provider: id, class: p.class, note: extra.note || p.reason || '', label: 'linkout', needsNet: true, ...dl, ...(extra.group ? { group: extra.group } : {}) };
+  return { id: `p-${id}${extra.app ? '-app' : ''}`, kind: 'linkout', k: extra.k || 'sv_open_provider', text: extra.app ? al.deeplink.app : p.name, url, host: al?.deeplink.webUrl ? hostOf(al.deeplink.webUrl) : al?.host || hostOf(url), verified: al ? al.verified : !!p.verified, provider: id, class: p.class, note: extra.note || p.reason || '', label: 'linkout', needsNet: true, ...dl, ...(extra.group ? { group: extra.group } : {}), ...(extra.handoff ? { handoff: extra.handoff } : {}) };
 }
 const hostOf = (u) => { try { return new URL(u).host; } catch { return ''; } };
 /** An "Unavailable" row for a provider that cannot be used (reason shown, no link). */
@@ -333,14 +334,21 @@ export function buildRidePanel(place, ctx = {}) {
   rows.push({ id: 'fare', k: 'sv_fare', vk: 'sv_fare_in_app', ...pv(null, 'linkout', { source: 'Ride apps show fares; Bharat Map has no quote' }) });
   rows.push({ id: 'pickup', k: 'sv_pickup', vk: origin ? 'sv_pickup_here' : 'sv_pickup_app', fact: true });
   const dropoff = { lat: place.lat, lng: place.lng, name: place.name || '', address: place.address || '' };
+  // v0.7.20 (G9): exact pin + DIGIPIN + landmark in every ride hand-off — in the link where its documented format allows
+  // (Uber; Ola with a token), otherwise copied to the clipboard before the app opens (shared/handoff.js).
+  const pickupLm = ctx.pickupLandmark || null;
+  const pk = origin ? { lat: origin.lat, lng: origin.lng, name: origin.label || 'My location', address: describePoint(origin, { landmark: pickupLm }).line } : null;
+  const ho = (provider) => (origin ? { handoff: handoffPlan(provider, { pickup: pk, dropoff, pickupLandmark: pickupLm, olaToken: !!cfg.olaXappToken }) } : {});
   const actions = [
-    linkAction('uber', 'sv_open_uber', uberLink({ pickup: origin ? { lat: origin.lat, lng: origin.lng, name: origin.label || 'My location' } : null, dropoff, clientId: cfg.uberClientId || '' }), { group: 'ride' }),
-    linkAction('ola', 'sv_open_ola', olaLink({ pickup: origin, dropoff, xappToken: cfg.olaXappToken || '' }), { group: 'ride' }),
-    linkAction('rapido', 'sv_open_rapido', rapidoLink(), { group: 'ride' }),
-    linkAction('nammayatri', 'sv_open_nammayatri', nammaYatriLink(), { group: 'ride' }),
+    linkAction('uber', 'sv_open_uber', uberLink({ pickup: pk, dropoff, clientId: cfg.uberClientId || '' }), { group: 'ride', ...ho('uber') }),
+    linkAction('ola', 'sv_open_ola', olaLink({ pickup: origin, dropoff, xappToken: cfg.olaXappToken || '' }), { group: 'ride', ...ho('ola') }),
+    linkAction('rapido', 'sv_open_rapido', rapidoLink(), { group: 'ride', ...ho('rapido') }),
+    linkAction('nammayatri', 'sv_open_nammayatri', nammaYatriLink(), { group: 'ride', ...ho('namma-yatri') }),
   ];
   const city = cityOf(place);
-  for (const id of ['bharat-taxi', 'yatri-sathi']) { const p = BY_ID[id]; if (!p.regions || p.regions.includes(city)) { const a = provAction(id, { group: 'ride' }); if (a) actions.push(a); } }
+  for (const id of ['bharat-taxi', 'yatri-sathi']) { const p = BY_ID[id]; if (!p.regions || p.regions.includes(city)) { const a = provAction(id, { group: 'ride', ...ho(id) }); if (a) actions.push(a); } }
+  // Non-link tool (kept out of `actions`, which are all link-outs): copy the pickup text for a driver.
+  const tools = origin ? [{ id: 'copy-pickup', kind: 'copy', k: 'ho_copy', copyText: handoffPlan('copy', { pickup: pk, dropoff, pickupLandmark: pickupLm }).text, needsNet: false }] : [];
   rows.push(unavailableRow('blusmart'));
-  return { sections: [{ id: 'ride', k: 'sv_ride_title', rows }], actions, compact: rows.slice(0, 1) };
+  return { sections: [{ id: 'ride', k: 'sv_ride_title', rows }], actions, tools, compact: rows.slice(0, 1) };
 }

@@ -3,6 +3,7 @@
 // (shared/search-index.js rankCandidates) so the server and the APK return the same order.
 import fs from 'node:fs';
 import { placeTokens, queryParts, rankCandidates, lookupDigipin, lookupPincode, PIN_RE } from '../../shared/search-index.js';
+import { searchWithLocality, searchOfflineSmart } from '../../shared/search-locality.js';
 
 let sqlite = null;
 async function loadSqlite() { if (sqlite === null) { try { sqlite = await import('node:sqlite'); } catch { sqlite = false; } } return sqlite; }
@@ -67,9 +68,13 @@ export function createFtsSearch({ indexFile, dbFile }) {
       if (raw.length < 2) return [];
       const dig = lookupDigipin(raw); if (dig) return [dig];
       if (PIN_RE.test(raw.replace(/\s+/g, ''))) { const p = lookupPincode(ix, raw); return p ? [p] : []; }
-      if (!db) { const { searchOffline } = await import('../../shared/search-index.js'); return searchOffline(ix, raw, { near, limit }); }
+      if (!db) return searchOfflineSmart(ix, raw, { near, limit });
+      // v0.7.20 (G2): "name, locality" / "name locality" → the shared locality-aware ranking (same as the APK).
+      const loc = searchWithLocality(ix, raw, { near, limit });
+      if (loc.locality) return loc.results;
       const m = ftsQuery(raw); if (!m) return [];
       const rows = db.prepare('SELECT rowid, bm25(places) AS r FROM places WHERE places MATCH ? ORDER BY r LIMIT 600').all(m);
+      if (!rows.length) return loc.results; // FTS has no typo tolerance: the token index tries edit distance 1
       const cand = new Map(rows.map((x, i) => [Number(x.rowid) - 1, Math.max(1.5, 4 - i / 150)]));
       const out = []; const pinTok = raw.match(/(?:^|\s)([1-9]\d{5})(?:\s|$)/);
       if (pinTok) { const p = lookupPincode(ix, pinTok[1]); if (p) out.push(p); }

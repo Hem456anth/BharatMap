@@ -62,3 +62,17 @@ export function confidence(up = 0, down = 0) {
 }
 /** Minutes left before an incident disappears. */
 export const minutesLeft = (inc, now) => Math.max(0, Math.ceil(((inc.expires_ms ?? expiresAt(inc.created_ms)) - now) / 60000));
+
+/**
+ * v0.7.20 (G8) device-only vote with the server's rules (server/community.js): "still there" (up) extends the report by
+ * 30 min, capped at 2 h from now; "gone" (down) twice more than "still there" removes it. Returns the updated incident
+ * or { id, removed: true }.
+ */
+export function applyLocalVote(inc, vote, now) {
+  if (!inc) return null;
+  const x = { ...inc, up: inc.up || 0, down: inc.down || 0, expires_ms: inc.expires_ms ?? expiresAt(inc.created_ms) };
+  if (vote === 'up') { x.up += 1; x.expires_ms = Math.min(now + INCIDENT_TTL_MS, x.expires_ms + 30 * 60_000); }
+  else if (vote === 'down') { x.down += 1; if (x.down >= x.up + 2) return { id: x.id, removed: true }; }
+  else throw new Error('invalid_vote');
+  return x;
+}

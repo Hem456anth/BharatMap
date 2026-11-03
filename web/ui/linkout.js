@@ -5,6 +5,7 @@ import { safeLinkout } from '../shared/services/linkouts.js';
 import { openUrlFor, DL_LABEL } from '../shared/services/deeplinks.js';
 import { esc } from './search.js';
 import { openExternal, isAndroid } from '../native.js';
+import { copyText } from '../lib/clipboard.js';
 
 /**
  * Deep-link block: Documented / App Link / Declared · Unverified / Store / Web-only, the app + package, the fallback
@@ -43,7 +44,8 @@ export function initLinkout(ctx) {
       <p class="lo-host"><b>${esc(host)}</b> ${a.verified ? `<span class="hl hl-sched">${esc(ctx.t('lo_verified'))}</span>` : ''}</p>
       ${dlBlock(ctx, a, host, dest)}
       ${a.verified ? '' : `<p class="small warn" data-unverified>${esc(ctx.t(a.deeplink?.type === 'declared' ? 'lo_dl_declared_note' : 'lo_unverified'))}</p>`}
-      ${a.note ? `<p class="small muted"><b>${esc(ctx.t('lo_note'))}:</b> ${esc(a.note)}</p>` : ''}`;
+      ${a.note ? `<p class="small muted"><b>${esc(ctx.t('lo_note'))}:</b> ${esc(a.note)}</p>` : ''}
+      ${a.handoff ? `<p class="small" data-handoff="${esc(a.handoff.mode)}">${esc(ctx.t(a.handoff.mode === 'link' ? 'ho_in_link' : 'ho_will_copy'))}${a.handoff.digipin ? ` <b>DIGIPIN ${esc(a.handoff.digipin)}</b>` : ''}</p>` : ''}`;
     const go = document.getElementById('loGo');
     go.textContent = ctx.tf('lo_continue', { host });
     go.dataset.url = dest;
@@ -55,6 +57,11 @@ export function initLinkout(ctx) {
     const a = pending; dlg.close(); pending = null;
     if (!a) return;
     ctx.emit('linkout', a);
+    // v0.7.20 (G9): no documented pickup parameter → put the exact pin + DIGIPIN + landmark on the clipboard first.
+    if (a.handoff?.mode === 'clipboard') {
+      copyText(a.handoff.text).then((ok) => ctx.toast(ok ? ctx.tf('ho_copied', { app: a.deeplink?.app || a.text || a.provider || a.host }) : a.handoff.text));
+      ctx.emit('handoff-copied', { text: a.handoff.text, provider: a.provider });
+    }
     // Intent URLs (declared app entry points) only where Android can resolve them; elsewhere their https fallback.
     const url = openUrlFor(a, { android: isAndroid() });
     if (!url) return;

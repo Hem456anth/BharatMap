@@ -1,6 +1,25 @@
 {
  "feeds": [
   {
+   "id": "bmrcl",
+   "name": "Bengaluru Metro Rail Corporation Limited (BMRCL)",
+   "attribution": "Unofficial Namma Metro GTFS by Vonter (github.com/Vonter/bmrcl-gtfs), ODbL 1.0; schedules from BMRCL's published timetables, intermediate stop times approximated.",
+   "valid": {
+    "start": "20260817",
+    "end": "20270817"
+   },
+   "bbox": [
+    77.46122,
+    12.819088,
+    77.75797,
+    13.057436
+   ],
+   "file": "bmrcl.json",
+   "bytes": 87334,
+   "stops": 170,
+   "routes": 3
+  },
+  {
    "id": "hmrl",
    "name": "Hyderabad Metro Rail",
    "attribution": "Contains data provided by Hyderabad Metro Rail Ltd.",

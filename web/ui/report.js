@@ -2,7 +2,10 @@
 // wrong name) that local mappers can fix, rate-limited on the device; (2) community road incidents (pothole,
 // waterlogging, closure, police check) that expire after 2 hours, shown on the map as unverified community reports.
 import { NOTE_CATEGORIES, INCIDENT_TYPES } from '../shared/community.js';
-import { sendOsmNote, listIncidents, reportIncident, voteIncident, incidentsMode } from '../services/community.js';
+import { sendOsmNote, listIncidents, reportIncident, voteIncident, incidentsMode, sendMissingPlace } from '../services/community.js';
+import { PLACE_KINDS } from '../shared/osm-edit.js';
+import { encodeDigipin } from '../shared/geo.js';
+import { findLandmark } from '../nav/maneuver.js';
 import { esc } from './search.js';
 import { icon } from './icons.js';
 
@@ -18,20 +21,39 @@ export function initReport(ctx) {
     $('reportCats').innerHTML = `<legend>${esc(ctx.t('report_category'))}</legend>` + Object.keys(NOTE_CATEGORIES).map((c, i) => `<label class="radio"><input type="radio" name="rcat" value="${c}" ${i === 0 ? 'checked' : ''}/><span>${esc(ctx.t(`report_cat_${c}`))}</span></label>`).join('');
     $('incTypes').innerHTML = INCIDENT_TYPES.map((x) => `<button type="button" class="inc-type${incType === x ? ' on' : ''}" data-inc="${x}" aria-pressed="${incType === x}">${icon(INC_ICON[x], { size: 22 })}<span>${esc(ctx.t(`inc_${x}`))}</span></button>`).join('');
     $('incNote').textContent = ctx.t(incidentsMode() === 'server' ? 'inc_note_server' : 'inc_note_device');
-    $('reportOsm').hidden = tab !== 'osm'; $('reportInc').hidden = tab !== 'incident';
+    $('reportOsm').hidden = tab !== 'osm'; $('reportInc').hidden = tab !== 'incident'; $('reportPlace').hidden = tab !== 'place';
+    if (tab === 'place') {
+      const k = $('mpKind').value || 'shop';
+      $('mpKind').innerHTML = Object.keys(PLACE_KINDS).map((x) => `<option value="${x}"${x === k ? ' selected' : ''}>${esc(ctx.t(`mpk_${x}`))}</option>`).join('');
+      const dp = at ? encodeDigipin(at.lat, at.lng) : null;
+      $('mpPin').textContent = at ? ctx.tf('mp_pin', { d: `${at.lat.toFixed(6)}, ${at.lng.toFixed(6)}${dp ? ` · DIGIPIN ${dp}` : ''}` }) : '';
+    }
     $('reportTabs').querySelectorAll('[data-rtab]').forEach((b) => b.setAttribute('aria-selected', String(b.dataset.rtab === tab)));
   }
   function open(point, { mode = 'osm' } = {}) {
     at = point; tab = mode; incType = null;
     $('reportText').value = ''; $('reportStatus').textContent = ''; $('reportSend').disabled = false;
+    for (const id of ['mpName', 'mpPhone', 'mpHours', 'mpWebsite', 'mpNote']) $(id).value = '';
+    if (mode === 'place' && point?.name) $('mpName').value = point.name;
     render(); dlg.showModal();
   }
+  $('reportPlace').addEventListener('input', () => { $('reportStatus').textContent = ''; }); // a fixed field clears the old error
   $('reportTabs').addEventListener('click', (e) => { const b = e.target.closest('[data-rtab]'); if (b) { tab = b.dataset.rtab; render(); } });
   $('incTypes').addEventListener('click', (e) => { const b = e.target.closest('[data-inc]'); if (b) { incType = b.dataset.inc; render(); } });
   $('reportSend').addEventListener('click', async () => {
     const st = $('reportStatus');
     $('reportSend').disabled = true;
     try {
+      if (tab === 'place') {
+        const lm = findLandmark([at.lng, at.lat]);
+        const r = await sendMissingPlace({ lat: at.lat, lng: at.lng, name: $('mpName').value, kind: $('mpKind').value, phone: $('mpPhone').value, opening_hours: $('mpHours').value,
+          website: $('mpWebsite').value, note: $('mpNote').value, digipin: encodeDigipin(at.lat, at.lng), landmark: lm?.name || '' });
+        st.textContent = ctx.tf('mp_sent', { id: r.id ?? '' });
+        ctx.emit('osm-note', { ...r, kind: 'missing_place' });
+        ctx.toast(ctx.tf('mp_sent', { id: r.id ?? '' }));
+        setTimeout(() => dlg.close(), 1200);
+        return;
+      }
       if (tab === 'osm') {
         const category = dlg.querySelector('[name=rcat]:checked')?.value;
         const r = await sendOsmNote({ lat: at.lat, lng: at.lng, category, text: $('reportText').value });
@@ -47,6 +69,8 @@ export function initReport(ctx) {
       }
     } catch (e) {
       const m = e.message;
+      if (m === 'name_required') { st.textContent = ctx.t('mp_name_required'); $('reportSend').disabled = false; return; }
+      if (/^invalid_(phone|website|opening_hours)$/.test(m)) { st.textContent = ctx.tf('mp_invalid', { f: ctx.t({ phone: 'mp_phone', website: 'mp_website', opening_hours: 'mp_hours' }[m.slice(8)]) }); $('reportSend').disabled = false; return; }
       st.textContent = m === 'rate_limited' ? ctx.tf('report_wait', { m: Math.ceil((e.waitMs || 60000) / 60000) }) : m === 'text_too_short' ? ctx.t('report_too_short') : `${ctx.t('report_failed')} (${m})`;
       $('reportSend').disabled = false;
     }

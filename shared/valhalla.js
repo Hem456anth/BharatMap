@@ -8,8 +8,29 @@ export const VALHALLA_COSTING = { drive: 'auto', two: 'motor_scooter', bike: 'bi
 /** v0.7 truck defaults (Valhalla truck costing; metres / tonnes) — Indian medium goods vehicle; override per request. */
 export const TRUCK_DEFAULTS = { height: 3.8, width: 2.5, length: 10, weight: 16.2, axle_load: 10.2, hazmat: false };
 
-/** Pure: Valhalla /route JSON body. opts: { alternates, avoidTolls, avoidHighways, lang } */
-export function buildValhallaRequest(mode, from, to, { alternates = 2, avoidTolls = false, avoidHighways = false, lang = 'en-US', via = [], truck = {} } = {}) {
+/**
+ * v0.7.20 (G1) "Prefer main roads": India road-quality guardrails as documented Valhalla costing options
+ * (https://valhalla.github.io/valhalla/api/route/api-reference/ — automobile + motor_scooter costing).
+ *   use_living_streets 0..1  willingness to take living streets (lanes inside colonies)        → near 0
+ *   use_tracks 0..1          willingness to take highway=track (kaccha / field roads)          → 0
+ *   service_penalty (s)      added on every transition onto a generic service road (gully, campus, parking aisle;
+ *                            default 15 s for cars / scooters)                                  → 90–120 s
+ *   service_factor ×         multiplies the cost of service roads (default 1)                  → 3–4
+ *   destination_only_penalty entering access=destination roads only when needed              → 600 s
+ *   exclude_unpaved          auto only: no unpaved road in the middle of the route (start/end allowed)
+ *   use_primary 0..1         motor_scooter only: willingness to ride primary roads             → 0.8
+ * Steps / footways / pedestrian alleys carry no motor-vehicle access in Valhalla's graph, so auto and motor_scooter
+ * never use them at all; the guardrail here is about narrow service lanes, living streets and tracks.
+ */
+export const MAIN_ROADS = {
+  auto: { use_living_streets: 0.05, use_tracks: 0, service_penalty: 120, service_factor: 4, destination_only_penalty: 600, exclude_unpaved: true },
+  motor_scooter: { use_living_streets: 0.1, use_tracks: 0, service_penalty: 90, service_factor: 3, destination_only_penalty: 600, use_primary: 0.8 },
+};
+/** Modes the "Prefer main roads" toggle applies to (car + two-wheeler). */
+export const mainRoadsApplies = (mode) => mode === 'drive' || mode === 'two';
+
+/** Pure: Valhalla /route JSON body. opts: { alternates, avoidTolls, avoidHighways, mainRoads, lang } */
+export function buildValhallaRequest(mode, from, to, { alternates = 2, avoidTolls = false, avoidHighways = false, mainRoads = false, lang = 'en-US', via = [], truck = {} } = {}) {
   const costing = VALHALLA_COSTING[mode];
   if (!costing) throw new Error(`unknown_mode:${mode}`);
   for (const p of [from, ...via, to]) if (!Number.isFinite(p?.lat) || !Number.isFinite(p?.lng)) throw new Error('invalid_point');
@@ -25,6 +46,7 @@ export function buildValhallaRequest(mode, from, to, { alternates = 2, avoidToll
   }
   // Two-wheelers in India: scooter top speed ~ 60–80 km/h; Valhalla's default motor_scooter top speed is 45.
   if (costing === 'motor_scooter') co.top_speed = 60;
+  if (mainRoads && MAIN_ROADS[costing]) Object.assign(co, MAIN_ROADS[costing]);
   const r6 = (x) => Math.round(x * 1e6) / 1e6;
   return {
     locations: [from, ...via, to].map((p) => ({ lat: r6(p.lat), lon: r6(p.lng) })),

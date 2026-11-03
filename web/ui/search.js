@@ -221,7 +221,7 @@ export function initSearch(ctx) {
       offline: async () => { const off = (await offlineLookup(text, mapCentre(), 20).catch(() => null)) || []; if (off.length) showList(off, { title: text, meta: ctx.tf('places_n', { n: off.length }) }); else noMatchState(text, null); },
     });
   }
-  function reportMissing() { const c = mapCentre(); ctx.report?.open({ lat: c.lat, lng: c.lng, name: '' }); }
+  function reportMissing() { const c = mapCentre(); ctx.report?.open({ lat: c.lat, lng: c.lng, name: '' }, { mode: 'place' }); } // v0.7.20 (G6): structured "Add a missing place"
   /** Free-text search biased to the visible map (Photon near the map centre online; the on-device index offline). */
   async function areaSearch(text) {
     closeSuggest(); q.blur();

@@ -1,8 +1,8 @@
 // Community services (v0.5): OpenStreetMap notes (anonymous, direct to api.openstreetmap.org) and incident reports
 // (Bharat Map server when configured; otherwise kept on this device only and labelled so).
-import { buildNotePayload, parseNoteResponse, noteRateLimit, validateIncident, INCIDENT_TTL_MS, activeIncidents, confidence, minutesLeft } from '../shared/community.js';
+import { buildNotePayload, parseNoteResponse, noteRateLimit, validateIncident, INCIDENT_TTL_MS, activeIncidents, confidence, minutesLeft, applyLocalVote } from '../shared/community.js';
 import { store } from '../shared/storage.js';
-import { buildEditNotePayload } from '../shared/osm-edit.js';
+import { buildEditNotePayload, buildMissingPlaceNote } from '../shared/osm-edit.js';
 import { useServer, v1 } from './server.js';
 
 const read = (k, d) => { try { return JSON.parse(store.getItem(k) || '') ?? d; } catch { return d; } };
@@ -32,6 +32,19 @@ export async function sendOsmEditSuggestion({ place, changes, comment }, { fetch
   return { id, url: id ? `https://www.openstreetmap.org/note/${id}` : null, text: p.text };
 }
 
+/** v0.7.20 (G6): "Add a missing place" → structured anonymous OSM note (shares the notes rate limit). */
+export async function sendMissingPlace(x, { fetchImpl = fetch, now = Date.now() } = {}) {
+  const hist = read('bm-notes-history', []);
+  const rl = noteRateLimit(hist, now);
+  if (!rl.ok) { const e = new Error('rate_limited'); e.waitMs = rl.waitMs; throw e; }
+  const p = buildMissingPlaceNote(x);
+  const r = await fetchImpl(`${p.url}.json`, { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded', Accept: 'application/json' }, body: p.body });
+  if (!r.ok) throw new Error(`http_${r.status}`);
+  const id = parseNoteResponse(await r.text());
+  store.setItem('bm-notes-history', JSON.stringify([...hist.filter((t) => now - t < 3600_000), now]));
+  return { id, url: id ? `https://www.openstreetmap.org/note/${id}` : null, text: p.text };
+}
+
 export const incidentsMode = () => (useServer() ? 'server' : 'device');
 
 export async function listIncidents(bounds, { now = Date.now() } = {}) {
@@ -51,7 +64,18 @@ export async function reportIncident(x, { now = Date.now() } = {}) {
   store.setItem('bm-incidents-local', JSON.stringify([...activeIncidents(read('bm-incidents-local', []), now), inc]));
   return { ...inc, confidence: 'low', minutes_left: 120, device_only: true };
 }
-export async function voteIncident(id, vote) {
-  if (!useServer()) return null;
+export async function voteIncident(id, vote, { now = Date.now() } = {}) {
+  if (!useServer()) {
+    // v0.7.20 (G8): device-only reports get the same vote rules locally (one vote per report on this device).
+    const list = activeIncidents(read('bm-incidents-local', []), now);
+    const voted = read('bm-incident-votes', []);
+    if (voted.includes(id)) throw new Error('http_409 already_voted');
+    const i = list.findIndex((x) => x.id === id); if (i < 0) return null;
+    const r = applyLocalVote(list[i], vote, now);
+    if (r.removed) list.splice(i, 1); else list[i] = r;
+    store.setItem('bm-incidents-local', JSON.stringify(list));
+    store.setItem('bm-incident-votes', JSON.stringify([...voted, id].slice(-200)));
+    return r.removed ? r : { ...r, confidence: confidence(r.up, r.down), minutes_left: minutesLeft(r, now), device_only: true };
+  }
   return v1(`/incidents/${encodeURIComponent(id)}/vote`, { method: 'POST', body: { vote }, ttl: 0 });
 }

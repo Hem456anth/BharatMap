@@ -11,6 +11,14 @@ tracking, seller and admin dashboards).
 > transit arrivals are **not** included (they need licensed feeds); metro journeys use **scheduled** HMRL GTFS times. See `docs/AUDIT.md` for implemented vs prototype vs
 > needs-paid-API.
 
+## New in v0.7.20 (3 Nov 2026) — competitor gaps (`docs/UPGRADE_REPORT_2026-11.md`)
+- **Prefer main roads** (Valhalla costing: service-lane / living-street / track penalties; OSRM fallback labelled "not applied").
+- **Locality-aware, typo-tolerant search**: "Apollo Hospitals, Jubilee Hills", "hospital, Pendurthi", "apolo hospitl" — on the device and on the server.
+- **Get-off and arrival alarms** (foreground), **incident alerts along the route** with "Still there?", **no silent reroutes**
+  (faster route offered with the minutes saved; auto-switch is opt-in and announced), voice choice kept.
+- **Exact pickup hand-off**: pin + DIGIPIN + landmark in every ride hand-off (Uber link, or clipboard), "Copy pickup for driver".
+- **Add a missing place** → structured OSM note; **Bengaluru Namma Metro** schedules (unofficial ODbL GTFS, labelled).
+
 ## New in v0.7 (20 Oct 2026)
 - **Place-card service panels** (12 panel types): every value labelled Live / Scheduled / Estimate / Link-out / Demo /
   Unavailable with its source; no fabricated prices, fares, showtimes or ETAs.
@@ -130,7 +138,7 @@ configured the app runs fully on-device (Shop uses fictional demo data). Details
 ## Attribution & licences
 Map data © OpenStreetMap contributors (ODbL). Online tiles: OpenFreeMap / OpenMapTiles. Offline tiles: Protomaps basemap
 (OSM). Map problems are reported as public OpenStreetMap notes. Routing: OSRM and Valhalla on FOSSGIS servers (routing.openstreetmap.de, valhalla1.openstreetmap.de) or self-hosted.
-Transit: *Contains data provided by Hyderabad Metro Rail Ltd.* (HMRL GTFS, HMRL open-data terms). EV: Open Charge Map (CC BY 4.0) when enabled. Geocoding: Nominatim, Photon (komoot). Rendering:
+Transit: *Contains data provided by Hyderabad Metro Rail Ltd.* (HMRL GTFS, HMRL open-data terms); Bengaluru Namma Metro: unofficial GTFS by Vonter (ODbL 1.0, github.com/Vonter/bmrcl-gtfs). EV: Open Charge Map (CC BY 4.0) when enabled. Geocoding: Nominatim, Photon (komoot). Rendering:
 MapLibre GL JS (BSD-3). Fonts: Noto (OFL). Icons, colours and UI are original to this project (clean-room; no third-party
 brand assets). Reused code and reference projects: `docs/THIRD_PARTY.md` (CoMaps, Apache-2.0, studied as the architecture
 blueprint; no CoMaps code or assets copied).

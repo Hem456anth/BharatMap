@@ -1386,6 +1386,189 @@ for (const vp of [{ name: 'desktop', width: 1366, height: 820 }, { name: 'mobile
   });
 }
 
+// ---------- v0.7.20: competitor gaps G1, G2, G6–G10 (after-screenshots in docs/screenshots/v0720/) ----------
+const shot720 = (page, name) => page.screenshot({ path: `${OUT}/v0720/e2e-${name}.png` });
+fs.mkdirSync(`${OUT}/v0720`, { recursive: true });
+const OSRM_FAST = (() => { const j = JSON.parse(fs.readFileSync(new URL('./fixtures/osrm-drive-dwarakanagar-rkbeach.json', import.meta.url), 'utf8')); j.routes = j.routes.slice(0, 1); j.routes[0].duration = 30; return j; })();
+const PARADISE720 = { id: 'osm:node/9000000001', name: 'Paradise Biryani', lat: 17.4416, lng: 78.4873, tags: { amenity: 'restaurant', cuisine: 'biryani', opening_hours: 'Mo-Su 11:00-23:00' } };
+for (const vp of [{ name: 'desktop', width: 1366, height: 820 }, { name: 'mobile', width: 390, height: 844, isMobile: true }]) {
+  const V = vp.name;
+  const { ctx, page, errors, netLog } = await newPage(vp, { blockSW: true });
+  const vreq = [];
+  await ctx.route(/^https:\/\/valhalla1\.openstreetmap\.de\/route/, (r) => { vreq.push(decodeURIComponent(r.request().url())); return r.fallback(); });
+  const openDir = async (mode) => {
+    await page.evaluate((m) => window.__bm.ctx.directions.open({ lat: 17.7142, lng: 83.3239, name: 'RK Beach' }, { mode: m, from: { lat: 17.7289, lng: 83.305, name: 'Dwaraka Nagar' } }), mode);
+    await page.waitForSelector('#dirSummary #dirStart', { timeout: 20000 });
+  };
+
+  await step(`v0720 ${V}: G1 "Prefer main roads" — off for car by default (OSRM), on → Valhalla auto with service/living-street/track penalties, labelled; on by default for 2-wheeler`, async () => {
+    await boot(page);
+    await openDir('drive');
+    assert(!(await page.isChecked('#mainRoads')), 'car default off');
+    assert(!(await page.$('#mainRoadsNote')), 'no main-roads note when off');
+    const n0 = vreq.length;
+    await page.check('#mainRoads');
+    await page.waitForSelector('#mainRoadsNote', { timeout: 20000 });
+    const req = vreq.slice(n0).find((u) => /"costing":"auto"/.test(u));
+    assert(req && /"service_penalty":120/.test(req) && /"use_living_streets":0\.05/.test(req) && /"use_tracks":0/.test(req), `valhalla auto request ${req?.slice(0, 200)}`);
+    assert(/narrow service lanes/.test(await page.textContent('#mainRoadsNote')), 'applied note');
+    assert(await page.evaluate(() => localStorage.getItem('bm-main-roads-drive')) === '1', 'persisted');
+    await page.waitForTimeout(600); await shot720(page, `${V}-01-main-roads-car`);
+    await page.click('[data-mode=two]');
+    await page.waitForFunction(() => window.__bm.ctx.directions.state.mode === 'two' && document.getElementById('mainRoads'), null, { timeout: 20000 });
+    assert(await page.isChecked('#mainRoads'), '2W default on');
+    assert(vreq.some((u) => /"costing":"motor_scooter"/.test(u) && /"use_primary":0\.8/.test(u) && /"top_speed":60/.test(u)), 'scooter request carries guardrails + top speed');
+  });
+
+  await step(`v0720 ${V}: G2 locality-aware search — "Apollo Hospitals, Jubilee Hills" and "hospital, Pendurthi" answer inside the locality; typo "kailasgiri" still finds Kailasagiri`, async () => {
+    const r = await page.evaluate(async () => { const m = await import('/lib/offline-search.js'); await m.loadSearchIndex(); const a = await m.offlineSearch('Apollo Hospitals, Jubilee Hills', { near: { lat: 17.7289, lng: 83.305 }, limit: 3 }); const b = await m.offlineSearch('hospital, Pendurthi', { limit: 3 }); const c = await m.offlineSearch('kailasgiri', { limit: 1 }); return { a: a[0], b, c: c[0] }; });
+    assert(Math.abs(r.a.lat - 17.415) < 0.03 && Math.abs(r.a.lng - 78.413) < 0.03, `Jubilee Hills Apollo ${JSON.stringify(r.a)}`);
+    assert(r.b.length === 3 && r.b.every((x) => Math.abs(x.lat - 17.823) < 0.07 && Math.abs(x.lng - 83.205) < 0.07), `Pendurthi hospitals ${JSON.stringify(r.b.map((x) => x.name))}`);
+    assert(/Kailasagiri/.test(r.c.name), `typo ${r.c.name}`);
+    await home(page);
+    await page.fill('#q', ''); await page.click('#q'); await page.type('#q', 'hospital, Pendurthi', { delay: 10 });
+    await page.waitForFunction(() => [...document.querySelectorAll('#suggest .sug-t')].some((x) => /Pendurthi|Sreenivasa|Visakha/i.test(x.textContent)), null, { timeout: 12000 });
+    await page.waitForTimeout(400); await shot720(page, `${V}-02-locality-search`);
+    await page.keyboard.press('Escape');
+  });
+
+  await step(`v0720 ${V}: G9 ride hand-off — Uber link carries the exact pin + DIGIPIN; Rapido (no documented pickup) copies pin, DIGIPIN and landmark first; "Copy pickup for driver"`, async () => {
+    await page.evaluate(() => { window.__BM_LINKOUT_TEST__ = []; window.__bm.ctx.myLoc = { lat: 17.4375, lng: 78.4483, accuracy: 10, ts: Date.now() }; });
+    await page.evaluate((p) => window.__bm.ctx.place.open(p), PARADISE720);
+    await page.waitForSelector('#svRide summary', { timeout: 20000 });
+    await page.click('#svRide summary');
+    await page.waitForSelector('#svRide [data-sva=copy-pickup]', { timeout: 20000 });
+    await page.click('[data-sva=uber]'); await page.waitForSelector('#linkoutDlg[open]');
+    assert(await page.$('#loBody [data-handoff=link]'), 'uber: in the link');
+    await page.click('#loGo');
+    const u = decodeURIComponent((await page.evaluate(() => window.__BM_LINKOUT_TEST__)).pop());
+    assert(/pickup\[latitude\]=17\.4375&pickup\[longitude\]=78\.4483/.test(u) && /pickup\[formatted_address\]=DIGIPIN [2-9CFJKLMPT]{3}-/.test(u), u);
+    await page.click('[data-sva=rapido]'); await page.waitForSelector('#linkoutDlg[open]');
+    assert(/exact pin, DIGIPIN and landmark will be copied/.test(await page.textContent('#loBody [data-handoff=clipboard]')), 'rapido: clipboard note');
+    await page.waitForTimeout(300); await shot720(page, `${V}-03-handoff-rapido`);
+    await page.click('#loGo');
+    await page.waitForFunction(() => /DIGIPIN: /.test(window.__BM_LAST_COPY__ || ''), null, { timeout: 5000 });
+    const copied = await page.evaluate(() => window.__BM_LAST_COPY__);
+    assert(/Pickup: .+\n17\.437500, 78\.448300\nDIGIPIN: /.test(copied) && /Drop: Paradise Biryani/.test(copied) && /openstreetmap\.org\/\?mlat=17\.437500/.test(copied), copied);
+    assert((await page.evaluate(() => window.__BM_LINKOUT_TEST__)).pop() === 'https://www.rapido.bike/', 'rapido still opens its own site');
+    await page.evaluate(() => { window.__BM_LAST_COPY__ = ''; });
+    await page.click('[data-sva=copy-pickup]');
+    await page.waitForFunction(() => /DIGIPIN: /.test(window.__BM_LAST_COPY__ || ''), null, { timeout: 5000 });
+    await home(page);
+  });
+
+  await step(`v0720 ${V}: G7 metro get-off alarm — "Alert me before Ameerpet" on the HMRL itinerary, armed banner, fires once inside 1 km`, async () => {
+    await page.evaluate(() => { window.__BM_NOW__ = '2026-10-21T09:00:00+05:30'; window.__bm.ctx.directions.open({ lat: 17.4013, lng: 78.5602, name: 'Uppal' }, { mode: 'transit', from: { lat: 17.4966, lng: 78.3731, name: 'Miyapur' } }); });
+    await page.waitForSelector('#itinSteps [data-alarm-leg]', { timeout: 20000 });
+    const label = await page.textContent('#itinSteps [data-alarm-leg]');
+    assert(/Alert me before Ameerpet/.test(label), label);
+    await page.click('#itinSteps [data-alarm-leg]');
+    await page.waitForSelector('#alarmBanner[data-state=armed]:not([hidden])');
+    assert(/Alarm on · 1(\.0)? km before Ameerpet/.test(await page.textContent('#alarmBanner')), await page.textContent('#alarmBanner'));
+    await page.waitForTimeout(500); await shot720(page, `${V}-04-alarm-armed`);
+    const st = await page.evaluate(() => { const a = window.__bm.ctx.alarms.active; const t = a.target; const now = Date.now();
+      window.__bm.ctx.alarms.feed({ lat: t.lat + 0.03, lng: t.lng, accuracy: 10, ts: now });
+      window.__bm.ctx.alarms.feed({ lat: t.lat + 0.006, lng: t.lng, accuracy: 10, ts: now });
+      window.__bm.ctx.alarms.feed({ lat: t.lat + 0.005, lng: t.lng, accuracy: 10, ts: now });
+      window.__bm.ctx.alarms.feed({ lat: t.lat, lng: t.lng, accuracy: 10, ts: now });
+      return { fired: a.fired, log: window.__bm.ctx.alarms.log.length }; });
+    assert(st.fired && st.log === 1, `fired once ${JSON.stringify(st)}`);
+    await page.waitForSelector('#alarmBanner[data-state=fired]:not([hidden])');
+    assert(/Ameerpet is next — get ready to get off/.test(await page.textContent('#alarmBanner')), 'fired text');
+    await shot720(page, `${V}-05-alarm-fired`);
+    await page.click('#alarmDismiss');
+    assert(await page.isHidden('#alarmBanner'), 'dismissed');
+    await page.evaluate(() => { delete window.__BM_NOW__; });
+    await home(page);
+  });
+
+  await step(`v0720 ${V}: G8 incident on the route — announced ahead (not verified), "Still there?" after passing, Yes extends the device report`, async () => {
+    await page.evaluate(() => localStorage.removeItem('bm-incidents-local'));
+    await openDir('drive');
+    const pt = await page.evaluate(async () => { const r = window.__bm.ctx.directions.state.result.routes[0]; const c = r.geometry.coordinates[Math.floor(r.geometry.coordinates.length * 0.45)]; const m = await import('/services/community.js'); const inc = await m.reportIncident({ type: 'waterlogging', lat: c[1], lng: c[0] }); return { c, id: inc.id }; });
+    await page.evaluate(() => { window.__bm.ctx.nav.setSimSpeedKmh(60); document.getElementById('dirSim').click(); });
+    await page.waitForFunction(() => window.__bm.ctx.nav.routeAlerts?.items?.length === 1, null, { timeout: 10000 });
+    await page.waitForSelector('#navIncident:not([hidden])', { timeout: 40000 });
+    assert(/Waterlogging reported .+ ahead · not verified/.test(await page.textContent('#navIncident')), await page.textContent('#navIncident'));
+    await shot720(page, `${V}-06-incident-ahead`);
+    await page.waitForSelector('#navStill:not([hidden])', { timeout: 40000 });
+    assert(/Waterlogging — still there\?/.test(await page.textContent('#navStill')), 'ask');
+    await shot720(page, `${V}-07-still-there`);
+    await page.click('#navStillYes');
+    await page.waitForFunction((id) => (JSON.parse(localStorage.getItem('bm-incidents-local') || '[]').find((x) => x.id === id) || {}).up === 1, pt.id, { timeout: 5000 });
+    assert(await page.isHidden('#navStill'), 'chip closed');
+    await page.click('#navEnd');
+  });
+
+  await step(`v0720 ${V}: G10 no silent reroutes — a faster route is offered (saves N min), Keep keeps it, Switch switches; auto-accept switches and announces; off-route reroute keeps "main roads"`, async () => {
+    await page.evaluate(() => localStorage.setItem('bm-auto-faster', '0'));
+    await openDir('drive');
+    await page.evaluate(() => { window.__bm.ctx.nav.setSimSpeedKmh(20); document.getElementById('dirSim').click(); });
+    await page.waitForFunction(() => window.__bm.ctx.nav.state, null, { timeout: 10000 });
+    const check = () => page.evaluate(async (FAST) => { const r0 = window.__bm.ctx.nav.route; const res = await window.__bm.ctx.nav.checkFaster({ fetchImpl: async () => ({ ok: true, status: 200, json: async () => FAST }) }); return { res, same: window.__bm.ctx.nav.route === r0 }; }, OSRM_FAST);
+    let c = await check();
+    assert(c.res.offer && c.res.accepted === null && c.same, `offered, not switched ${JSON.stringify(c.res)}`);
+    await page.waitForSelector('#navFaster:not([hidden])');
+    assert(/Faster route · saves \d+ min/.test(await page.textContent('#navFaster')), await page.textContent('#navFaster'));
+    await shot720(page, `${V}-08-faster-offer`);
+    await page.click('#navFasterNo');
+    assert(await page.isHidden('#navFaster') && (await page.evaluate(() => window.__bm.ctx.nav.offer)) === null, 'kept');
+    c = await check(); assert(c.res.offer && c.same, 'offered again');
+    await page.click('#navFasterYes');
+    assert(await page.evaluate((d) => window.__bm.ctx.nav.route.duration_s === Math.round(d), OSRM_FAST.routes[0].duration), 'switched on Switch');
+    await page.click('#navEnd');
+    await page.evaluate(() => localStorage.setItem('bm-auto-faster', '1'));
+    await openDir('drive');
+    await page.evaluate(() => { window.__bm.ctx.nav.setSimSpeedKmh(20); document.getElementById('dirSim').click(); });
+    await page.waitForFunction(() => window.__bm.ctx.nav.state, null, { timeout: 10000 });
+    const r1 = await page.evaluate(async (FAST) => { const before = window.__bm.ctx.nav.route; const res = await window.__bm.ctx.nav.checkFaster({ fetchImpl: async () => ({ ok: true, status: 200, json: async () => FAST }) }); return { res, changed: window.__bm.ctx.nav.route !== before, hidden: document.getElementById('navFaster').hidden }; }, OSRM_FAST);
+    assert(r1.res.accepted === 'auto' && r1.changed && r1.hidden, `auto-accept ${JSON.stringify(r1)}`);
+    assert(await page.evaluate(() => window.__bm.ctx.nav.voice.log.some((x) => /Switched to a faster route/.test(x.text))), 'auto switch announced');
+    await page.click('#navEnd');
+    await page.evaluate(() => localStorage.setItem('bm-auto-faster', '0'));
+    // off-route reroute keeps the trip's "Prefer main roads" (car: on from the G1 step)
+    await openDir('drive');
+    const n0 = vreq.length;
+    await page.evaluate(() => { const S = window.__bm.ctx.directions.state; window.__bm.ctx.nav.start(S.result.routes[0], { mode: 'drive', dest: S.to, simulate: true, mainRoads: true }); });
+    await page.waitForFunction(() => window.__bm.ctx.nav.state, null, { timeout: 10000 });
+    await page.evaluate(() => { for (let i = 0; i < 4; i++) window.__bm.ctx.nav.feed({ lat: 17.70, lng: 83.29, accuracy: 5, heading: 0 }); });
+    await page.waitForFunction(() => window.__bm.ctx.nav.reroutes >= 1, null, { timeout: 20000 });
+    assert(vreq.slice(n0).some((u) => /"costing":"auto"/.test(u) && /"service_penalty":120/.test(u) && /"lat":17\.7,"lon":83\.29/.test(u)), 'reroute from the new position with main roads');
+    await page.click('#navEnd');
+    await home(page);
+  });
+
+  await step(`v0720 ${V}: G6 add a missing place — structured OSM note (mocked API) with suggested tags; invalid phone flagged`, async () => {
+    await page.evaluate(() => { localStorage.removeItem('bm-notes-history'); window.__bm.ctx.report.open({ lat: 17.7289, lng: 83.305, name: 'Sri Sai Kirana' }, { mode: 'place' }); });
+    await page.waitForSelector('#reportDlg[open] #reportPlace:not([hidden])');
+    assert((await page.inputValue('#mpName')) === 'Sri Sai Kirana', 'name prefilled');
+    assert(/17\.728900, 83\.305000 · DIGIPIN/.test(await page.textContent('#mpPin')), 'pin + DIGIPIN shown');
+    await page.selectOption('#mpKind', 'kirana');
+    await page.fill('#mpPhone', 'abc');
+    await page.click('#reportSend');
+    await page.waitForFunction(() => /Check this field/.test(document.getElementById('reportStatus').textContent));
+    await page.fill('#mpPhone', '98765 43210'); await page.fill('#mpHours', 'Mo-Sa 08:00-21:00');
+    await page.waitForTimeout(200); await shot720(page, `${V}-09-missing-place`);
+    await page.click('#reportSend');
+    await page.waitForFunction(() => /note #4242/.test(document.getElementById('reportStatus').textContent), null, { timeout: 10000 });
+    const note = netLog.filter((l) => l.startsWith('osmnote')).pop();
+    assert(/\[Missing[+ ]place\][+ ]Sri[+ ]Sai[+ ]Kirana/.test(note), note);
+    const real = errors.filter((e) => !/ERR_INTERNET_DISCONNECTED|ERR_FAILED|Failed to load resource|blockedbyclient/.test(e));
+    assert(!real.length, `console errors: ${real.slice(0, 2).join(' | ')}`);
+  });
+  await ctx.close();
+
+  if (V === 'desktop') await step('v0720 desktop: G1 Valhalla down → car route from OSRM says "Prefer main roads isn’t applied"', async () => {
+    const { ctx: c2, page: p2 } = await newPage(vp, { blockSW: true, fail: { valhalla: true }, init: `localStorage.setItem('bm-main-roads-drive', '1');` });
+    await boot(p2);
+    await p2.evaluate(() => window.__bm.ctx.directions.open({ lat: 17.7142, lng: 83.3239, name: 'RK Beach' }, { mode: 'drive', from: { lat: 17.7289, lng: 83.305, name: 'Dwaraka Nagar' } }));
+    await p2.waitForSelector('#mainRoadsNote', { timeout: 30000 });
+    assert(/isn’t applied to this route: it came from OSRM/.test(await p2.textContent('#mainRoadsNote')), await p2.textContent('#mainRoadsNote'));
+    await p2.waitForTimeout(500); await shot720(p2, 'desktop-10-main-roads-osrm');
+    await c2.close();
+  });
+}
+
 await browser.close();
 console.log(results.join('\n'));
 fs.writeFileSync('docs/e2e-results.txt', `${results.join('\n')}\n`);

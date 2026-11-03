@@ -55,7 +55,7 @@ export function createProviders({ env = process.env, fetchImpl, now, sleep, time
     offline();
     const body = JSON.stringify(buildValhallaRequest(mode, from, to, opts));
     const j = await up.valhalla.request('/route', { method: 'POST', body, headers: { 'Content-Type': 'application/json' } });
-    return { engine: cfg.valhalla.public ? 'valhalla-fossgis' : 'valhalla', estimate: false, routes: parseValhalla(j, mode, cfg.valhalla.public ? 'valhalla-fossgis' : 'valhalla'), avoid_applied: true };
+    return { engine: cfg.valhalla.public ? 'valhalla-fossgis' : 'valhalla', estimate: false, routes: parseValhalla(j, mode, cfg.valhalla.public ? 'valhalla-fossgis' : 'valhalla'), avoid_applied: true, main_roads_applied: true };
   }
   async function viaOsrm(mode, from, to, opts) {
     offline();
@@ -66,20 +66,20 @@ export function createProviders({ env = process.env, fetchImpl, now, sleep, time
     const path = `/route/v1/driving/${[from, ...via, to].map((p) => `${c6(p.lng)},${c6(p.lat)}`).join(';')}?alternatives=${via.length ? 'false' : 'true'}&steps=true&overview=full&geometries=geojson${cfg.osrm[prof].maxspeed ? '&annotations=maxspeed' : ''}`;
     const j = await up.osrm[prof].request(path);
     const routes = parseOsrm(j, mode).map((r) => ({ ...r, engine: cfg.osrm[prof].public ? 'osrm-fossgis' : 'osrm' }));
-    return { engine: routes[0]?.engine, estimate: mode === 'two', routes, avoid_applied: !(opts.avoidTolls || opts.avoidHighways) };
+    return { engine: routes[0]?.engine, estimate: mode === 'two', routes, avoid_applied: !(opts.avoidTolls || opts.avoidHighways), main_roads_applied: !opts.mainRoads }; // OSRM: no costing options (G1)
   }
 
   /** Route with fallbacks: Valhalla ⇄ OSRM, then a labelled straight-line estimate. */
   async function route(mode, from, to, opts = {}) {
     if (!MODES.includes(mode)) throw new Error(`unknown_mode:${mode}`);
-    const valhallaFirst = cfg.valhalla.configured || mode === 'two' || mode === 'truck' || opts.avoidTolls || opts.avoidHighways;
+    const valhallaFirst = cfg.valhalla.configured || mode === 'two' || mode === 'truck' || opts.avoidTolls || opts.avoidHighways || opts.mainRoads;
     const steps = valhallaFirst ? [['valhalla', () => viaValhalla(mode, from, to, opts)], ['osrm', () => viaOsrm(mode, from, to, opts)]]
       : [['osrm', () => viaOsrm(mode, from, to, opts)], ['valhalla', () => viaValhalla(mode, from, to, opts)]];
     try {
       const r = await withFallback(steps);
       return { mode, provider: r.provider, ...r.value, fallback: false, tried: r.tried };
     } catch (e) {
-      return { mode, provider: 'straight-line', engine: 'fallback-straight-line', estimate: true, fallback: true, routes: fallbackRoutes(mode === 'truck' ? 'drive' : mode, from, to, opts.via || []).map((r) => ({ ...r, mode })), tried: e.tried || [], error: 'routing_unavailable' };
+      return { mode, provider: 'straight-line', engine: 'fallback-straight-line', estimate: true, fallback: true, routes: fallbackRoutes(mode === 'truck' ? 'drive' : mode, from, to, opts.via || []).map((r) => ({ ...r, mode })), tried: e.tried || [], error: 'routing_unavailable', main_roads_applied: !opts.mainRoads };
     }
   }
 

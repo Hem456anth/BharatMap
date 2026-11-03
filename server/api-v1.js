@@ -35,7 +35,7 @@ export function mountApiV1(app, { root, db = null, now, providers = createProvid
     if (!MODES.includes(mode)) return bad(res, 'unknown_mode');
     const via = String(req.query.via || '').split(';').filter(Boolean).slice(0, 8).map((x) => { const [a, b] = x.split(','); return pt(a, b); });
     if (via.some((x) => !x)) return bad(res, 'invalid_via');
-    const opts = { via, avoidTolls: req.query.avoid_tolls === '1', avoidHighways: req.query.avoid_highways === '1', alternates: req.query.alternatives === '0' ? 0 : 2 };
+    const opts = { via, avoidTolls: req.query.avoid_tolls === '1', avoidHighways: req.query.avoid_highways === '1', mainRoads: req.query.main_roads === '1', alternates: req.query.alternatives === '0' ? 0 : 2 };
     if (mode === 'truck') {
       // v0.7 truck routing: Valhalla truck costing (dimensions in metres, weights in tonnes). Tolls stay "plazas on route, fee unknown".
       const t = {}; for (const k of ['height', 'width', 'length', 'weight', 'axle_load']) { const v = num(req.query[`truck_${k}`]); if (Number.isFinite(v) && v > 0 && v < 100) t[k] = v; }

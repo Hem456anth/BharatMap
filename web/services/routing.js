@@ -96,28 +96,29 @@ export function fallbackRoutes(mode, from, to, via = []) {
 
 async function viaOsrm(mode, from, to, o) {
   const json = await fetchJSON(buildRouteUrl(mode, from, to, { via: o.via || [] }), { timeout: o.timeout, ttl: 5 * 60_000, fetchImpl: o.fetchImpl });
-  return { engine: 'osrm-fossgis', estimate: MODES[mode].estimate, routes: parseOsrm(json, mode), avoid_applied: !(o.avoidTolls || o.avoidHighways) };
+  // v0.7.20 (G1): OSRM has no costing options — "Prefer main roads" is NOT applied on this engine (labelled in the UI).
+  return { engine: 'osrm-fossgis', estimate: MODES[mode].estimate, routes: parseOsrm(json, mode), avoid_applied: !(o.avoidTolls || o.avoidHighways), main_roads_applied: !o.mainRoads };
 }
 async function viaValhalla(mode, from, to, o) {
   const json = await fetchJSON(buildValhallaUrl(mode, from, to, o), { timeout: o.timeout, ttl: 5 * 60_000, fetchImpl: o.fetchImpl });
-  return { engine: 'valhalla-fossgis', estimate: false, routes: parseValhalla(json, mode, 'valhalla-fossgis'), avoid_applied: true };
+  return { engine: 'valhalla-fossgis', estimate: false, routes: parseValhalla(json, mode, 'valhalla-fossgis'), avoid_applied: true, main_roads_applied: true };
 }
 
-/** getRoutes(mode, from, to, { avoidTolls, avoidHighways, fetchImpl, timeout }) → { mode, engine, estimate, fallback, routes } */
+/** getRoutes(mode, from, to, { avoidTolls, avoidHighways, mainRoads, fetchImpl, timeout }) → { mode, engine, estimate, fallback, routes } */
 export async function getRoutes(mode, from, to, opts = {}) {
   const o = { timeout: 12000, ...opts };
   if (useServer()) {
     try {
-      const qs = new URLSearchParams({ mode, ...(o.via?.length ? { via: o.via.map((p) => `${p.lat.toFixed(6)},${p.lng.toFixed(6)}`).join(';') } : {}), from_lat: from.lat.toFixed(6), from_lng: from.lng.toFixed(6), to_lat: to.lat.toFixed(6), to_lng: to.lng.toFixed(6), ...(o.avoidTolls ? { avoid_tolls: '1' } : {}), ...(o.avoidHighways ? { avoid_highways: '1' } : {}) });
+      const qs = new URLSearchParams({ mode, ...(o.via?.length ? { via: o.via.map((p) => `${p.lat.toFixed(6)},${p.lng.toFixed(6)}`).join(';') } : {}), from_lat: from.lat.toFixed(6), from_lng: from.lng.toFixed(6), to_lat: to.lat.toFixed(6), to_lng: to.lng.toFixed(6), ...(o.avoidTolls ? { avoid_tolls: '1' } : {}), ...(o.avoidHighways ? { avoid_highways: '1' } : {}), ...(o.mainRoads ? { main_roads: '1' } : {}) });
       const r = await v1(`/route?${qs}`, { timeout: 20000, fetchImpl: o.fetchImpl });
-      return { mode, engine: r.engine, provider: r.provider, estimate: !!r.estimate, fallback: !!r.fallback, routes: r.routes, avoid_applied: r.avoid_applied, via: 'server', error: r.error };
+      return { mode, engine: r.engine, provider: r.provider, estimate: !!r.estimate, fallback: !!r.fallback, routes: r.routes, avoid_applied: r.avoid_applied, main_roads_applied: r.main_roads_applied ?? !o.mainRoads, via: 'server', error: r.error };
     } catch { /* server unreachable: go direct */ }
   }
-  const valhallaFirst = mode === 'two' || o.avoidTolls || o.avoidHighways;
+  const valhallaFirst = mode === 'two' || o.avoidTolls || o.avoidHighways || o.mainRoads;
   const order = valhallaFirst ? [viaValhalla, viaOsrm] : [viaOsrm, viaValhalla];
   let err;
   for (const fn of order) {
     try { const r = await fn(mode, from, to, o); return { mode, fallback: false, via: 'direct', ...r }; } catch (e) { err = e; }
   }
-  return { mode, engine: 'fallback-straight-line', estimate: true, fallback: true, error: err?.message, routes: fallbackRoutes(mode, from, to, o.via || []) };
+  return { mode, engine: 'fallback-straight-line', estimate: true, fallback: true, error: err?.message, main_roads_applied: !o.mainRoads, routes: fallbackRoutes(mode, from, to, o.via || []) };
 }

@@ -1,7 +1,8 @@
 // Offline search v2 loader (browser / Android WebView). One prebuilt token index for all bundled regions
 // (web/offline/search/index.json, built by scripts/build-search-index.mjs) — no network, no SQLite in the WebView.
 // Loaded lazily on the first search and kept in memory.
-import { searchOffline, lookupPincode, lookupDigipin, displayName } from '../shared/search-index.js';
+import { lookupPincode, lookupDigipin, displayName } from '../shared/search-index.js';
+import { searchOfflineSmart } from '../shared/search-locality.js';
 
 let pending = null;
 export function loadSearchIndex(fetchImpl = (...a) => fetch(...a)) {
@@ -11,6 +12,6 @@ export function loadSearchIndex(fetchImpl = (...a) => fetch(...a)) {
 /** Search the bundled index; [] when it is unavailable. */
 export async function offlineSearch(query, opts = {}) {
   const ix = await loadSearchIndex(opts.fetchImpl);
-  return ix ? searchOffline(ix, query, opts) : [];
+  return ix ? searchOfflineSmart(ix, query, opts) : []; // v0.7.20 (G2): locality-aware + typo-tolerant
 }
 export { lookupPincode, lookupDigipin, displayName };

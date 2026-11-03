@@ -14,6 +14,9 @@ import { icon } from './icons.js';
 import { esc, serviceError } from './search.js';
 import { routeTotals, routeDescriptor } from '../lib/ux.js';
 import { renderState } from './states.js';
+import { mainRoadsApplies } from '../shared/valhalla.js';
+import { mainRoadsPref, setMainRoadsPref } from '../shared/guardrails.js';
+import { autoAcceptFaster, setAutoAcceptFaster } from '../shared/reroute.js';
 
 export const fmtDuration = (s, ctx) => { const m = Math.max(1, Math.round(s / 60)); return m < 60 ? `${m} ${ctx.t('min_short')}` : `${Math.floor(m / 60)} ${ctx.t('hr_short')} ${m % 60} ${ctx.t('min_short')}`; };
 export const clock = (date) => date.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: false });
@@ -73,7 +76,9 @@ export function initDirections(ctx) {
     ctx.style.setRoutes(null); ctx.style.setLegs(null); ctx.style.setTolls(null);
     if (S.mode === 'transit') return transit(my);
     ctx.panels?.refreshOverlays?.(); // drop transit stop dots from a previous transit view
-    const res = await getRoutes(S.mode, S.from, S.to, { via: S.stops, avoidTolls: S.avoidTolls && motor(), avoidHighways: S.avoidHighways && motor() });
+    const mainRoads = mainRoadsApplies(S.mode) && mainRoadsPref(S.mode, store);
+    const res = await getRoutes(S.mode, S.from, S.to, { via: S.stops, avoidTolls: S.avoidTolls && motor(), avoidHighways: S.avoidHighways && motor(), mainRoads });
+    res.main_roads_requested = mainRoads;
     if (my !== S.seq) return;
     S.result = res; S.selected = 0;
     renderRoutes(); draw(true);
@@ -84,6 +89,9 @@ export function initDirections(ctx) {
     const res = S.result; const el = document.getElementById('dirRoutes'); if (!el) return;
     const notes = [];
     if (motor() && !res.fallback && (S.avoidTolls || S.avoidHighways) && res.avoid_applied === false) notes.push(`<p class="note warn" role="note">${esc(ctx.t('avoid_unsupported'))}</p>`);
+    // v0.7.20 (G1): say honestly when "Prefer main roads" could not be applied (OSRM has no road-type costs).
+    if (motor() && !res.fallback && res.main_roads_requested && res.main_roads_applied === false) notes.push(`<p class="note warn" role="note" id="mainRoadsNote">${esc(ctx.t('mr_not_applied'))}</p>`);
+    else if (motor() && !res.fallback && res.main_roads_requested) notes.push(`<p class="note" role="note" id="mainRoadsNote">${esc(ctx.t('mr_applied'))}</p>`);
     if (res.fallback) notes.push(`<p class="note warn" role="note">${esc(ctx.t('fallback_route'))}${res.error ? ` <small>(${esc(serviceError(ctx, { message: res.error }, 'OSRM'))})</small>` : ''}</p>`);
     else if (S.mode === 'two' && res.estimate) notes.push(`<p class="note warn" role="note">${esc(ctx.t('est_two'))}</p>`);
     else if (S.mode === 'drive') notes.push(`<p class="note" role="note">${esc(ctx.t('no_traffic'))}</p>`);
@@ -98,7 +106,7 @@ export function initDirections(ctx) {
         <span class="r-tag">${esc(ctx.t(d.key))}</span>
         <span class="r-badges">${d.badges.map((b) => `<span class="rbadge ${b.tone}">${esc(ctx.tf(b.key, { n: b.n }))}</span>`).join('')}</span>
       </button></li>`; }).join('')}</ul>
-      ${motor() ? `<div class="avoid row wrap" role="group" aria-label="${esc(ctx.t('directions'))}"><label class="chk"><input type="checkbox" id="avoidTolls" ${S.avoidTolls ? 'checked' : ''}/><span>${esc(ctx.t('avoid_tolls'))}</span></label><label class="chk"><input type="checkbox" id="avoidHw" ${S.avoidHighways ? 'checked' : ''}/><span>${esc(ctx.t('avoid_highways'))}</span></label></div>
+      ${motor() ? `<div class="avoid row wrap" role="group" aria-label="${esc(ctx.t('directions'))}"><label class="chk"><input type="checkbox" id="avoidTolls" ${S.avoidTolls ? 'checked' : ''}/><span>${esc(ctx.t('avoid_tolls'))}</span></label><label class="chk"><input type="checkbox" id="avoidHw" ${S.avoidHighways ? 'checked' : ''}/><span>${esc(ctx.t('avoid_highways'))}</span></label><label class="chk" title="${esc(ctx.t('mr_hint'))}"><input type="checkbox" id="mainRoads" ${mainRoadsPref(S.mode, store) ? 'checked' : ''}/><span>${esc(ctx.t('mr_toggle'))}</span></label><label class="chk"><input type="checkbox" id="autoFaster" ${autoAcceptFaster(store) ? 'checked' : ''}/><span>${esc(ctx.t('fr_auto'))}</span></label></div>
       <section class="tolls" id="dirTolls" aria-live="polite"></section>` : ''}
       <div class="row nav-start"><button class="btn big" id="dirSim">${esc(ctx.t('simulate'))}</button></div>
       <details class="steps" id="dirSteps">${stepsSummary()}<ol>${stepsHtml()}</ol></details>
@@ -107,11 +115,13 @@ export function initDirections(ctx) {
       actions: [{ id: 'retry', label: ctx.t('st_retry'), icon: 'swap' }, ...(S.mode !== 'two' ? [{ id: 'two', label: ctx.t('st_try_two'), icon: 'scooter' }] : [])] },
     { retry: () => compute(), two: () => { S.mode = 'two'; compute(); } });
     const at = document.getElementById('avoidTolls'); if (at) at.onchange = () => { S.avoidTolls = at.checked; store.setItem('bm-avoid-tolls', at.checked ? '1' : '0'); compute(); };
+    const af = document.getElementById('autoFaster'); if (af) af.onchange = () => setAutoAcceptFaster(af.checked, store);
+    const mr = document.getElementById('mainRoads'); if (mr) mr.onchange = () => { setMainRoadsPref(S.mode, mr.checked, store); compute(); };
     const ah = document.getElementById('avoidHw'); if (ah) ah.onchange = () => { S.avoidHighways = ah.checked; store.setItem('bm-avoid-hw', ah.checked ? '1' : '0'); compute(); };
     loadTolls();
     el.querySelectorAll('[data-route]').forEach((b) => { b.onclick = () => select(+b.dataset.route); });
-    document.getElementById('dirStart').onclick = () => ctx.nav.start(selected(), { mode: S.mode, dest: S.to, simulate: false, estimate: res.estimate });
-    document.getElementById('dirSim').onclick = () => ctx.nav.start(selected(), { mode: S.mode, dest: S.to, simulate: true, estimate: res.estimate });
+    document.getElementById('dirStart').onclick = () => ctx.nav.start(selected(), { mode: S.mode, dest: S.to, simulate: false, estimate: res.estimate, mainRoads: !!res.main_roads_requested, avoidTolls: S.avoidTolls && motor(), avoidHighways: S.avoidHighways && motor() });
+    document.getElementById('dirSim').onclick = () => ctx.nav.start(selected(), { mode: S.mode, dest: S.to, simulate: true, estimate: res.estimate, mainRoads: !!res.main_roads_requested, avoidTolls: S.avoidTolls && motor(), avoidHighways: S.avoidHighways && motor() });
   }
   // Totals for the selected route (time · distance · arrival) — shown in the header and on the steps list.
   function totalsText(now = Date.now()) {
@@ -189,7 +199,7 @@ export function initDirections(ctx) {
     return `<span class="leg walk">${icon('walk', { size: 14 })}${esc(mins(l.duration_s))}</span>`;
   }
   // HMRL short names are "C1_RED" etc. → "Red Line"; other feeds show their short (or long) name as published.
-  const lineName = (r) => { const m = /^C\d_([A-Z]+)$/.exec(r.short || ''); return m ? `${m[1][0]}${m[1].slice(1).toLowerCase()} Line` : (r.short || r.long || ''); };
+  const lineName = (r) => { const m = /^C\d_([A-Z]+)$/.exec(r.short || ''); return m ? `${m[1][0]}${m[1].slice(1).toLowerCase()} Line` : /^(Purple|Green|Yellow|Pink|Blue|Red|Orange)$/i.test(r.short || '') ? `${r.short} Line` : (r.short || r.long || ''); }; // BMRCL: "Purple" → "Purple Line"
   function renderItineraries() {
     const plan = S.transit; const its = plan.itineraries; const i0 = S.transitSel;
     const el = document.getElementById('dirRoutes'); if (!el) return;
@@ -204,14 +214,17 @@ export function initDirections(ctx) {
       <ol class="itin-steps" id="itinSteps">${itinSteps(its[i0])}</ol>
       <p class="small muted">${esc(plan.attribution || '')} · ${esc(ctx.t('transit_scheduled'))}</p>`;
     el.querySelectorAll('[data-itin]').forEach((b) => { b.onclick = () => { S.transitSel = +b.dataset.itin; renderItineraries(); }; });
+    // v0.7.20 (G7): "Alert me before <stop>" on each ride leg — a foreground get-off alarm (~1 km before a metro stop).
+    el.querySelectorAll('[data-alarm-leg]').forEach((b) => { b.onclick = () => { const l = its[S.transitSel].legs[+b.dataset.alarmLeg]; const rt = Number(l.route?.type); const kind = rt === 3 ? 'bus' : rt === 2 ? 'rail' : 'metro'; /* GTFS route_type */ ctx.alarms?.set({ target: { lat: l.to.lat, lng: l.to.lng }, label: l.to.name, kind }); }; });
     drawItinerary(its[i0]);
   }
   function itinSteps(it) {
-    return it.legs.map((l) => {
+    return it.legs.map((l, li) => {
       if (l.type === 'walk') return `<li>${icon('walk', { size: 20 })}<span>${esc(l.to.name === 'destination' ? ctx.tf('transit_walk_dest', { d: formatDistance(l.distance_m) }) : ctx.tf('transit_walk_to', { d: formatDistance(l.distance_m), stop: l.to.name }))}<small>${esc(mins(l.duration_s))}</small></span></li>`;
       if (l.type === 'transfer') return `<li>${icon('swap', { size: 20 })}<span>${esc(ctx.tf('transit_change_at', { stop: l.to.name }))}<small>${esc(mins(l.duration_s))}</small></span></li>`;
       return `<li>${icon('metro', { size: 20 })}<span><b class="line-pill" style="--lc:${esc(l.route.color || '#2F3A8F')};--on:${esc(l.route.text || '#fff')}">${esc(lineName(l.route))}</b> ${esc(ctx.tf('transit_ride', { line: '', headsign: l.headsign }).trim())}
-        <small>${esc(l.from.name)} ${esc(fmtTime(l.depart_s))} → ${esc(l.to.name)} ${esc(fmtTime(l.arrive_s))} · ${esc(ctx.tf('transit_stops_n', { n: l.stops }))}${l.from.platform ? ` · P${esc(l.from.platform)}` : ''}</small></span></li>`;
+        <small>${esc(l.from.name)} ${esc(fmtTime(l.depart_s))} → ${esc(l.to.name)} ${esc(fmtTime(l.arrive_s))} · ${esc(ctx.tf('transit_stops_n', { n: l.stops }))}${l.from.platform ? ` · P${esc(l.from.platform)}` : ''}</small>
+        ${Number.isFinite(l.to?.lat) ? `<button type="button" class="link itin-alarm" data-alarm-leg="${li}">${icon('bell', { size: 16 })} ${esc(ctx.tf('al_stop', { stop: l.to.name }))}</button>` : ''}</span></li>`;
     }).join('');
   }
   function drawItinerary(it) {

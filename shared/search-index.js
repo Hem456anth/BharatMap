@@ -65,6 +65,31 @@ function lookup(ix, tok, { prefix = true, cap = 4000 } = {}) {
   return out;
 }
 
+/** All strings at edit distance 1 from w (Damerau: deletes, adjacent transposes, substitutions, inserts; a–z). */
+export function typoVariants(w) {
+  const out = new Set(); const A = 'abcdefghijklmnopqrstuvwxyz';
+  for (let i = 0; i < w.length; i++) {
+    out.add(w.slice(0, i) + w.slice(i + 1));
+    if (i < w.length - 1) out.add(w.slice(0, i) + w[i + 1] + w[i] + w.slice(i + 2));
+    for (const c of A) if (c !== w[i]) out.add(w.slice(0, i) + c + w.slice(i + 1));
+  }
+  for (let i = 0; i <= w.length; i++) for (const c of A) out.add(w.slice(0, i) + c + w.slice(i));
+  out.delete(w);
+  return out;
+}
+/** Ids of places with a Latin token at edit distance 1 from w (exact token match only, capped). */
+function typoLookup(ix, w, cap = 3000) {
+  const out = new Map();
+  for (const v of typoVariants(w)) {
+    if (v.length < 4) continue;
+    const i = lb(ix.keys, `l${v}`);
+    if (ix.keys[i] !== `l${v}`) continue;
+    for (const id of ids(ix, i)) out.set(id, true);
+    if (out.size > cap) break;
+  }
+  return out;
+}
+
 const R = 6371;
 const km = (a, b) => { const d2r = Math.PI / 180; const x = (b.lng - a.lng) * d2r * Math.cos(((a.lat + b.lat) / 2) * d2r); const y = (b.lat - a.lat) * d2r; return Math.hypot(x, y) * R; };
 
@@ -95,7 +120,7 @@ function rowNames(row) { return [row[0], row[6] || '', ...Object.values(row[5] |
  * or the whole query must match a whole name phonetically ("rushikonda" ↔ "ఋషి కొండ").
  * Score = per-word match quality + whole-name bonuses, × kind weight, minus a distance nudge from `near`.
  */
-export function searchOffline(ix, query, { near = null, limit = 8 } = {}) {
+export function searchOffline(ix, query, { near = null, limit = 8, cap = 4000 } = {}) {
   const raw = String(query || '').trim();
   if (!ix || raw.length < 2) return [];
   const out = [];
@@ -111,10 +136,13 @@ export function searchOffline(ix, query, { near = null, limit = 8 } = {}) {
   const perWord = lws.map((w, i) => {
     const m = new Map(); // id → best score for this word
     const add = (map, exact, part) => { for (const [id, ex] of map) { const s = ex ? exact : part; if (s > (m.get(id) || 0)) m.set(id, s); } };
-    add(lookup(ix, `l${w}`, { prefix: w.length >= 2 }), 4, 3);
+    add(lookup(ix, `l${w}`, { prefix: w.length >= 2, cap }), 4, 3); // cap: the locality pool (G2) uses 12,000 so "hospital" reaches "hospitals"
     if (nws[i]) add(lookup(ix, `n${nws[i]}`), 4.5, 3.5);
     const k = phoneticKey(w);
     if (k) add(lookup(ix, `p${k}`, { prefix: k.length >= 3 }), 2.6, 1.6);
+    // v0.7.20 (G2) typo tolerance: a word of ≥ 5 letters with no hit at all is tried at edit distance 1
+    // (deletion, transposition, substitution, insertion) against whole Latin tokens. Lower score than a real match.
+    if (!m.size && w.length >= 5 && /^[a-z]+$/.test(w)) add(typoLookup(ix, w), 2.2, 2.2);
     return m;
   });
   // whole-query phonetic (handles spacing differences)
