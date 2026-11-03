@@ -1,3 +1,22 @@
+# Audit — competitor-gap upgrade 0.7.20 (3 Nov 2026)
+
+Details, evidence and before/after matrix: `docs/UPGRADE_REPORT_2026-11.md`, `docs/re/COMPETITOR_ANALYSIS_2026-11.md`.
+Matrix (Bharat Map column): 26 ✅ / 10 🟡 / 1 💰 / 14 ❌ of 52 rows (0.7.18) → **31 ✅ / 9 🟡 / 1 💰 / 14 ❌ of 56** (0.7.20).
+
+| Gap | Feature | Status | Evidence |
+|---|---|---|---|
+| G1 | "Prefer main roads" (Valhalla costing for car and 2W; OSRM fallback labelled "not applied") | ✅ · ⬜ gate snapping, avoid polygons | `shared/guardrails.js`, `shared/valhalla.js`; unit + E2E |
+| G2 | Locality-aware, typo-tolerant search (device index + server FTS5) | ✅ | `shared/search-locality.js`, `server/lib/search-fts.js`; unit (real index) + E2E |
+| G3 | Bengaluru Namma Metro (unofficial ODbL GTFS, approximated stop times, labelled) | 🟡 · ⬜ BMTC, Delhi OTD, GTFS-RT | `server/transit/feeds/bmrcl/`, `web/transit/bmrcl.json`; unit |
+| G6 | Add a missing place → structured anonymous OSM note | ✅ · ⬜ Overture merge | `shared/osm-edit.js`, `web/ui/report.js`; unit + E2E |
+| G7 | Metro get-off / arrival alarms | ✅ foreground only | `shared/alarms.js`, `web/nav/alarms.js`; unit + E2E |
+| G8 | Incidents announced along the route + "Still there?" | ✅ (still labelled unverified) | `shared/route-alerts.js`; unit + E2E |
+| G9 | Exact pickup hand-off (pin, DIGIPIN, landmark; Uber documented fields, else clipboard) | ✅ | `shared/handoff.js`, `web/lib/clipboard.js`; unit + E2E |
+| G10 | No silent reroutes (offer with minutes saved, auto-switch opt-in), voice kept | ✅ | `shared/reroute.js`, `web/nav/navigation.js`; unit + E2E |
+| G4 / G5 | SoI boundaries / on-device routing | ⬜ next | roadmap in the upgrade report |
+| i18n | 0.7.20 strings en/hi/te | 🟡 | native review pending; 8 languages fall back to English |
+| Size | APK slimming | ⏸ awaiting the owner | unchanged (~100 MB) |
+
 # Audit — technical / security audit (3 Nov 2026)
 
 Full findings in `docs/AUDIT-2026-11.md`: 41 findings (0 Critical, 4 High, 11 Medium, 20 Low, 6 Info); all High and

@@ -1,3 +1,44 @@
+# Bharat Map 0.7.20 — competitor gaps (G1, G2, G3 part, G6 part, G7–G10) — Test report
+
+Run date: 3 Nov 2026 (IST). Features and evidence: `docs/UPGRADE_REPORT_2026-11.md`; research:
+`docs/re/COMPETITOR_ANALYSIS_2026-11.md`.
+
+## Summary
+| Suite | Before (`4ae5bed`, 0.7.19) | After (`810a020`) |
+|---|---|---|
+| Unit + API (`npm test`) | 228 / 228 | **247 / 247** locally and in CI (+19 in `tests/v0720.test.js`) |
+| Browser E2E (`tests/e2e.mjs`) | 137 / 137 | **152 PASS / 0 FAIL** in CI; locally 152 PASS / 0 FAIL across a full run that the sandbox killed at 115 PASS (memory pressure), a v0718 + v0720 chunk (34 PASS) and a v0720 re-run after the visual fixes (17 PASS); raw output `docs/e2e-results.txt` |
+| CI | [run 19](https://github.com/Hem456anth/BharatMap/actions/runs/41678130550) | [run 20](https://github.com/Hem456anth/BharatMap/actions/runs/41691102925) (`810a020`): — all three jobs green on the first push (247 / 247, 152 PASS / 0 FAIL E2E, Android build); 0 fix rounds |
+
+### New unit tests (19) — `tests/v0720.test.js`
+G1 costing options, defaults/persistence, server Valhalla-first with labelled OSRM fallback, client fallback flag ·
+G2 query parsing, the Organic Maps #10566 pattern (synthetic index), golden queries on the bundled OSM index, typo
+tolerance with plain queries unchanged, server FTS5 parity · G7 alarm fires once, inaccurate/stale fixes ignored ·
+G8 incidents within 50 m announced once and "Still there?" after passing, device-only vote rules · G9 pickup text
+(6-dp pin, DIGIPIN, landmark, OSM link) and Uber documented fields, ride-panel plans · G10 offer thresholds, opt-in
+auto-accept, reroute keeps options, voice choice survives a missing voice · G6 structured note with validation ·
+v0.7.20 strings complete in en/hi/te · G3 Bengaluru metro planned on device with unofficial/approximated attribution.
+
+### New E2E steps (15, desktop + mobile)
+G1 main roads (car off → on → Valhalla, labelled; 2W on) and Valhalla-down OSRM label (desktop) · G2 locality search ·
+G9 Uber/Rapido hand-off + copy pickup · G7 metro get-off alarm · G8 incident ahead + Still there? · G10 offer / keep /
+switch / auto-switch / off-route keeps main roads · G6 missing place. Screenshots: `docs/screenshots/v0720/`.
+
+### Fixes from the screenshot review
+Night-mode chip ghost buttons ("Keep my route", "No, gone") were dark on dark → inherit the chip's text colour;
+"Add a missing place" labels stacked above their fields; the field error clears when the user edits.
+
+## Release v0.7.20
+| Check | Result |
+|---|---|
+| Signing | Signed offline from CI's unsigned release artifact (zipalign -P 16 4, apksigner): v1 ✅ v2 ✅ v3 ✅, `CN=Bharat Map`, cert SHA-256 `d04d20f9…7c6c` (same key; installs over 0.5.13+ releases); versionCode 20, versionName 0.7.20; debuggable=false; no R8 |
+| Attached | [attach run 6](https://github.com/Hem456anth/BharatMap/actions/runs/41692882097) (SHA-256 matched, signature/alignment re-verified on GitHub) |
+| Release | [v0.7.20](https://github.com/Hem456anth/BharatMap/releases/tag/v0.7.20): **`bharat-map-0.7.20.apk` 100,688,504 bytes**, SHA-256 `e91febdbcb6d4a871e4b22cb12730e92befd252047e4d7f3041e587d4af04d0e` (re-downloaded and matched); `bharat-map-0.7.20-debug.apk` 103,073,777 bytes from CI |
+
+### Known gaps
+No real-device run; alarms are foreground only; Bengaluru metro times approximated (unofficial feed); no BMTC/Delhi
+feeds; Survey-of-India boundaries not rendered; gate snapping and "never route me here" not built; no APK slimming.
+
 # Bharat Map — technical audit fixes (Nov 2026) — Test report
 
 Run date: 3 Nov 2026 (IST). Findings and fixes: `docs/AUDIT-2026-11.md`.
