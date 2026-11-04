@@ -2,9 +2,10 @@
 
 **Status: implemented (v0.4).** `android/` is a native Android project (Capacitor 7, compileSdk/targetSdk 35, minSdk 23 —
 Android 6.0+, package `com.indiamapos.app`, app name **Bharat Map**). The APK is built by GitHub Actions
-(`.github/workflows/ci.yml`) on every push to `main` and attached to a GitHub Release tagged `v0.5.<run>` as
-`bharat-map-0.5.<run>.apk` (release-signed, not debuggable; from v0.5.13) plus `bharat-map-0.5.<run>-debug.apk`
-(versionName `0.5.<run>`, versionCode = CI run number).
+(`.github/workflows/ci.yml`) on every push to `main` and published as a GitHub Release tagged `v0.7.<run>` with
+`bharat-map-0.7.<run>-debug.apk`; the release-signed `bharat-map-0.7.<run>.apk` (not debuggable) is attached after offline
+signing while CI has no signing secrets (versionName `0.7.<run>`, versionCode = CI run number). Release/signing procedure:
+[SETUP.md](../SETUP.md#android-release-and-signing).
 
 ## What is native
 | Capability | How |
@@ -32,7 +33,7 @@ Android 6.0+, package `com.indiamapos.app`, app name **Bharat Map**). The APK is
 | `FOREGROUND_SERVICE`, `FOREGROUND_SERVICE_LOCATION` (v0.4) | the navigation foreground service (Android 14 requires the typed permission) | normal (install-time); service runs only during navigation |
 | `ACCESS_BACKGROUND_LOCATION` (v0.4) | optional "Allow location all the time" for devices that stop the service when you switch apps | **only** when the user taps *Settings → Allow location all the time*; never at install or first launch |
 
-No camera, microphone or contacts permission is requested. Location is used only on user action and during navigation
+No camera or contacts permission is requested. `RECORD_AUDIO` is declared for voice search (v0.5) and asked only when the user taps the microphone. Location is used only on user action and during navigation
 (with a visible notification).
 
 ## Build locally (x86_64 Linux/macOS/Windows with JDK 21 + Android SDK 35)
@@ -47,11 +48,11 @@ cd android && ./gradlew assembleDebug        # → app/build/outputs/apk/debug/a
 Release key: PKCS12 keystore, alias `bharatmap`, RSA 4096, 10,000 days, `CN=Bharat Map` (cert SHA-256 `d04d20f9…997c6c`).
 CI reads repository secrets `ANDROID_KEYSTORE_B64`, `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS`, `ANDROID_KEY_PASSWORD`;
 without them the release build is left unsigned and only the debug APK is published. No R8/minification or resource shrinking.
-Key backup, secrets setup and offline signing: [DEPLOYMENT.md](DEPLOYMENT.md#android-release-signing).
+Key backup, secrets setup and offline signing: [SETUP.md](../SETUP.md#android-release-and-signing).
 
 ## Install the APK
 1. On the phone, open the repository's **Releases** page (`https://github.com/Hem456anth/BharatMap/releases`) and tap the
-   latest `v0.5.<n>` → `bharat-map-0.5.<n>.apk` (the release build; the `-debug` file is for troubleshooting only).
+   latest `v0.7.<n>` → `bharat-map-0.7.<n>.apk` (the release build; the `-debug` file is for troubleshooting only).
 2. Open the downloaded file. Android asks to allow **Install unknown apps** for your browser or Files app — allow it once.
 3. Tap **Install**. **Coming from 0.5.12 or older (debug-signed) or a v0.2 "India MapOS" build: uninstall it once first** — the
    release key differs, so Android will not update over it. Release builds then update in place.
@@ -59,7 +60,7 @@ Key backup, secrets setup and offline signing: [DEPLOYMENT.md](DEPLOYMENT.md#and
 5. For voice guidance in Hindi/Telugu, make sure the phone's speech engine has that language (Settings → System →
    Languages → Text-to-speech → Google speech engine → Install voice data).
 
-Sideloading via USB: `adb install -r bharat-map-0.5.<n>.apk`.
+Sideloading via USB: `adb install -r bharat-map-0.7.<n>.apk`.
 
 ## Known limits
 - Background navigation is compiled and its permission/rationale flow is E2E-tested with a stub plugin; it has not been tested on a physical device here. Aggressive OEM battery savers (some Xiaomi/Oppo/Vivo builds) may still stop it.
